@@ -7,8 +7,9 @@ import Questionnaire from './pages/Questionnaire'
 import Exercises from './pages/Exercises'
 import ExerciseSession from './pages/ExerciseSession'
 import History from './pages/History'
+import ImageCapture from './pages/ImageCapture'
 
-type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history';
+type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login')
@@ -59,6 +60,8 @@ function App() {
         )
       case 'history':
         return <History onBack={() => handleNavigate('dashboard')} />
+      case 'image-capture':
+        return <ImageCapture onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login 

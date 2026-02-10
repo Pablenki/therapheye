@@ -1,7 +1,7 @@
-import { Activity, ClipboardList, History, LogOut, Eye } from 'lucide-react';
+import { Activity, ClipboardList, History, LogOut, Eye, Camera } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
-type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history';
+type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture';
 
 const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const { user } = useUser();
@@ -26,6 +26,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
       description: 'Revisa tus evaluaciones anteriores',
       color: 'bg-purple-500',
       action: () => onNavigate('history')
+    },
+    {
+      icon: Camera,
+      title: 'Captura de imagen',
+      description: 'Toma una imagen para análisis visual',
+      color: 'bg-red-500',
+      action: () => onNavigate('image-capture')
     }
   ];
 
