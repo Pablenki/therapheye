@@ -1,0 +1,204 @@
+/* =========================================
+   ESTILOS GLOBALES DE ACCESIBILIDAD
+   ========================================= */
+
+/* ========== ALTO CONTRASTE ========== */
+body.high-contrast {
+  filter: contrast(1.5) !important;
+}
+
+body.high-contrast * {
+  border-color: #000 !important;
+}
+
+body.high-contrast a {
+  color: #0000EE !important;
+  text-decoration: underline !important;
+}
+
+body.high-contrast button {
+  border: 2px solid #000 !important;
+}
+
+/* ========== TAMAÑOS DE TEXTO ========== */
+body.text-small {
+  font-size: 14px !important;
+}
+
+body.text-normal {
+  font-size: 16px !important;
+}
+
+body.text-large {
+  font-size: 20px !important;
+}
+
+body.text-large h1 { font-size: 3rem !important; }
+body.text-large h2 { font-size: 2.5rem !important; }
+body.text-large h3 { font-size: 2rem !important; }
+body.text-large p { font-size: 1.25rem !important; }
+body.text-large button { font-size: 1.1rem !important; }
+body.text-large input { font-size: 1.1rem !important; }
+
+/* ========== INVERSIÓN DE COLORES ========== */
+body.invert-colors {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+body.invert-colors img,
+body.invert-colors video {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* ========== INDICADORES VISUALES - ARREGLADO ========== */
+body.visual-indicators input:focus,
+body.visual-indicators textarea:focus,
+body.visual-indicators select:focus,
+body.visual-indicators button:focus,
+body.visual-indicators a:focus {
+  outline: 4px solid #1B396B !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 8px rgba(27, 57, 107, 0.3) !important;
+}
+
+body.visual-indicators button:hover,
+body.visual-indicators a:hover {
+  box-shadow: 0 0 0 4px rgba(27, 57, 107, 0.4) !important;
+  outline: 2px solid #1B396B !important;
+  outline-offset: 2px !important;
+}
+
+/* ========== DALTONISMO - ARREGLADO CON FILTROS CSS REALES ========== */
+
+/* Protanopia (Ceguera al ROJO) */
+body.colorblind-protanopia {
+  filter: 
+    contrast(1.1)
+    sepia(0.3)
+    saturate(0.8)
+    hue-rotate(10deg) !important;
+}
+
+/* Deuteranopia (Ceguera al VERDE) */
+body.colorblind-deuteranopia {
+  filter: 
+    contrast(1.1)
+    sepia(0.4)
+    saturate(0.7)
+    hue-rotate(-10deg) !important;
+}
+
+/* Tritanopia (Ceguera al AZUL) */
+body.colorblind-tritanopia {
+  filter: 
+    contrast(1.2)
+    sepia(0.5)
+    saturate(0.6)
+    hue-rotate(90deg) !important;
+}
+
+/* Acromatopsia (Sin color) */
+body.colorblind-achromatopsia {
+  filter: grayscale(100%) contrast(1.1) !important;
+}
+
+/* ========== CURSOR GRANDE ========== */
+body.big-cursor,
+body.big-cursor * {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M5 3 L5 35 L15 25 L20 35 L24 33 L19 23 L30 23 Z" fill="white" stroke="black" stroke-width="2"/></svg>') 0 0, auto !important;
+}
+
+body.big-cursor button,
+body.big-cursor a,
+body.big-cursor input,
+body.big-cursor select {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M20 3 L16 7 L22 7 L22 17 L12 17 L12 11 L8 15 L14 21 L14 23 L11 23 L11 29 L8 33 L14 33 L14 40 L26 40 L26 33 L32 33 L28 29 L28 23 L25 23 L25 21 L31 15 L27 11 L27 17 L17 17 L17 7 L23 7 Z" fill="white" stroke="black" stroke-width="2"/></svg>') 10 10, pointer !important;
+}
+
+/* ========== RESALTAR ENLACES - ARREGLADO ========== */
+body.highlight-links a,
+body.highlight-links button {
+  background-color: #FFFF00 !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  padding: 4px 8px !important;
+  text-decoration: underline !important;
+  border: 3px solid #000 !important;
+  border-radius: 4px !important;
+  display: inline-block !important;
+}
+
+body.highlight-links a:hover,
+body.highlight-links button:hover {
+  background-color: #FFD700 !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ========== MODO FOCO - COMPLETAMENTE ARREGLADO ========== */
+body.focus-mode {
+  /* No aplicar blur por defecto */
+}
+
+body.focus-mode input:not(:focus),
+body.focus-mode textarea:not(:focus),
+body.focus-mode select:not(:focus),
+body.focus-mode button:not(:focus):not(.accessibility-menu button),
+body.focus-mode a:not(:focus) {
+  opacity: 0.3 !important;
+  transition: opacity 0.3s ease !important;
+}
+
+body.focus-mode input:focus,
+body.focus-mode textarea:focus,
+body.focus-mode select:focus,
+body.focus-mode button:focus,
+body.focus-mode a:focus {
+  opacity: 1 !important;
+  outline: 4px solid #1B396B !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 8px rgba(27, 57, 107, 0.3) !important;
+  position: relative;
+  z-index: 9990 !important;
+}
+
+/* El menú de accesibilidad SIEMPRE visible */
+body.focus-mode .accessibility-menu,
+body.focus-mode .accessibility-menu * {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* ========== SCROLLBAR PERSONALIZADO ========== */
+.accessibility-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.accessibility-menu::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.accessibility-menu::-webkit-scrollbar-thumb {
+  background: #1B396B;
+  border-radius: 10px;
+}
+
+.accessibility-menu::-webkit-scrollbar-thumb:hover {
+  background: #003875;
+}
+
+/* ========== FUENTE PARA DISLEXIA ========== */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/compiled/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/compiled/OpenDyslexic-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}

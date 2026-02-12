@@ -1,3 +1,5 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Fuente para dislexia y daltonismo */
+@import url('https://fonts.cdnfonts.com/css/opendyslexic');

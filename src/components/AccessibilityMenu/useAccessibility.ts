@@ -1,0 +1,356 @@
+// =========================================
+// HOOK DE ACCESIBILIDAD - useAccessibility
+// Lógica completa del sistema de accesibilidad
+// =========================================
+
+import { useState, useEffect, useCallback } from 'react';
+import type { AccessibilitySettings } from './accessibility.types';
+import { defaultSettings } from './accessibility.types';
+
+const STORAGE_KEY = 'therapeye_accessibility_settings';
+
+export const useAccessibility = () => {
+  const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // ==================== CARGAR CONFIGURACIÓN GUARDADA ====================
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSettings({ ...defaultSettings, ...parsed });
+      } catch (error) {
+        console.error('Error cargando configuración:', error);
+      }
+    }
+  }, []);
+
+  // ==================== GUARDAR CONFIGURACIÓN ====================
+  const saveSettings = useCallback((newSettings: AccessibilitySettings) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+  }, []);
+
+  // ==================== APLICAR CONFIGURACIÓN AL DOM ====================
+  useEffect(() => {
+    const body = document.body;
+
+    // Alto contraste
+    if (settings.highContrast) {
+      body.classList.add('high-contrast');
+    } else {
+      body.classList.remove('high-contrast');
+    }
+
+    // Tamaño de texto
+    body.classList.remove('text-small', 'text-normal', 'text-large');
+    body.classList.add(`text-${settings.textSize}`);
+
+    // Tipo de fuente
+    if (settings.fontFamily === 'default') {
+      body.style.fontFamily = '';
+    } else {
+      body.style.fontFamily = settings.fontFamily;
+    }
+
+    // Zoom
+    body.style.zoom = `${settings.zoom}%`;
+
+    // Inversión de colores
+    if (settings.invertColors) {
+      body.classList.add('invert-colors');
+    } else {
+      body.classList.remove('invert-colors');
+    }
+
+    // Indicadores visuales
+    if (settings.visualIndicators) {
+      body.classList.add('visual-indicators');
+    } else {
+      body.classList.remove('visual-indicators');
+    }
+
+    // Modo daltonismo
+    body.classList.remove(
+      'colorblind-protanopia',
+      'colorblind-deuteranopia',
+      'colorblind-tritanopia',
+      'colorblind-achromatopsia'
+    );
+    if (settings.colorBlindMode !== 'none') {
+      body.classList.add(`colorblind-${settings.colorBlindMode}`);
+    }
+
+    // Cursor grande
+    if (settings.bigCursor) {
+      body.classList.add('big-cursor');
+    } else {
+      body.classList.remove('big-cursor');
+    }
+
+    // Resaltar enlaces
+    if (settings.highlightLinks) {
+      body.classList.add('highlight-links');
+    } else {
+      body.classList.remove('highlight-links');
+    }
+
+    // Modo foco
+    if (settings.focusMode) {
+      body.classList.add('focus-mode');
+    } else {
+      body.classList.remove('focus-mode');
+    }
+
+    saveSettings(settings);
+  }, [settings, saveSettings]);
+
+  // ==================== FUNCIONES DE ACTUALIZACIÓN ====================
+  const updateSetting = useCallback(<K extends keyof AccessibilitySettings>(
+    key: K,
+    value: AccessibilitySettings[K]
+  ) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const toggleSetting = useCallback((key: keyof AccessibilitySettings) => {
+    setSettings(prev => ({ 
+      ...prev, 
+      [key]: !(prev[key] as boolean) 
+    }));
+  }, []);
+
+  // ==================== ZOOM ====================
+  const zoomIn = useCallback(() => {
+    setSettings(prev => ({ 
+      ...prev, 
+      zoom: Math.min(prev.zoom + 10, 150) 
+    }));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setSettings(prev => ({ 
+      ...prev, 
+      zoom: Math.max(prev.zoom - 10, 80) 
+    }));
+  }, []);
+
+  const zoomReset = useCallback(() => {
+    setSettings(prev => ({ ...prev, zoom: 100 }));
+  }, []);
+
+  // ==================== LECTURA EN VOZ ALTA ====================
+  useEffect(() => {
+    if (!settings.readAloud) {
+      // Detener cualquier lectura en curso
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      document.removeEventListener('click', handleReadAloudClick);
+      return;
+    }
+
+    // Verificar soporte
+    if (!('speechSynthesis' in window)) {
+      alert('❌ Tu navegador no soporta síntesis de voz.');
+      setSettings(prev => ({ ...prev, readAloud: false }));
+      return;
+    }
+
+    document.addEventListener('click', handleReadAloudClick);
+    return () => {
+      document.removeEventListener('click', handleReadAloudClick);
+    };
+  }, [settings.readAloud]);
+
+  const handleReadAloudClick = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    
+    // No leer el menú de accesibilidad
+    if (target.closest('.accessibility-menu')) return;
+
+    let texto = '';
+
+    // INPUTS Y TEXTAREAS
+    if (target.matches('input, textarea')) {
+      const input = target as HTMLInputElement;
+      const label = document.querySelector(`label[for="${input.id}"]`) as HTMLElement;
+      
+      if (label) texto += label.textContent?.trim() + '. ';
+      if (input.placeholder) texto += input.placeholder + '. ';
+      
+      if (input.value?.trim()) {
+        texto += 'Valor actual: ' + input.value;
+      } else {
+        texto += 'Campo vacío';
+      }
+    }
+    // SELECT
+    else if (target.matches('select')) {
+      const select = target as HTMLSelectElement;
+      const label = document.querySelector(`label[for="${select.id}"]`) as HTMLElement;
+      
+      if (label) texto += label.textContent?.trim() + '. ';
+      
+      const selectedOption = select.options[select.selectedIndex];
+      if (selectedOption) {
+        texto += 'Opción seleccionada: ' + selectedOption.textContent?.trim();
+      }
+    }
+    // BOTONES E ICONOS
+    else if (target.matches('button, a')) {
+      texto = target.getAttribute('aria-label') || 
+             target.getAttribute('title') || 
+             target.textContent?.trim() ||
+             'Botón o enlace';
+    }
+    // TEXTO GENERAL
+    else if (target.matches('p, h1, h2, h3, h4, h5, h6, li, span, div, label')) {
+      texto = target.textContent?.trim() || '';
+    }
+
+    if (texto) {
+      speakText(texto);
+      
+      // Resaltar elemento
+      const originalBg = target.style.backgroundColor;
+      target.style.backgroundColor = 'rgba(100, 200, 255, 0.3)';
+      target.style.transition = 'background-color 0.2s';
+      
+      setTimeout(() => {
+        target.style.backgroundColor = originalBg;
+      }, 2000);
+    }
+  }, []);
+
+  const speakText = (texto: string) => {
+    if (!('speechSynthesis' in window)) {
+      console.error('❌ speechSynthesis no disponible');
+      return;
+    }
+    
+    // IMPORTANTE: Cancelar lecturas previas
+    window.speechSynthesis.cancel();
+    
+    // Pequeño delay para asegurar que se canceló
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(texto);
+      
+      // FORZAR español
+      utterance.lang = 'es-MX';
+      utterance.rate = 0.85;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      // Obtener voces disponibles
+      let voces = window.speechSynthesis.getVoices();
+      
+      // Función para encontrar y usar voz en español
+      const usarVozEspanol = () => {
+        voces = window.speechSynthesis.getVoices();
+        
+        if (voces.length === 0) {
+          console.warn('⚠️ No hay voces disponibles todavía');
+          return;
+        }
+        
+        console.log('🔊 Todas las voces:', voces.map(v => `${v.name} [${v.lang}]`));
+        
+        // Buscar voz en español (orden de prioridad)
+        const vozEspanol = 
+          voces.find(v => v.lang === 'es-MX') ||           // México
+          voces.find(v => v.lang === 'es-US') ||           // US Español
+          voces.find(v => v.lang === 'es-419') ||          // Latinoamérica
+          voces.find(v => v.lang.startsWith('es-') && 
+                         !v.lang.includes('ES')) ||        // Cualquier español NO de España
+          voces.find(v => v.lang.startsWith('es')) ||      // Cualquier español
+          voces.find(v => v.name.toLowerCase().includes('spanish')) || // Nombre incluye "spanish"
+          voces.find(v => v.name.toLowerCase().includes('español'));   // Nombre incluye "español"
+        
+        if (vozEspanol) {
+          utterance.voice = vozEspanol;
+          console.log('✅ VOZ SELECCIONADA:', vozEspanol.name, `[${vozEspanol.lang}]`);
+        } else {
+          console.warn('⚠️ NO SE ENCONTRÓ VOZ EN ESPAÑOL - Usando voz por defecto');
+          console.warn('💡 Instala voces en español en tu sistema operativo');
+        }
+        
+        // Hablar
+        window.speechSynthesis.speak(utterance);
+      };
+      
+      // Si ya hay voces, usar inmediatamente
+      if (voces.length > 0) {
+        usarVozEspanol();
+      } else {
+        // Esperar a que se carguen las voces
+        console.log('⏳ Esperando a que se carguen las voces...');
+        window.speechSynthesis.onvoiceschanged = () => {
+          usarVozEspanol();
+          window.speechSynthesis.onvoiceschanged = null; // Limpiar evento
+        };
+      }
+    }, 100);
+  };
+
+  // ==================== GUÍA DE LECTURA ====================
+  useEffect(() => {
+    if (!settings.readingGuide) {
+      const guide = document.getElementById('reading-guide');
+      if (guide) guide.remove();
+      return;
+    }
+
+    // Crear guía de lectura
+    let guide = document.getElementById('reading-guide') as HTMLDivElement;
+    if (!guide) {
+      guide = document.createElement('div');
+      guide.id = 'reading-guide';
+      guide.style.cssText = `
+        position: fixed;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: rgba(27, 57, 107, 0.8);
+        pointer-events: none;
+        z-index: 9998;
+        box-shadow: 0 0 10px rgba(27, 57, 107, 0.5);
+      `;
+      document.body.appendChild(guide);
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (guide) {
+        guide.style.top = `${e.clientY}px`;
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [settings.readingGuide]);
+
+  // ==================== RESETEAR ====================
+  const resetSettings = useCallback(() => {
+    setSettings(defaultSettings);
+    localStorage.removeItem(STORAGE_KEY);
+    
+    // Detener lectura en voz alta
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, []);
+
+  return {
+    settings,
+    isOpen,
+    setIsOpen,
+    updateSetting,
+    toggleSetting,
+    zoomIn,
+    zoomOut,
+    zoomReset,
+    resetSettings,
+  };
+};

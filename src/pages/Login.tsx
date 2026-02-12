@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import bcrypt from 'bcryptjs';
 
 const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavigateToRegister: () => void }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -9,7 +10,7 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useUser();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -18,7 +19,6 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
     setLoading(true);
 
     try {
-      // Buscar usuario en la BD usando Neon
       const result = await sql`
         SELECT * FROM users 
         WHERE email = ${email}
@@ -33,21 +33,20 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
 
       const user = result[0];
 
-      // Comparación simple - después agregaremos bcrypt
-      if (user.password_hash === password) {
-        console.log('Login exitoso:', user);
-        
-        // Guardar usuario en el contexto
+      // Comparar contraseña con bcrypt
+      const passwordValida = await bcrypt.compare(password, user.password_hash);
+
+      if (passwordValida) {
         login({
           id: user.id,
           email: user.email,
-          nombre: user.nombre
+          nombre: user.nombre,
         });
-        
         onLogin();
       } else {
         setError('Usuario o contraseña incorrectos');
       }
+
     } catch (err) {
       setError('Error al iniciar sesión');
       console.error(err);

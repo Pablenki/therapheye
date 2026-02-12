@@ -1,12 +1,25 @@
 import { useState } from 'react';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { sql } from '../neonCliente';
-import { useUser } from '../context/UserContext';
+import bcrypt from 'bcryptjs';
+import { generarCodigo, enviarCorreoVerificacion } from '../utils/emailService';
 
-const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () => void }) => {
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface PasswordRequirement {
+  label: string;
+  valid: boolean;
+}
+
+const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: { name: string; email: string; passwordHash: string; codigo: string }) => void }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     password: '',
@@ -15,26 +28,42 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login } = useUser();
+  // Validaciones de contraseña en tiempo real
+  const passwordRequirements: PasswordRequirement[] = [
+    { label: 'Mínimo 8 caracteres', valid: formData.password.length >= 8 },
+    { label: 'Al menos una mayúscula', valid: /[A-Z]/.test(formData.password) },
+    { label: 'Al menos una minúscula', valid: /[a-z]/.test(formData.password) },
+    { label: 'Al menos un número', valid: /[0-9]/.test(formData.password) },
+  ];
+
+  const passwordValida = passwordRequirements.every(r => r.valid);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
+    // Validaciones
+    if (!passwordValida) {
+      setError('La contraseña no cumple los requisitos');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('El formato del correo no es válido');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Verificar si el email ya existe
+      // Verificar si el email ya existe en BD
       const existingUser = await sql`
         SELECT email FROM users 
         WHERE email = ${formData.email}
@@ -47,27 +76,27 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
         return;
       }
 
-      // Insertar nuevo usuario
-      const result = await sql`
-        INSERT INTO users (email, password_hash, nombre, created_at)
-        VALUES (${formData.email}, ${formData.password}, ${formData.name}, NOW())
-        RETURNING *
-      `;
+      // Hashear contraseña
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(formData.password, salt);
 
-      console.log('Usuario registrado:', result[0]);
-      
-      // Guardar usuario en el contexto
-      login({
-        id: result[0].id,
-        email: result[0].email,
-        nombre: result[0].nombre
+      // Generar código de verificación
+      const codigo = generarCodigo();
+
+      // Enviar correo de verificación
+      await enviarCorreoVerificacion(formData.email, formData.name, codigo);
+
+      // Pasar datos temporales a la pantalla de verificación (NO se guarda en BD todavía)
+      onVerify({
+        name: formData.name,
+        email: formData.email,
+        passwordHash,
+        codigo,
       });
-      
-      alert('¡Cuenta creada exitosamente!');
-      onRegister();
+
     } catch (err) {
       console.error('Error:', err);
-      setError('Error al crear la cuenta');
+      setError('Error al enviar el correo de verificación. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -99,6 +128,7 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Nombre */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
               Nombre completo
@@ -114,6 +144,7 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
             />
           </div>
 
+          {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Correo electrónico
@@ -129,6 +160,7 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
             />
           </div>
 
+          {/* Contraseña */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
               Contraseña
@@ -142,7 +174,6 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition pr-12"
                 placeholder="••••••••"
                 required
-                minLength={6}
               />
               <button
                 type="button"
@@ -152,8 +183,26 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+
+            {/* Requisitos de contraseña */}
+            {formData.password.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {passwordRequirements.map((req, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    {req.valid
+                      ? <CheckCircle className="w-4 h-4 text-green-500" />
+                      : <XCircle className="w-4 h-4 text-red-400" />
+                    }
+                    <span className={`text-xs ${req.valid ? 'text-green-600' : 'text-red-400'}`}>
+                      {req.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Confirmar contraseña */}
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
               Confirmar contraseña
@@ -164,10 +213,15 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition pr-12"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition pr-12
+                  ${formData.confirmPassword.length > 0
+                    ? formData.password === formData.confirmPassword
+                      ? 'border-green-400'
+                      : 'border-red-400'
+                    : 'border-gray-300'
+                  }`}
                 placeholder="••••••••"
                 required
-                minLength={6}
               />
               <button
                 type="button"
@@ -177,14 +231,17 @@ const Register = ({ onBack, onRegister }: { onBack: () => void; onRegister: () =
                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            {formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword && (
+              <p className="text-xs text-red-400 mt-1">Las contraseñas no coinciden</p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+            disabled={loading || !passwordValida}
+            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+            {loading ? 'Enviando código...' : 'Crear cuenta'}
           </button>
         </form>
 

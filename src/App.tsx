@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { UserProvider } from './context/UserContext'
+import { AccessibilityMenu } from './components/AccessibilityMenu'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import VerifyEmail from './pages/VerifyEmail'
 import Dashboard from './pages/Dashboard'
 import Questionnaire from './pages/Questionnaire'
 import Exercises from './pages/Exercises'
@@ -9,11 +11,19 @@ import ExerciseSession from './pages/ExerciseSession'
 import History from './pages/History'
 import ImageCapture from './pages/ImageCapture'
 
-type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture';
+type Page = 'login' | 'register' | 'verify-email' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture';
+
+interface PendingUser {
+  name: string;
+  email: string;
+  passwordHash: string;
+  codigo: string;
+}
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login')
   const [currentExerciseId, setCurrentExerciseId] = useState<string>('palming')
+  const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
 
   const handleNavigate = (page: Page) => {
     setCurrentPage(page)
@@ -24,36 +34,55 @@ function App() {
     setCurrentPage('exercise-session')
   }
 
+  const handleVerify = (data: PendingUser) => {
+    setPendingUser(data)
+    setCurrentPage('verify-email')
+  }
+
   const renderPage = () => {
     switch (currentPage) {
       case 'login':
         return (
-          <Login 
+          <Login
             onLogin={() => handleNavigate('dashboard')}
             onNavigateToRegister={() => handleNavigate('register')}
           />
         )
       case 'register':
         return (
-          <Register 
+          <Register
             onBack={() => handleNavigate('login')}
-            onRegister={() => handleNavigate('dashboard')}
+            onVerify={handleVerify}
           />
         )
+      case 'verify-email':
+        return pendingUser ? (
+          <VerifyEmail
+            name={pendingUser.name}
+            email={pendingUser.email}
+            passwordHash={pendingUser.passwordHash}
+            codigo={pendingUser.codigo}
+            onBack={() => handleNavigate('register')}
+            onVerified={() => {
+              setPendingUser(null)
+              handleNavigate('dashboard')
+            }}
+          />
+        ) : null
       case 'dashboard':
         return <Dashboard onNavigate={handleNavigate} />
       case 'questionnaire':
         return <Questionnaire onBack={() => handleNavigate('dashboard')} />
       case 'exercises':
         return (
-          <Exercises 
+          <Exercises
             onBack={() => handleNavigate('dashboard')}
             onStartExercise={handleStartExercise}
           />
         )
       case 'exercise-session':
         return (
-          <ExerciseSession 
+          <ExerciseSession
             exerciseId={currentExerciseId}
             onBack={() => handleNavigate('exercises')}
           />
@@ -64,7 +93,7 @@ function App() {
         return <ImageCapture onBack={() => handleNavigate('dashboard')} />
       default:
         return (
-          <Login 
+          <Login
             onLogin={() => handleNavigate('dashboard')}
             onNavigateToRegister={() => handleNavigate('register')}
           />
@@ -75,6 +104,7 @@ function App() {
   return (
     <UserProvider>
       {renderPage()}
+      <AccessibilityMenu />
     </UserProvider>
   )
 }
