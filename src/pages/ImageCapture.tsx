@@ -1,16 +1,27 @@
-import { ArrowLeft, Camera, X } from 'lucide-react'
+import { ArrowLeft, Camera, X, CheckCircle, Loader2 } from 'lucide-react'
 import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect } from 'react'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
 type Props = {
   onBack: () => void
+}
+
+interface DiagnosticoResult {
+  sintomas: string[]
+  mensaje: string
 }
 
 const ImageCapture = ({ onBack }: Props) => {
   const { user } = useUser()
   const [mostrarCamara, setMostrarCamara] = useState(false)
   const [imagenCapturada, setImagenCapturada] = useState<string | null>(null)
+  const [diagnosticoCompletado, setDiagnosticoCompletado] = useState(false)
+  const [resultado, setResultado] = useState<DiagnosticoResult | null>(null)
+  const [isDiagnosing, setIsDiagnosing] = useState(false)
+  const [errorDiagnostico, setErrorDiagnostico] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -83,6 +94,79 @@ const ImageCapture = ({ onBack }: Props) => {
     setMostrarCamara(false)
   }
 
+  const realizarDiagnostico = async () => {
+    if (!imagenCapturada) return
+    setIsDiagnosing(true)
+    setErrorDiagnostico(null)
+    try {
+      const res = await fetch(`${API_BASE}/diagnostico`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imagen_base64: imagenCapturada }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail ?? 'Error en el diagnóstico')
+      }
+      const data: DiagnosticoResult = await res.json()
+      setResultado(data)
+      setDiagnosticoCompletado(true)
+    } catch (e) {
+      setErrorDiagnostico(e instanceof Error ? e.message : 'No se pudo conectar con el servidor.')
+    } finally {
+      setIsDiagnosing(false)
+    }
+  }
+
+  if (diagnosticoCompletado && resultado) {
+    const tieneSintomas = resultado.sintomas.length > 0
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
+          <div className="text-center">
+            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              ¡Diagnóstico Completado!
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {resultado.mensaje}
+            </p>
+
+            <div className={`rounded-xl p-6 mb-6 ${tieneSintomas ? 'bg-amber-50' : 'bg-green-50'}`}>
+              <p className="text-sm text-gray-600 mb-2">Signos detectados en la imagen:</p>
+              {tieneSintomas ? (
+                <ul className="text-left space-y-2">
+                  {resultado.sintomas.map((s, i) => (
+                    <li key={i} className="font-medium text-amber-700">• {s}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-lg font-semibold text-green-700">Ningún signo de fatiga visual detectado.</p>
+              )}
+            </div>
+
+            <div className="bg-blue-50 rounded-xl p-6 mb-6 text-left">
+              <h3 className="font-semibold text-gray-800 mb-3">Recomendaciones:</h3>
+              <ul className="space-y-2 text-gray-700">
+                <li>✓ Realiza ejercicios visuales regularmente</li>
+                <li>✓ Toma descansos cada 20 minutos</li>
+                <li>✓ Ajusta la iluminación de tu pantalla</li>
+                <li>✓ Mantén una distancia adecuada del monitor</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={onBack}
+              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+            >
+              Volver al Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -142,11 +226,23 @@ const ImageCapture = ({ onBack }: Props) => {
                     <span>Capturar nueva imagen</span>
                   </button>
                   <button
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition"
+                    onClick={realizarDiagnostico}
+                    disabled={isDiagnosing}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span>Realizar diagnóstico</span>
+                    {isDiagnosing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Analizando...</span>
+                      </>
+                    ) : (
+                      <span>Realizar diagnóstico</span>
+                    )}
                   </button>
                 </div>
+                {errorDiagnostico && (
+                  <p className="text-center text-red-600 text-sm mt-2">{errorDiagnostico}</p>
+                )}
               </div>
             ) : (
               <>
