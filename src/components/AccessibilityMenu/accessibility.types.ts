@@ -2,25 +2,24 @@
 // TIPOS PARA EL SISTEMA DE ACCESIBILIDAD
 // =========================================
 
-export type TextSize = 'small' | 'normal' | 'large';
 export type FontFamily = 'default' | 'Arial, sans-serif' | 'Georgia, serif' | 'Courier New, monospace' | 'Comic Sans MS, cursive' | 'OpenDyslexic, sans-serif';
 export type ColorBlindMode = 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'achromatopsia';
 
 export interface AccessibilitySettings {
   // Visuales
   highContrast: boolean;
-  textSize: TextSize;
+  fontSize: number;       // 75–125 → aplicado en html font-size (escala rem)
   fontFamily: FontFamily;
-  zoom: number;
+  zoom: number;           // 80–150 → body.style.zoom
   invertColors: boolean;
   visualIndicators: boolean;
   colorBlindMode: ColorBlindMode;
-  
+
   // Lectura y navegación
   screenReader: boolean;
   readingGuide: boolean;
   readAloud: boolean;
-  
+
   // Motoras y físicas
   onScreenKeyboard: boolean;
   bigCursor: boolean;
@@ -31,7 +30,7 @@ export interface AccessibilitySettings {
 
 export const defaultSettings: AccessibilitySettings = {
   highContrast: false,
-  textSize: 'normal',
+  fontSize: 100,
   fontFamily: 'default',
   zoom: 100,
   invertColors: false,

@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, Focus, Maximize2, RotateCw } from 'lucide-react';
+import { ArrowLeft, Eye, Focus, Maximize2, RotateCw, ZoomIn } from 'lucide-react';
 
 interface Exercise {
   id: string;
@@ -38,10 +38,18 @@ const Exercises = ({ onBack, onStartExercise }: { onBack: () => void; onStartExe
     {
       id: 'circles',
       title: 'Círculos oculares',
-      description: 'Ejercicio de movimiento circular para fortalecer músculos',
+      description: 'Ejercicio de movimiento circular para fortalecer músculos oculares',
       duration: '4 min',
       icon: RotateCw,
       color: 'bg-orange-500'
+    },
+    {
+      id: 'near-far',
+      title: 'Simulación cerca/lejos',
+      description: 'Emula el enfoque de objetos próximos y lejanos para entrenar la acomodación visual',
+      duration: '3 min',
+      icon: ZoomIn,
+      color: 'bg-teal-500'
     }
   ];
 

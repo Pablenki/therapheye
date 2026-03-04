@@ -1,6 +1,7 @@
 // =========================================
 // HOOK DE ACCESIBILIDAD - useAccessibility
 // Lógica completa del sistema de accesibilidad
+// IMPORTANTE: Filtros CSS van en #root, no en body
 // =========================================
 
 import { useState, useEffect, useCallback } from 'react';
@@ -34,17 +35,17 @@ export const useAccessibility = () => {
   // ==================== APLICAR CONFIGURACIÓN AL DOM ====================
   useEffect(() => {
     const body = document.body;
+    const root = document.getElementById('root');
 
-    // Alto contraste
-    if (settings.highContrast) {
-      body.classList.add('high-contrast');
-    } else {
-      body.classList.remove('high-contrast');
-    }
+    // ===== Clases en BODY (NO usan filter) =====
 
-    // Tamaño de texto
-    body.classList.remove('text-small', 'text-normal', 'text-large');
-    body.classList.add(`text-${settings.textSize}`);
+    // Tamaño de letra — escala SOLO las clases de texto Tailwind via CSS var
+    // Esto NO afecta iconos, padding, ni layout (a diferencia de html font-size)
+    document.documentElement.style.removeProperty('font-size');
+    document.documentElement.style.setProperty(
+      '--a11y-text-scale',
+      String(settings.fontSize / 100)
+    );
 
     // Tipo de fuente
     if (settings.fontFamily === 'default') {
@@ -56,50 +57,37 @@ export const useAccessibility = () => {
     // Zoom
     body.style.zoom = `${settings.zoom}%`;
 
-    // Inversión de colores
-    if (settings.invertColors) {
-      body.classList.add('invert-colors');
-    } else {
-      body.classList.remove('invert-colors');
-    }
-
     // Indicadores visuales
-    if (settings.visualIndicators) {
-      body.classList.add('visual-indicators');
-    } else {
-      body.classList.remove('visual-indicators');
-    }
-
-    // Modo daltonismo
-    body.classList.remove(
-      'colorblind-protanopia',
-      'colorblind-deuteranopia',
-      'colorblind-tritanopia',
-      'colorblind-achromatopsia'
-    );
-    if (settings.colorBlindMode !== 'none') {
-      body.classList.add(`colorblind-${settings.colorBlindMode}`);
-    }
+    body.classList.toggle('visual-indicators', settings.visualIndicators);
 
     // Cursor grande
-    if (settings.bigCursor) {
-      body.classList.add('big-cursor');
-    } else {
-      body.classList.remove('big-cursor');
-    }
+    body.classList.toggle('big-cursor', settings.bigCursor);
 
     // Resaltar enlaces
-    if (settings.highlightLinks) {
-      body.classList.add('highlight-links');
-    } else {
-      body.classList.remove('highlight-links');
-    }
+    body.classList.toggle('highlight-links', settings.highlightLinks);
 
     // Modo foco
-    if (settings.focusMode) {
-      body.classList.add('focus-mode');
-    } else {
-      body.classList.remove('focus-mode');
+    body.classList.toggle('focus-mode', settings.focusMode);
+
+    // ===== Clases en #ROOT (SÍ usan filter) =====
+    // Esto evita que filter rompa position:fixed del menú de accesibilidad
+    if (root) {
+      // Alto contraste
+      root.classList.toggle('high-contrast', settings.highContrast);
+
+      // Inversión de colores
+      root.classList.toggle('invert-colors', settings.invertColors);
+
+      // Modo daltonismo
+      root.classList.remove(
+        'colorblind-protanopia',
+        'colorblind-deuteranopia',
+        'colorblind-tritanopia',
+        'colorblind-achromatopsia'
+      );
+      if (settings.colorBlindMode !== 'none') {
+        root.classList.add(`colorblind-${settings.colorBlindMode}`);
+      }
     }
 
     saveSettings(settings);
@@ -120,23 +108,25 @@ export const useAccessibility = () => {
     }));
   }, []);
 
-  // ==================== ZOOM ====================
+  // ==================== ZOOM de página (80–150%) ====================
   const zoomIn = useCallback(() => {
-    setSettings(prev => ({ 
-      ...prev, 
-      zoom: Math.min(prev.zoom + 10, 150) 
-    }));
+    setSettings(prev => ({ ...prev, zoom: Math.min(prev.zoom + 10, 150) }));
   }, []);
 
   const zoomOut = useCallback(() => {
-    setSettings(prev => ({ 
-      ...prev, 
-      zoom: Math.max(prev.zoom - 10, 80) 
-    }));
+    setSettings(prev => ({ ...prev, zoom: Math.max(prev.zoom - 10, 80) }));
   }, []);
 
   const zoomReset = useCallback(() => {
     setSettings(prev => ({ ...prev, zoom: 100 }));
+  }, []);
+
+  // ==================== TAMAÑO DE LETRA (80–180%) ====================
+  const setFontSize = useCallback((value: number) => {
+    setSettings(prev => ({
+      ...prev,
+      fontSize: Math.min(Math.max(Math.round(value), 80), 180),
+    }));
   }, []);
 
   // ==================== LECTURA EN VOZ ALTA ====================
@@ -340,6 +330,19 @@ export const useAccessibility = () => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+
+    // Limpiar clases de #root al resetear
+    const root = document.getElementById('root');
+    if (root) {
+      root.classList.remove(
+        'high-contrast',
+        'invert-colors',
+        'colorblind-protanopia',
+        'colorblind-deuteranopia',
+        'colorblind-tritanopia',
+        'colorblind-achromatopsia'
+      );
+    }
   }, []);
 
   return {
@@ -351,6 +354,7 @@ export const useAccessibility = () => {
     zoomIn,
     zoomOut,
     zoomReset,
+    setFontSize,
     resetSettings,
   };
 };

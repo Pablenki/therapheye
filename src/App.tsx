@@ -10,8 +10,9 @@ import Exercises from './pages/Exercises'
 import ExerciseSession from './pages/ExerciseSession'
 import History from './pages/History'
 import ImageCapture from './pages/ImageCapture'
+import VisionTest from './pages/VisionTest'
 
-type Page = 'login' | 'register' | 'verify-email' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture';
+type Page = 'login' | 'register' | 'verify-email' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture' | 'vision-test';
 
 interface PendingUser {
   name: string;
@@ -24,14 +25,38 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login')
   const [currentExerciseId, setCurrentExerciseId] = useState<string>('palming')
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
+  const [exerciseQueue, setExerciseQueue] = useState<string[]>([])
 
   const handleNavigate = (page: Page) => {
     setCurrentPage(page)
   }
 
   const handleStartExercise = (exerciseId: string) => {
+    setExerciseQueue([])
     setCurrentExerciseId(exerciseId)
     setCurrentPage('exercise-session')
+  }
+
+  // Inicia una rutina secuencial de ejercicios
+  const handleStartRoutine = (ids: string[]) => {
+    if (ids.length === 0) return
+    const [first, ...rest] = ids
+    setExerciseQueue(rest)
+    setCurrentExerciseId(first)
+    setCurrentPage('exercise-session')
+  }
+
+  // Llamado cuando un ejercicio de la cola termina
+  const handleExerciseComplete = () => {
+    if (exerciseQueue.length === 0) {
+      setCurrentPage('dashboard')
+    } else {
+      const [next, ...rest] = exerciseQueue
+      setExerciseQueue(rest)
+      setCurrentExerciseId(next)
+      // Forzar re-mount de ExerciseSession cambiando la key implícita vía el estado
+      setCurrentPage('exercise-session')
+    }
   }
 
   const handleVerify = (data: PendingUser) => {
@@ -72,7 +97,7 @@ function App() {
       case 'dashboard':
         return <Dashboard onNavigate={handleNavigate} />
       case 'questionnaire':
-        return <Questionnaire onBack={() => handleNavigate('dashboard')} />
+        return <Questionnaire onBack={() => handleNavigate('dashboard')} onStartRoutine={handleStartRoutine} />
       case 'exercises':
         return (
           <Exercises
@@ -83,14 +108,19 @@ function App() {
       case 'exercise-session':
         return (
           <ExerciseSession
+            key={currentExerciseId + exerciseQueue.join(',')}
             exerciseId={currentExerciseId}
-            onBack={() => handleNavigate('exercises')}
+            onBack={() => exerciseQueue.length > 0 ? handleNavigate('dashboard') : handleNavigate('exercises')}
+            onComplete={handleExerciseComplete}
+            queueRemaining={exerciseQueue.length}
           />
         )
       case 'history':
-        return <History onBack={() => handleNavigate('dashboard')} />
+        return <History onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       case 'image-capture':
         return <ImageCapture onBack={() => handleNavigate('dashboard')} />
+      case 'vision-test':
+        return <VisionTest onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login

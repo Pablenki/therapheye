@@ -3,3 +3,61 @@
 @tailwind utilities;
 /* Fuente para dislexia y daltonismo */
 @import url('https://fonts.cdnfonts.com/css/opendyslexic');
+
+/* ─── Accessibility: escalado SOLO de texto (no afecta iconos ni layout) ─── */
+/* --a11y-text-scale controla el multiplicador. 1 = sin cambio.              */
+:root { --a11y-text-scale: 1; }
+
+/* Escala proporcional de cada clase de texto de Tailwind */
+.text-xs   { font-size: calc(0.75rem  * var(--a11y-text-scale)) !important;
+             line-height: calc(1rem     * var(--a11y-text-scale)) !important; }
+.text-sm   { font-size: calc(0.875rem * var(--a11y-text-scale)) !important;
+             line-height: calc(1.25rem * var(--a11y-text-scale)) !important; }
+.text-base { font-size: calc(1rem     * var(--a11y-text-scale)) !important;
+             line-height: calc(1.5rem  * var(--a11y-text-scale)) !important; }
+.text-lg   { font-size: calc(1.125rem * var(--a11y-text-scale)) !important;
+             line-height: calc(1.75rem * var(--a11y-text-scale)) !important; }
+.text-xl   { font-size: calc(1.25rem  * var(--a11y-text-scale)) !important;
+             line-height: calc(1.75rem * var(--a11y-text-scale)) !important; }
+.text-2xl  { font-size: calc(1.5rem   * var(--a11y-text-scale)) !important;
+             line-height: calc(2rem    * var(--a11y-text-scale)) !important; }
+.text-3xl  { font-size: calc(1.875rem * var(--a11y-text-scale)) !important;
+             line-height: calc(2.25rem * var(--a11y-text-scale)) !important; }
+.text-4xl  { font-size: calc(2.25rem  * var(--a11y-text-scale)) !important;
+             line-height: calc(2.5rem  * var(--a11y-text-scale)) !important; }
+.text-5xl  { font-size: calc(3rem     * var(--a11y-text-scale)) !important;
+             line-height: 1 !important; }
+.text-6xl  { font-size: calc(3.75rem  * var(--a11y-text-scale)) !important;
+             line-height: 1 !important; }
+/* Elementos sin clase text-X explícita (herencia base = 1rem) */
+p:not([class*="text-"]),
+li:not([class*="text-"]),
+label:not([class*="text-"]),
+td:not([class*="text-"]),
+th:not([class*="text-"]),
+span:not([class*="text-"]),
+div:not([class*="text-"]),
+a:not([class*="text-"]),
+strong:not([class*="text-"]),
+em:not([class*="text-"]) {
+  font-size: calc(1rem * var(--a11y-text-scale));
+  line-height: calc(1.5rem * var(--a11y-text-scale));
+}
+
+/* Inputs, textareas, selects y botones también deben escalar */
+input, textarea, select {
+  font-size: calc(1rem * var(--a11y-text-scale)) !important;
+}
+button {
+  font-size: calc(1rem * var(--a11y-text-scale));
+}
+
+/* Placeholder text */
+input::placeholder, textarea::placeholder {
+  font-size: calc(1rem * var(--a11y-text-scale)) !important;
+}
+
+/* kbd elements */
+kbd {
+  font-size: calc(0.75rem * var(--a11y-text-scale)) !important;
+}

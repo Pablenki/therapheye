@@ -57,7 +57,7 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8">
         <div className="text-center mb-8">
           <div className="inline-block p-3 bg-indigo-600 rounded-full mb-4">
             <Eye className="w-8 h-8 text-white" />

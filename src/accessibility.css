@@ -1,26 +1,30 @@
 /* =========================================
    ESTILOS GLOBALES DE ACCESIBILIDAD
+   =========================================
+   IMPORTANTE: Las clases que usan CSS filter van en #root,
+   NO en body. Esto evita que filter rompa position:fixed
+   del menú de accesibilidad (que vive en #a11y-portal).
    ========================================= */
 
-/* ========== ALTO CONTRASTE ========== */
-body.high-contrast {
+/* ========== ALTO CONTRASTE (en #root) ========== */
+#root.high-contrast {
   filter: contrast(1.5) !important;
 }
 
-body.high-contrast * {
+#root.high-contrast * {
   border-color: #000 !important;
 }
 
-body.high-contrast a {
+#root.high-contrast a {
   color: #0000EE !important;
   text-decoration: underline !important;
 }
 
-body.high-contrast button {
+#root.high-contrast button {
   border: 2px solid #000 !important;
 }
 
-/* ========== TAMAÑOS DE TEXTO ========== */
+/* ========== TAMAÑOS DE TEXTO (en body) ========== */
 body.text-small {
   font-size: 14px !important;
 }
@@ -40,17 +44,28 @@ body.text-large p { font-size: 1.25rem !important; }
 body.text-large button { font-size: 1.1rem !important; }
 body.text-large input { font-size: 1.1rem !important; }
 
-/* ========== INVERSIÓN DE COLORES ========== */
-body.invert-colors {
+/* ========== INVERSIÓN DE COLORES (en #root) ========== */
+#root.invert-colors {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-body.invert-colors img,
-body.invert-colors video {
+#root.invert-colors img,
+#root.invert-colors video {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-/* ========== INDICADORES VISUALES - ARREGLADO ========== */
+/* VisionTest: contra-inversión para que la carta Snellen no se vea afectada.
+   La doble aplicación de invert(1) cancela la inversión → colores originales. */
+#root.invert-colors .vision-test-root {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+/* Imágenes y video dentro del test: cancelar la triple inversión */
+#root.invert-colors .vision-test-root img,
+#root.invert-colors .vision-test-root video {
+  filter: none !important;
+}
+
+/* ========== INDICADORES VISUALES (en body) ========== */
 body.visual-indicators input:focus,
 body.visual-indicators textarea:focus,
 body.visual-indicators select:focus,
@@ -68,10 +83,10 @@ body.visual-indicators a:hover {
   outline-offset: 2px !important;
 }
 
-/* ========== DALTONISMO - ARREGLADO CON FILTROS CSS REALES ========== */
+/* ========== DALTONISMO (en #root) ========== */
 
 /* Protanopia (Ceguera al ROJO) */
-body.colorblind-protanopia {
+#root.colorblind-protanopia {
   filter: 
     contrast(1.1)
     sepia(0.3)
@@ -80,7 +95,7 @@ body.colorblind-protanopia {
 }
 
 /* Deuteranopia (Ceguera al VERDE) */
-body.colorblind-deuteranopia {
+#root.colorblind-deuteranopia {
   filter: 
     contrast(1.1)
     sepia(0.4)
@@ -89,7 +104,7 @@ body.colorblind-deuteranopia {
 }
 
 /* Tritanopia (Ceguera al AZUL) */
-body.colorblind-tritanopia {
+#root.colorblind-tritanopia {
   filter: 
     contrast(1.2)
     sepia(0.5)
@@ -98,11 +113,11 @@ body.colorblind-tritanopia {
 }
 
 /* Acromatopsia (Sin color) */
-body.colorblind-achromatopsia {
+#root.colorblind-achromatopsia {
   filter: grayscale(100%) contrast(1.1) !important;
 }
 
-/* ========== CURSOR GRANDE ========== */
+/* ========== CURSOR GRANDE (en body) ========== */
 body.big-cursor,
 body.big-cursor * {
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M5 3 L5 35 L15 25 L20 35 L24 33 L19 23 L30 23 Z" fill="white" stroke="black" stroke-width="2"/></svg>') 0 0, auto !important;
@@ -115,7 +130,7 @@ body.big-cursor select {
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M20 3 L16 7 L22 7 L22 17 L12 17 L12 11 L8 15 L14 21 L14 23 L11 23 L11 29 L8 33 L14 33 L14 40 L26 40 L26 33 L32 33 L28 29 L28 23 L25 23 L25 21 L31 15 L27 11 L27 17 L17 17 L17 7 L23 7 Z" fill="white" stroke="black" stroke-width="2"/></svg>') 10 10, pointer !important;
 }
 
-/* ========== RESALTAR ENLACES - ARREGLADO ========== */
+/* ========== RESALTAR ENLACES (en body) ========== */
 body.highlight-links a,
 body.highlight-links button {
   background-color: #FFFF00 !important;
@@ -135,11 +150,7 @@ body.highlight-links button:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* ========== MODO FOCO - COMPLETAMENTE ARREGLADO ========== */
-body.focus-mode {
-  /* No aplicar blur por defecto */
-}
-
+/* ========== MODO FOCO (en body) ========== */
 body.focus-mode input:not(:focus),
 body.focus-mode textarea:not(:focus),
 body.focus-mode select:not(:focus),

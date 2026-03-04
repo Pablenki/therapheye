@@ -1,7 +1,7 @@
-import { Activity, ClipboardList, History, LogOut, Eye, Camera } from 'lucide-react';
+import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
-type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture';
+type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture' | 'vision-test';
 
 const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const { user } = useUser();
@@ -33,6 +33,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
       description: 'Toma una imagen para análisis visual',
       color: 'bg-red-500',
       action: () => onNavigate('image-capture')
+    },
+    {
+      icon: Glasses,
+      title: 'Prueba de Visión',
+      description: 'Valida tu agudeza visual con una carta tipo Snellen',
+      color: 'bg-teal-500',
+      action: () => onNavigate('vision-test')
     }
   ];
 
@@ -69,8 +76,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           </p>
         </div>
 
-        {/* Modules Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        {/* Modules Grid — se adapta: 2 cols en md, 3 en lg, o más ancho si la fuente es grande */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {modules.map((module, index) => (
             <button
               key={index}

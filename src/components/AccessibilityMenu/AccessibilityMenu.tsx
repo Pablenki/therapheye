@@ -1,11 +1,13 @@
 // =========================================
 // COMPONENTE MENÚ DE ACCESIBILIDAD
 // Sistema completo de accesibilidad visual
+// Usa React Portal → renderiza en #a11y-portal fuera de #root
 // =========================================
 
 import { useAccessibility } from './useAccessibility';
+import { createPortal } from 'react-dom';
 import { X, Settings, Eye, Volume2, MousePointer } from 'lucide-react';
-import type { TextSize, FontFamily, ColorBlindMode } from './accessibility.types';
+import type { FontFamily, ColorBlindMode } from './accessibility.types';
 
 const AccessibilityMenu = () => {
   const {
@@ -17,11 +19,17 @@ const AccessibilityMenu = () => {
     zoomIn,
     zoomOut,
     zoomReset,
+    setFontSize,
     resetSettings,
   } = useAccessibility();
 
-  return (
-    <div className="accessibility-menu fixed bottom-5 right-5 z-[9999]">
+  const portalTarget = document.getElementById('a11y-portal') || document.body;
+
+  return createPortal(
+    <div 
+      className="accessibility-menu fixed bottom-5 right-5 z-[9999]"
+      style={settings.invertColors ? { filter: 'invert(1) hue-rotate(180deg)' } : undefined}
+    >
       {/* Botón flotante principal */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -83,26 +91,40 @@ const AccessibilityMenu = () => {
               </label>
             </div>
 
-            {/* Tamaño de Texto */}
+            {/* Tamaño de Letra — solo escala texto, no iconos ni layout */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tamaño de Texto
-              </label>
-              <div className="flex gap-2">
-                {(['small', 'normal', 'large'] as TextSize[]).map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => updateSetting('textSize', size)}
-                    className={`flex-1 py-2 px-3 rounded-lg border-2 font-semibold text-sm
-                               transition-all duration-200
-                               ${settings.textSize === size
-                                 ? 'bg-[#1B396B] text-white border-[#1B396B]'
-                                 : 'bg-white text-[#1B396B] border-[#1B396B] hover:bg-[#1B396B] hover:text-white'
-                               }`}
-                  >
-                    {size === 'small' ? 'A' : size === 'normal' ? 'A' : 'A'}
-                  </button>
-                ))}
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-sm font-medium text-gray-700">Tamaño de letra</label>
+                <div className="flex items-center gap-1.5">
+                  {settings.fontSize !== 100 && (
+                    <button
+                      onClick={() => setFontSize(100)}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    >
+                      reset
+                    </button>
+                  )}
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md
+                    ${settings.fontSize === 100 ? 'bg-gray-100 text-gray-600' : 'bg-[#1B396B] text-white'}`}>
+                    {settings.fontSize}%
+                  </span>
+                </div>
+              </div>
+              <input
+                type="range"
+                min={80} max={180} step={10}
+                value={settings.fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value))}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer mb-1"
+                style={{
+                  background: `linear-gradient(to right, #1B396B ${((settings.fontSize - 80) / 100) * 100}%, #e5e7eb ${((settings.fontSize - 80) / 100) * 100}%)`
+                }}
+                aria-label="Tamaño de letra"
+              />
+              <div className="flex justify-between text-xs text-gray-400">
+                <span style={{ fontSize: '9px' }}>A</span>
+                <span className="text-xs">80% · 100% · 140% · 180%</span>
+                <span style={{ fontSize: '16px' }}>A</span>
               </div>
             </div>
 
@@ -126,36 +148,25 @@ const AccessibilityMenu = () => {
               </select>
             </div>
 
-            {/* Zoom */}
+            {/* Zoom de página */}
             <div className="mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Zoom de Pantalla
+                Zoom de pantalla
               </label>
               <div className="flex gap-2">
-                <button
-                  onClick={zoomOut}
-                  className="flex-1 py-2 px-3 rounded-lg border-2 border-[#1B396B] bg-white 
-                           text-[#1B396B] font-semibold hover:bg-[#1B396B] hover:text-white 
-                           transition-all duration-200"
-                >
-                  -
+                <button onClick={zoomOut}
+                  className="flex-1 py-2 px-3 rounded-lg border-2 border-[#1B396B] bg-white text-[#1B396B] font-semibold hover:bg-[#1B396B] hover:text-white transition-all duration-200">
+                  −
                 </button>
-                <button
-                  onClick={zoomReset}
+                <button onClick={zoomReset}
                   className={`flex-1 py-2 px-3 rounded-lg border-2 font-semibold transition-all duration-200
-                             ${settings.zoom === 100
-                               ? 'bg-[#1B396B] text-white border-[#1B396B]'
-                               : 'bg-white text-[#1B396B] border-[#1B396B] hover:bg-[#1B396B] hover:text-white'
-                             }`}
-                >
+                    ${settings.zoom === 100
+                      ? 'bg-[#1B396B] text-white border-[#1B396B]'
+                      : 'bg-white text-[#1B396B] border-[#1B396B] hover:bg-[#1B396B] hover:text-white'}`}>
                   {settings.zoom}%
                 </button>
-                <button
-                  onClick={zoomIn}
-                  className="flex-1 py-2 px-3 rounded-lg border-2 border-[#1B396B] bg-white 
-                           text-[#1B396B] font-semibold hover:bg-[#1B396B] hover:text-white 
-                           transition-all duration-200"
-                >
+                <button onClick={zoomIn}
+                  className="flex-1 py-2 px-3 rounded-lg border-2 border-[#1B396B] bg-white text-[#1B396B] font-semibold hover:bg-[#1B396B] hover:text-white transition-all duration-200">
                   +
                 </button>
               </div>
@@ -333,7 +344,8 @@ const AccessibilityMenu = () => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    portalTarget
   );
 };
 
