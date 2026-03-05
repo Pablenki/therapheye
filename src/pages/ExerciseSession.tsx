@@ -36,7 +36,7 @@ const speakText = (text: string, onEnd?: () => void) => {
   if (!('speechSynthesis' in window)) { onEnd?.(); return; }
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = 'es-MX';
-  utt.rate = 1.1;
+  utt.rate = 1.2;
   utt.pitch = 1.0;
   utt.volume = 1.0;
   const voces = window.speechSynthesis.getVoices();
@@ -403,7 +403,15 @@ interface ExerciseSessionProps {
 }
 
 const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }: ExerciseSessionProps) => {
-  const [timeLeft, setTimeLeft]     = useState(180);
+  const { user } = useUser();
+
+  // Ejercicio actual y animación asociada
+  const currentExercise = exerciseData[exerciseId] ?? exerciseData['palming'];
+  const { AnimationComponent } = currentExercise;
+
+  // El tiempo inicial se iguala desde el principio a la duración del ejercicio
+  // para evitar que el timer “salte” en el primer render.
+  const [timeLeft, setTimeLeft]     = useState(currentExercise.duration);
   const [isRunning, setIsRunning]   = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [isSaving, setIsSaving]     = useState(false);
@@ -415,11 +423,6 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const timeLeftRef  = useRef(timeLeft);
   mutedRef.current   = muted;
   timeLeftRef.current = timeLeft;
-
-  const { user } = useUser();
-
-  const currentExercise = exerciseData[exerciseId] ?? exerciseData['palming'];
-  const { AnimationComponent } = currentExercise;
 
   const speakIfUnmuted = useCallback((text: string, onEnd?: () => void) => {
     if (!mutedRef.current) speakText(text, onEnd);
@@ -433,12 +436,16 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   // Prevent double execution
   const isCountingDownRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastSpokenCountdownRef = useRef<number | null>(null);
+  const completionSpokenRef = useRef(false);
 
   useEffect(() => {
     setTimeLeft(currentExercise.duration);
     setIsRunning(false);
     setIsComplete(false);
     setShowSkipConfirm(false);
+    lastSpokenCountdownRef.current = null;
+    completionSpokenRef.current = false;
     isCountingDownRef.current = false;
     // Cancel any ongoing speech & music
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
@@ -493,17 +500,23 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             speakIfUnmuted('Faltan 30 segundos');
           }
 
-          // Last 5 seconds countdown
+          // Last 5 seconds countdown (evitar repetir el mismo número dos veces)
           if (next <= 5 && next > 0) {
-            speakIfUnmuted(`${next}`);
+            if (lastSpokenCountdownRef.current !== next) {
+              lastSpokenCountdownRef.current = next;
+              speakIfUnmuted(`${next}`);
+            }
           }
 
           if (next <= 0) {
             setIsRunning(false);
             ambientMusic.stop();
-            speakIfUnmuted('¡Ejercicio completado!');
-            playIfUnmuted(playComplete);
-            saveExerciseToDatabase('completed');
+            if (!completionSpokenRef.current) {
+              completionSpokenRef.current = true;
+              speakIfUnmuted('¡Ejercicio completado!');
+              playIfUnmuted(playComplete);
+              saveExerciseToDatabase('completed');
+            }
             return 0;
           }
           return next;
@@ -629,9 +642,13 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     setShowSkipConfirm(false);
     cancelCountdown();
     ambientMusic.stop();
+    lastSpokenCountdownRef.current = null;
+    completionSpokenRef.current = false;
   };
 
-  const progress = ((currentExercise.duration - timeLeft) / currentExercise.duration) * 100;
+  const hasStarted = timeLeft < currentExercise.duration;
+  const rawProgress = ((currentExercise.duration - timeLeft) / currentExercise.duration) * 100;
+  const progress = hasStarted ? Math.min(Math.max(rawProgress, 0), 100) : 0;
 
   if (isComplete) {
     return (
@@ -770,7 +787,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 44}`}
                   strokeDashoffset={`${2 * Math.PI * 44 * (1 - progress / 100)}`}
-                  style={{ transition: 'stroke-dashoffset 0.5s ease, stroke 0.3s ease' }}
+                  style={{ transition: hasStarted ? 'stroke-dashoffset 0.5s ease, stroke 0.3s ease' : 'stroke 0.3s ease' }}
                 />
               </svg>
               <span className={`text-4xl font-bold z-10 ${timeLeft <= Math.min(30, Math.floor(currentExercise.duration * 0.25)) ? 'text-red-500' : 'text-gray-800'}`}>

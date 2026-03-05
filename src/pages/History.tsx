@@ -222,12 +222,17 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
 
       const formattedEvaluations = evaluationsResult.map((ev: any) => {
         const scoreData = getScoreData(ev.puntaje_fatiga);
+        const createdDate = new Date(ev.created_at);
         return {
           id: ev.id,
-          raw_date: new Date(ev.created_at),
-          created_at: new Date(ev.created_at).toLocaleDateString('es-MX', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit',
+          raw_date: createdDate,
+          created_at: createdDate.toLocaleString('es-MX', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
           }),
           puntaje_fatiga: ev.puntaje_fatiga,
           respuestas_json: typeof ev.respuestas_json === 'string'
@@ -246,14 +251,22 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
         LIMIT 10
       `;
 
-      const formattedExercises = exercisesResult.map((ex: any) => ({
-        created_at: new Date(ex.created_at).toLocaleDateString('es-MX', {
-          day: '2-digit', month: 'short', year: 'numeric'
-        }),
-        tipo_ejercicio: ex.tipo_ejercicio,
-        duracion:       ex.duracion,
-        status:         ex.status ?? 'completed',
-      }));
+      const formattedExercises = exercisesResult.map((ex: any) => {
+        const createdDate = new Date(ex.created_at);
+        return {
+          created_at: createdDate.toLocaleString('es-MX', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }),
+          tipo_ejercicio: ex.tipo_ejercicio,
+          duracion:       ex.duracion,
+          status:         ex.status ?? 'completed',
+        };
+      });
 
       setEvaluations(formattedEvaluations);
       setExercises(formattedExercises);

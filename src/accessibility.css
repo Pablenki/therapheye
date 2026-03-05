@@ -54,16 +54,8 @@ body.text-large input { font-size: 1.1rem !important; }
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-/* VisionTest: contra-inversión para que la carta Snellen no se vea afectada.
-   La doble aplicación de invert(1) cancela la inversión → colores originales. */
-#root.invert-colors .vision-test-root {
-  filter: invert(1) hue-rotate(180deg) !important;
-}
-/* Imágenes y video dentro del test: cancelar la triple inversión */
-#root.invert-colors .vision-test-root img,
-#root.invert-colors .vision-test-root video {
-  filter: none !important;
-}
+/* La Prueba de visión NO tiene excepción: respeta el mismo modo invertido/oscuro
+   que el resto de la app cuando "Invertir colores" está activo. */
 
 /* ========== INDICADORES VISUALES (en body) ========== */
 body.visual-indicators input:focus,
