@@ -1,7 +1,17 @@
-import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses } from 'lucide-react';
+import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
-type Page = 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture' | 'vision-test';
+type Page =
+  | 'login'
+  | 'register'
+  | 'dashboard'
+  | 'questionnaire'
+  | 'exercises'
+  | 'exercise-session'
+  | 'history'
+  | 'image-capture'
+  | 'vision-test'
+  | 'visual-health';
 
 const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const { user } = useUser();
@@ -40,6 +50,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
       description: 'Valida tu agudeza visual con una carta tipo Snellen',
       color: 'bg-teal-500',
       action: () => onNavigate('vision-test')
+    },
+    {
+      icon: HeartPulse,
+      title: 'Salud Visual',
+      description: 'Gestiona tu tiempo en pantalla',
+      color: 'bg-orange-500',
+      action: () => onNavigate('visual-health')
     }
   ];
 

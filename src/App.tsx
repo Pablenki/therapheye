@@ -11,8 +11,20 @@ import ExerciseSession from './pages/ExerciseSession'
 import History from './pages/History'
 import ImageCapture from './pages/ImageCapture'
 import VisionTest from './pages/VisionTest'
+import VisualHealth from './pages/VisualHealth'
 
-type Page = 'login' | 'register' | 'verify-email' | 'dashboard' | 'questionnaire' | 'exercises' | 'exercise-session' | 'history' | 'image-capture' | 'vision-test';
+type Page =
+  | 'login'
+  | 'register'
+  | 'verify-email'
+  | 'dashboard'
+  | 'questionnaire'
+  | 'exercises'
+  | 'exercise-session'
+  | 'history'
+  | 'image-capture'
+  | 'vision-test'
+  | 'visual-health';
 
 interface PendingUser {
   name: string;
@@ -121,6 +133,8 @@ function App() {
         return <ImageCapture onBack={() => handleNavigate('dashboard')} />
       case 'vision-test':
         return <VisionTest onBack={() => handleNavigate('dashboard')} />
+      case 'visual-health':
+        return <VisualHealth onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login
