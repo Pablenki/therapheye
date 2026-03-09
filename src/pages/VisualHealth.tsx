@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, HeartPulse, Play, Pause, RotateCcw, Clock, AlarmClock, StopCircle, Calendar } from 'lucide-react';
+import {
+  ArrowLeft, HeartPulse, Play, Pause, RotateCcw, Clock,
+  AlarmClock, StopCircle, Calendar, TrendingUp, X,
+} from 'lucide-react';
 import { Eye } from 'lucide-react';
 
 type Props = {
@@ -7,24 +10,32 @@ type Props = {
 };
 
 // ─── Configura aquí los intervalos ───────────────────────────────────────────
-// Modifica estos valores directamente en el código y se aplicarán automáticamente.
-const WORK_MINUTES = 1; // minutos de trabajo antes de cada descanso
+const WORK_MINUTES  = 1; // minutos de trabajo antes de cada descanso
 const BREAK_MINUTES = 1; // minutos de descanso recomendados
 // ─────────────────────────────────────────────────────────────────────────────
 
 type PersistedTimerState = {
   isRunning: boolean;
-  startTimestamp: number | null;        // ms UNIX del inicio de la tanda actual
-  accumulatedMs: number;                // ms acumulados antes de la tanda actual
-  nextBreakAtMs: number | null;         // umbral en ms para el próximo descanso
-  sessionStartTimestamp: number | null; // ms UNIX del inicio de la sesión completa
+  startTimestamp: number | null;
+  accumulatedMs: number;
+  nextBreakAtMs: number | null;
+  sessionStartTimestamp: number | null;
 };
 
 type SessionRecord = {
   id: string;
-  startedAt: string;   // Fecha/hora formateada de inicio
-  endedAt: string;     // Fecha/hora formateada de fin
-  durationMs: number;  // Duración total en ms
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  startTimestampRaw: number;
+  endTimestampRaw: number;
+};
+
+type DailyAggregate = {
+  dateKey: string;      // "2026-03-09"
+  dateLabel: string;    // "09 mar"
+  totalMinutes: number;
+  sessions: { startHour: string; endHour: string; durationMs: number }[];
 };
 
 const STORAGE_KEY          = 'therapeye_visual_health_timer';
@@ -34,10 +45,10 @@ const SESSIONS_STORAGE_KEY = 'therapeye_visual_health_sessions';
 
 const speakText = (text: string) => {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'es-MX';
-  utterance.rate = 1.2;
-  window.speechSynthesis.speak(utterance);
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'es-MX';
+  u.rate = 1.2;
+  window.speechSynthesis.speak(u);
 };
 
 const playBeep = () => {
@@ -53,9 +64,7 @@ const playBeep = () => {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
     osc.start();
     osc.stop(ctx.currentTime + 0.55);
-  } catch {
-    // Sin AudioContext disponible
-  }
+  } catch { /* noop */ }
 };
 
 const formatDuration = (totalSeconds: number) => {
@@ -68,8 +77,8 @@ const formatDuration = (totalSeconds: number) => {
 
 const formatSessionDuration = (ms: number) => {
   const totalMinutes = Math.floor(ms / 60_000);
-  const hours        = Math.floor(totalMinutes / 60);
-  const minutes      = totalMinutes % 60;
+  const hours   = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
   if (hours === 0) return `${minutes} min`;
   if (minutes === 0) return `${hours} h`;
   return `${hours} h ${minutes} min`;
@@ -77,29 +86,307 @@ const formatSessionDuration = (ms: number) => {
 
 const formatDateTime = (ts: number) =>
   new Date(ts).toLocaleString('es-MX', {
-    day:    '2-digit',
-    month:  'short',
-    year:   'numeric',
-    hour:   '2-digit',
-    minute: '2-digit',
-    hour12: false,
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
   });
+
+const formatHour = (ts: number) =>
+  new Date(ts).toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
 
 const loadSessions = (): SessionRecord[] => {
   try {
     const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 };
 
 const saveSessions = (sessions: SessionRecord[]) => {
-  try {
-    localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
-  } catch {
-    // ignorar
+  try { localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions)); }
+  catch { /* noop */ }
+};
+
+// ─── Agrupar sesiones por día ─────────────────────────────────────────────────
+
+const aggregateByDay = (sessions: SessionRecord[]): DailyAggregate[] => {
+  const map = new Map<string, DailyAggregate>();
+
+  for (const s of sessions) {
+    // Fallback: si no tiene startTimestampRaw (sesiones guardadas antes del campo),
+    // intentamos usar el id que se construyó como String(Date.now())
+    const ts = s.startTimestampRaw || parseInt(s.id, 10) || 0;
+    if (!ts) continue;
+    const d = new Date(ts);
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dateLabel = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+
+    if (!map.has(dateKey)) {
+      map.set(dateKey, { dateKey, dateLabel, totalMinutes: 0, sessions: [] });
+    }
+    const agg = map.get(dateKey)!;
+    agg.totalMinutes += s.durationMs / 60_000;
+    const startTs = s.startTimestampRaw || parseInt(s.id, 10) || 0;
+    const endTs   = s.endTimestampRaw   || (startTs + s.durationMs);
+    agg.sessions.push({
+      startHour:  formatHour(startTs),
+      endHour:    formatHour(endTs),
+      durationMs: s.durationMs,
+    });
   }
+
+  return Array.from(map.values()).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+};
+
+// ─── Colores de nivel (4 niveles como History.tsx) ────────────────────────────
+// < 2 h → verde (uso ligero)
+// 2-4 h → amarillo (uso moderado)
+// 4-6 h → naranja (uso considerable)
+// > 6 h → rojo   (uso excesivo)
+
+const dotColor = (minutes: number) => {
+  if (minutes < 120) return '#16a34a';
+  if (minutes < 240) return '#ca8a04';
+  if (minutes < 360) return '#ea580c';
+  return '#dc2626';
+};
+
+// ─── Gráfica SVG de tendencia (estilo History.tsx) ────────────────────────────
+
+const ScreenTimeTrendChart = ({
+  data,
+  onSelectDay,
+  selectedDateKey,
+}: {
+  data: DailyAggregate[];
+  onSelectDay: (dateKey: string | null) => void;
+  selectedDateKey: string | null;
+}) => {
+  if (data.length < 2) {
+    return (
+      <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+        <TrendingUp className="w-10 h-10 mb-2 opacity-30" />
+        <p className="text-sm">Necesitas al menos 2 días con sesiones para ver la tendencia</p>
+      </div>
+    );
+  }
+
+  const W = 560, H = 180;
+  const PAD = { top: 20, right: 20, bottom: 40, left: 48 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  const maxMinutes = Math.max(...data.map(d => d.totalMinutes));
+  // Redondear al siguiente múltiplo de 60 (hora completa) para escala limpia
+  const ceilHour = Math.max(Math.ceil(maxMinutes / 60) * 60, 60);
+
+  const xStep = data.length > 1 ? chartW / (data.length - 1) : chartW;
+  const toX = (i: number) => PAD.left + i * xStep;
+  const toY = (v: number) => PAD.top + chartH - (v / ceilHour) * chartH;
+
+  // Línea
+  const linePath = data
+    .map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.totalMinutes)}`)
+    .join(' ');
+
+  // Área
+  const areaPath =
+    `M ${toX(0)} ${toY(data[0].totalMinutes)} ` +
+    data.slice(1).map((d, i) => `L ${toX(i + 1)} ${toY(d.totalMinutes)}`).join(' ') +
+    ` L ${toX(data.length - 1)} ${PAD.top + chartH} L ${toX(0)} ${PAD.top + chartH} Z`;
+
+  // Etiquetas Y (horas)
+  const ySteps: number[] = [];
+  const hourStep = Math.max(1, Math.ceil(ceilHour / 60 / 4));
+  for (let h = 0; h * 60 <= ceilHour; h += hourStep) ySteps.push(h * 60);
+
+  // Zonas de color — proporcionales al ceil
+  const zones = [
+    { from: 0, to: Math.min(120, ceilHour), fill: '#bbf7d0' },
+    { from: 120, to: Math.min(240, ceilHour), fill: '#fef08a' },
+    { from: 240, to: Math.min(360, ceilHour), fill: '#fed7aa' },
+    { from: 360, to: ceilHour, fill: '#fecaca' },
+  ].filter(z => z.from < ceilHour);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full cursor-pointer" aria-label="Tendencia de tiempo en pantalla">
+      <defs>
+        <linearGradient id="screenAreaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#6366f1" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
+        </linearGradient>
+        <clipPath id="screenChartClip">
+          <rect x={PAD.left} y={PAD.top} width={chartW} height={chartH} />
+        </clipPath>
+      </defs>
+
+      {/* Zonas de color */}
+      <g clipPath="url(#screenChartClip)">
+        {zones.map((z, i) => (
+          <rect key={i}
+            x={PAD.left} y={toY(z.to)} width={chartW}
+            height={toY(z.from) - toY(z.to)} fill={z.fill} opacity="0.3"
+          />
+        ))}
+      </g>
+
+      {/* Grid + etiquetas Y */}
+      {ySteps.map(v => (
+        <g key={v}>
+          <line x1={PAD.left} y1={toY(v)} x2={PAD.left + chartW} y2={toY(v)}
+            stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4 3" />
+          <text x={PAD.left - 6} y={toY(v) + 4} textAnchor="end" fontSize="9" fill="#9ca3af">
+            {v < 60 ? `${v}m` : `${v / 60}h`}
+          </text>
+        </g>
+      ))}
+
+      {/* Área */}
+      <path d={areaPath} fill="url(#screenAreaGrad)" />
+
+      {/* Línea */}
+      <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* Puntos interactivos */}
+      {data.map((d, i) => {
+        const isSelected = d.dateKey === selectedDateKey;
+        const cx = toX(i), cy = toY(d.totalMinutes);
+        const color = dotColor(d.totalMinutes);
+        const hours = Math.floor(d.totalMinutes / 60);
+        const mins  = Math.round(d.totalMinutes % 60);
+        const label = hours > 0 ? `${hours}h${mins > 0 ? `${mins}m` : ''}` : `${mins}m`;
+
+        return (
+          <g key={d.dateKey} onClick={() => onSelectDay(isSelected ? null : d.dateKey)}
+            style={{ cursor: 'pointer' }}>
+            {/* Línea vertical */}
+            <line x1={cx} y1={PAD.top} x2={cx} y2={PAD.top + chartH}
+              stroke="#6366f1" strokeWidth="1" strokeDasharray="3 3" opacity={isSelected ? 0.5 : 0.2} />
+            {/* Halo */}
+            <circle cx={cx} cy={cy} r={isSelected ? 10 : 7} fill={color} opacity={isSelected ? 0.35 : 0.2} />
+            {/* Punto */}
+            <circle cx={cx} cy={cy} r={isSelected ? 6 : 4.5} fill={color}
+              stroke="white" strokeWidth={isSelected ? 2 : 1.5} />
+            {/* Valor */}
+            <text x={cx} y={cy - 12} textAnchor="middle" fontSize="9" fontWeight="bold" fill={color}>
+              {label}
+            </text>
+            {/* Fecha */}
+            <text x={cx} y={PAD.top + chartH + 14} textAnchor="middle" fontSize="8" fill="#6b7280"
+              transform={data.length > 6 ? `rotate(-30, ${cx}, ${PAD.top + chartH + 14})` : undefined}>
+              {d.dateLabel}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Ejes */}
+      <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH}
+        stroke="#d1d5db" strokeWidth="1" />
+      <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + chartH}
+        stroke="#d1d5db" strokeWidth="1" />
+    </svg>
+  );
+};
+
+// ─── Panel de detalle del día seleccionado ────────────────────────────────────
+
+const DayDetailPanel = ({ day, onClose }: { day: DailyAggregate; onClose: () => void }) => {
+  // Calcular las horas del día donde más se usó (buckets de 1h: 0-23)
+  // Usamos las sesiones con su hora de inicio para llenar los buckets
+  const hourBuckets: number[] = new Array(24).fill(0);
+  for (const s of day.sessions) {
+    // Parsear hora de inicio "HH:MM"
+    const parts = s.startHour.split(':');
+    const h = parseInt(parts[0], 10);
+    if (!isNaN(h)) hourBuckets[h] += s.durationMs / 60_000;
+  }
+  const maxBucket = Math.max(...hourBuckets);
+
+  // Top horas más activas (hasta 3)
+  const topHours = hourBuckets
+    .map((min, h) => ({ h, min }))
+    .filter(x => x.min > 0)
+    .sort((a, b) => b.min - a.min)
+    .slice(0, 3);
+
+  const totalH  = Math.floor(day.totalMinutes / 60);
+  const totalM  = Math.round(day.totalMinutes % 60);
+  const color   = dotColor(day.totalMinutes);
+
+  return (
+    <div className="bg-white border border-indigo-200 rounded-xl shadow-lg p-5 mt-4 animate-in fade-in">
+      {/* Cabecera */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: color + '20' }}>
+            <Calendar className="w-5 h-5" style={{ color }} />
+          </div>
+          <div>
+            <p className="font-bold text-gray-800">Detalle del {day.dateLabel}</p>
+            <p className="text-xs text-gray-500">
+              {day.sessions.length} {day.sessions.length === 1 ? 'sesión' : 'sesiones'} — Total:{' '}
+              <span className="font-semibold" style={{ color }}>
+                {totalH > 0 ? `${totalH} h ` : ''}{totalM} min
+              </span>
+            </p>
+          </div>
+        </div>
+        <button onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Sesiones del día */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Sesiones</p>
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {day.sessions.map((s, i) => (
+              <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-xs text-gray-700 font-medium">{s.startHour} — {s.endHour}</span>
+                </div>
+                <span className="text-xs font-bold text-indigo-600">
+                  {formatSessionDuration(s.durationMs)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Horas pico */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Horarios más activos</p>
+          {topHours.length === 0 ? (
+            <p className="text-xs text-gray-400">Sin datos suficientes</p>
+          ) : (
+            <div className="space-y-2">
+              {topHours.map(({ h, min }) => {
+                const pct = maxBucket > 0 ? (min / maxBucket) * 100 : 0;
+                return (
+                  <div key={h}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-medium text-gray-700">
+                        {String(h).padStart(2, '0')}:00 — {String(h + 1).padStart(2, '0')}:00
+                      </span>
+                      <span className="text-xs font-bold text-indigo-600">{Math.round(min)} min</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: dotColor(min * (480 / 60)) }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -109,6 +396,8 @@ const VisualHealth = ({ onBack }: Props) => {
   const [elapsedSeconds, setElapsedSeconds]         = useState(0);
   const [nextBreakInMinutes, setNextBreakInMinutes] = useState<number | null>(null);
   const [sessions, setSessions]                     = useState<SessionRecord[]>([]);
+  const [selectedDay, setSelectedDay]               = useState<string | null>(null);
+  const [countdown, setCountdown]                   = useState<number | null>(null);
 
   const stateRef = useRef<PersistedTimerState>({
     isRunning: false,
@@ -120,11 +409,8 @@ const VisualHealth = ({ onBack }: Props) => {
 
   const saveState = useCallback((state: PersistedTimerState) => {
     stateRef.current = state;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // ignorar
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch { /* noop */ }
   }, []);
 
   // Cargar estado y sesiones al montar
@@ -136,84 +422,71 @@ const VisualHealth = ({ onBack }: Props) => {
         const parsed: PersistedTimerState = JSON.parse(raw);
         const now = Date.now();
         let elapsedMs = parsed.accumulatedMs;
-        if (parsed.isRunning && parsed.startTimestamp) {
-          elapsedMs += now - parsed.startTimestamp;
-        }
+        if (parsed.isRunning && parsed.startTimestamp) elapsedMs += now - parsed.startTimestamp;
         setElapsedSeconds(Math.floor(elapsedMs / 1000));
         setIsRunning(parsed.isRunning);
         if (parsed.nextBreakAtMs != null) {
-          const remainingMs = parsed.nextBreakAtMs - elapsedMs;
-          setNextBreakInMinutes(remainingMs > 0 ? Math.round(remainingMs / 60000) : 0);
+          const rem = parsed.nextBreakAtMs - elapsedMs;
+          setNextBreakInMinutes(rem > 0 ? Math.round(rem / 60000) : 0);
         }
         stateRef.current = parsed;
       } else {
         saveState(stateRef.current);
       }
-    } catch {
-      saveState(stateRef.current);
-    }
+    } catch { saveState(stateRef.current); }
   }, [saveState]);
 
-  // Intervalo para actualizar tiempo y disparar descansos
+  // Intervalo
   useEffect(() => {
     const interval = setInterval(() => {
-      const now     = Date.now();
-      const current = stateRef.current;
+      const now = Date.now();
+      const cur = stateRef.current;
+      let ms = cur.accumulatedMs;
+      if (cur.isRunning && cur.startTimestamp) ms += now - cur.startTimestamp;
+      setElapsedSeconds(Math.floor(ms / 1000));
 
-      let elapsedMs = current.accumulatedMs;
-      if (current.isRunning && current.startTimestamp) {
-        elapsedMs += now - current.startTimestamp;
-      }
-      setElapsedSeconds(Math.floor(elapsedMs / 1000));
-
-      if (current.isRunning) {
-        if (current.nextBreakAtMs == null) {
-          const nextBreakAtMs = WORK_MINUTES * 60_000;
-          saveState({ ...current, nextBreakAtMs });
-          const remainingMs = nextBreakAtMs - elapsedMs;
-          setNextBreakInMinutes(remainingMs > 0 ? Math.round(remainingMs / 60000) : 0);
+      if (cur.isRunning) {
+        if (cur.nextBreakAtMs == null) {
+          const nb = WORK_MINUTES * 60_000;
+          saveState({ ...cur, nextBreakAtMs: nb });
+          setNextBreakInMinutes(Math.round((nb - ms) / 60000));
           return;
         }
-        if (elapsedMs >= current.nextBreakAtMs) {
+        if (ms >= cur.nextBreakAtMs) {
           playBeep();
           speakText('Es momento de tomar un descanso visual');
-          const nextBreakAtMs = current.nextBreakAtMs + WORK_MINUTES * 60_000;
-          saveState({ ...current, nextBreakAtMs });
-          const remainingMs = nextBreakAtMs - elapsedMs;
-          setNextBreakInMinutes(remainingMs > 0 ? Math.round(remainingMs / 60000) : 0);
+          const nb = cur.nextBreakAtMs + WORK_MINUTES * 60_000;
+          saveState({ ...cur, nextBreakAtMs: nb });
+          setNextBreakInMinutes(Math.max(0, Math.round((nb - ms) / 60000)));
         } else {
-          const remainingMs = current.nextBreakAtMs - elapsedMs;
-          setNextBreakInMinutes(remainingMs > 0 ? Math.round(remainingMs / 60000) : 0);
+          setNextBreakInMinutes(Math.max(0, Math.round((cur.nextBreakAtMs - ms) / 60000)));
         }
       } else {
         setNextBreakInMinutes(null);
       }
     }, 1000);
-
     return () => clearInterval(interval);
   }, [saveState]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleStartWithCountdown = () => {
-    const current = stateRef.current;
-    if (current.isRunning) return;
-
+    if (stateRef.current.isRunning || countdown !== null) return;
     let count = 3;
     const tick = () => {
       if (count > 0) {
-        speakText(`${count}`);
-        count -= 1;
+        setCountdown(count);
+        count--;
         setTimeout(tick, 1000);
       } else {
+        setCountdown(null);
         const now = Date.now();
-        const updated: PersistedTimerState = {
+        saveState({
           ...stateRef.current,
           isRunning: true,
           startTimestamp: now,
           sessionStartTimestamp: stateRef.current.sessionStartTimestamp ?? now,
-        };
-        saveState(updated);
+        });
         setIsRunning(true);
       }
     };
@@ -222,68 +495,54 @@ const VisualHealth = ({ onBack }: Props) => {
   };
 
   const handlePause = () => {
-    const current = stateRef.current;
-    if (!current.isRunning) return;
+    const cur = stateRef.current;
+    if (!cur.isRunning) return;
     const now = Date.now();
-    let elapsedMs = current.accumulatedMs;
-    if (current.startTimestamp) elapsedMs += now - current.startTimestamp;
-    saveState({
-      ...current,
-      isRunning: false,
-      startTimestamp: null,
-      accumulatedMs: elapsedMs,
-    });
+    let ms = cur.accumulatedMs;
+    if (cur.startTimestamp) ms += now - cur.startTimestamp;
+    saveState({ ...cur, isRunning: false, startTimestamp: null, accumulatedMs: ms });
     setIsRunning(false);
   };
 
   const handleReset = () => {
-    saveState({
-      isRunning: false,
-      startTimestamp: null,
-      accumulatedMs: 0,
-      nextBreakAtMs: null,
-      sessionStartTimestamp: null,
-    });
+    saveState({ isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null });
     setIsRunning(false);
     setElapsedSeconds(0);
     setNextBreakInMinutes(null);
   };
 
   const handleTerminate = () => {
-    const current = stateRef.current;
-    const now     = Date.now();
+    const cur = stateRef.current;
+    const now = Date.now();
+    let ms = cur.accumulatedMs;
+    if (cur.isRunning && cur.startTimestamp) ms += now - cur.startTimestamp;
 
-    let elapsedMs = current.accumulatedMs;
-    if (current.isRunning && current.startTimestamp) {
-      elapsedMs += now - current.startTimestamp;
-    }
-
-    if (elapsedMs > 0) {
-      const sessionStart = current.sessionStartTimestamp ?? (now - elapsedMs);
+    if (ms > 0) {
+      const start = cur.sessionStartTimestamp ?? (now - ms);
       const record: SessionRecord = {
-        id:         String(now),
-        startedAt:  formatDateTime(sessionStart),
-        endedAt:    formatDateTime(now),
-        durationMs: elapsedMs,
+        id:                String(now),
+        startedAt:         formatDateTime(start),
+        endedAt:           formatDateTime(now),
+        durationMs:        ms,
+        startTimestampRaw: start,
+        endTimestampRaw:   now,
       };
       const updated = [record, ...loadSessions()];
       saveSessions(updated);
       setSessions(updated);
     }
 
-    saveState({
-      isRunning: false,
-      startTimestamp: null,
-      accumulatedMs: 0,
-      nextBreakAtMs: null,
-      sessionStartTimestamp: null,
-    });
+    saveState({ isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null });
     setIsRunning(false);
     setElapsedSeconds(0);
     setNextBreakInMinutes(null);
   };
 
-  const totalHours = elapsedSeconds / 3600;
+  // ── Datos derivados ─────────────────────────────────────────────────────────
+
+  const totalHours     = elapsedSeconds / 3600;
+  const dailyData      = aggregateByDay(sessions);
+  const selectedDayObj = selectedDay ? dailyData.find(d => d.dateKey === selectedDay) ?? null : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -296,10 +555,8 @@ const VisualHealth = ({ onBack }: Props) => {
             </div>
             <h1 className="text-2xl font-bold text-gray-800">Therapeye</h1>
           </div>
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-          >
+          <button onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
             <ArrowLeft className="w-5 h-5" />
             <span>Volver al dashboard</span>
           </button>
@@ -308,7 +565,7 @@ const VisualHealth = ({ onBack }: Props) => {
 
       <main className="max-w-5xl mx-auto px-4 py-10 space-y-8">
 
-        {/* ── Tarjeta principal del cronómetro ── */}
+        {/* ── Tarjeta del cronómetro ── */}
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
@@ -329,53 +586,38 @@ const VisualHealth = ({ onBack }: Props) => {
             </div>
           </div>
 
-          {/* Cronómetro + info */}
           <div className="flex flex-col md:flex-row gap-8">
-
-            {/* Reloj y botones */}
+            {/* Reloj */}
             <div className="flex-1 flex flex-col items-center">
               <div className="w-48 h-48 rounded-full bg-gray-900 text-white flex flex-col items-center justify-center shadow-inner mb-4">
                 <span className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-1">Tiempo activo</span>
-                <span className="text-3xl md:text-4xl font-mono font-bold">
-                  {formatDuration(elapsedSeconds)}
-                </span>
+                <span className="text-3xl md:text-4xl font-mono font-bold">{formatDuration(elapsedSeconds)}</span>
               </div>
 
-              {/* Botones de control */}
               <div className="flex items-center gap-3 mb-3 flex-wrap justify-center">
                 {isRunning ? (
-                  <button
-                    onClick={handlePause}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 text-white font-semibold hover:bg-red-700 transition shadow"
-                  >
-                    <Pause className="w-5 h-5" />
-                    Pausar
+                  <button onClick={handlePause}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 text-white font-semibold hover:bg-red-700 transition shadow">
+                    <Pause className="w-5 h-5" /> Pausar
+                  </button>
+                ) : countdown !== null ? (
+                  <button disabled
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-500 text-white font-bold shadow cursor-not-allowed min-w-[110px] justify-center">
+                    <span className="text-xl leading-none">{countdown}</span>
                   </button>
                 ) : (
-                  <button
-                    onClick={handleStartWithCountdown}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-600 text-white font-semibold hover:bg-green-700 transition shadow"
-                  >
-                    <Play className="w-5 h-5" />
-                    Iniciar
+                  <button onClick={handleStartWithCountdown}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-600 text-white font-semibold hover:bg-green-700 transition shadow">
+                    <Play className="w-5 h-5" /> Iniciar
                   </button>
                 )}
-
-                <button
-                  onClick={handleReset}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
-                >
-                  <RotateCcw className="w-5 h-5" />
-                  Reiniciar
+                <button onClick={handleReset} disabled={countdown !== null}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                  <RotateCcw className="w-5 h-5" /> Reiniciar
                 </button>
-
-                <button
-                  onClick={handleTerminate}
-                  disabled={elapsedSeconds === 0}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <StopCircle className="w-5 h-5" />
-                  Terminar
+                <button onClick={handleTerminate} disabled={elapsedSeconds === 0 || countdown !== null}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow disabled:opacity-40 disabled:cursor-not-allowed">
+                  <StopCircle className="w-5 h-5" /> Terminar
                 </button>
               </div>
 
@@ -392,7 +634,7 @@ const VisualHealth = ({ onBack }: Props) => {
               )}
             </div>
 
-            {/* Info de descansos */}
+            {/* Info descansos */}
             <div className="flex-1 space-y-4">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <AlarmClock className="w-5 h-5 text-indigo-500" />
@@ -406,12 +648,38 @@ const VisualHealth = ({ onBack }: Props) => {
                   <span className="font-bold">{BREAK_MINUTES} minutos</span>.
                 </p>
                 <p className="text-xs text-indigo-700 mt-1">
-                  El cronómetro sigue contando tu tiempo activo aunque navegues por otros módulos. Al volver
-                  a Salud Visual verás el tiempo actualizado y el próximo descanso sugerido.
+                  El cronómetro sigue contando tu tiempo activo aunque navegues por otros módulos.
                 </p>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ── Gráfica de tendencia de uso diario ── */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">Tendencia de uso diario</h2>
+              <p className="text-sm text-gray-400 mt-1">Haz clic en un punto para ver el detalle del día</p>
+            </div>
+            <div className="flex gap-3 text-xs flex-wrap">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> &lt; leve</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> Moderado</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> Considerable</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> &gt; Grave</span>
+            </div>
+          </div>
+
+          <ScreenTimeTrendChart
+            data={dailyData}
+            onSelectDay={setSelectedDay}
+            selectedDateKey={selectedDay}
+          />
+
+          {/* Panel de detalle del día */}
+          {selectedDayObj && (
+            <DayDetailPanel day={selectedDayObj} onClose={() => setSelectedDay(null)} />
+          )}
         </div>
 
         {/* ── Historial de sesiones ── */}
@@ -437,38 +705,23 @@ const VisualHealth = ({ onBack }: Props) => {
                 const minutes  = totalMin % 60;
 
                 return (
-                  <div
-                    key={session.id}
-                    className="flex items-center justify-between p-4 rounded-lg border-l-4 bg-indigo-50 border-indigo-400 hover:bg-indigo-100 transition"
-                  >
-                    {/* Número + info */}
+                  <div key={session.id}
+                    className="flex items-center justify-between p-4 rounded-lg border-l-4 bg-indigo-50 border-indigo-400 hover:bg-indigo-100 transition">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
                         <Calendar className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-800 text-sm">
-                          Sesión {sessions.length - index}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Iniciada: {session.startedAt}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Finalizada: {session.endedAt}
-                        </p>
+                        <p className="font-semibold text-gray-800 text-sm">Sesión {sessions.length - index}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Iniciada: {session.startedAt}</p>
+                        <p className="text-xs text-gray-400">Finalizada: {session.endedAt}</p>
                       </div>
                     </div>
-
-                    {/* Duración */}
                     <div className="flex flex-col items-end gap-1">
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-200 text-indigo-800">
-                        {hours > 0
-                          ? `${hours} h${minutes > 0 ? ` ${minutes} min` : ''}`
-                          : `${minutes} min`}
+                        {hours > 0 ? `${hours} h${minutes > 0 ? ` ${minutes} min` : ''}` : `${minutes} min`}
                       </span>
-                      <span className="text-xs text-gray-400">
-                        {formatSessionDuration(session.durationMs)}
-                      </span>
+                      <span className="text-xs text-gray-400">{formatSessionDuration(session.durationMs)}</span>
                     </div>
                   </div>
                 );
