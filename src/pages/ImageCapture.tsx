@@ -2,6 +2,7 @@ import { ArrowLeft, Camera, X, CheckCircle, Loader2 } from 'lucide-react'
 import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect } from 'react'
+import { useLanguage } from '../i18n'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -16,6 +17,7 @@ interface DiagnosticoResult {
 
 const ImageCapture = ({ onBack }: Props) => {
   const { user } = useUser()
+  const { t } = useLanguage()
   const [mostrarCamara, setMostrarCamara] = useState(false)
   const [imagenCapturada, setImagenCapturada] = useState<string | null>(null)
   const [diagnosticoCompletado, setDiagnosticoCompletado] = useState(false)
@@ -126,7 +128,7 @@ const ImageCapture = ({ onBack }: Props) => {
           <div className="text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              ¡Diagnóstico Completado!
+              {t('imageCapture', 'title')}
             </h2>
             <p className="text-gray-600 mb-6">
               {resultado.mensaje}
@@ -159,7 +161,7 @@ const ImageCapture = ({ onBack }: Props) => {
               onClick={onBack}
               className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
             >
-              Volver al Dashboard
+              {t('common', 'backToDashboard')}
             </button>
           </div>
         </div>
@@ -183,7 +185,7 @@ const ImageCapture = ({ onBack }: Props) => {
             className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Volver al dashboard</span>
+            <span>{t('common', 'backToDashboard')}</span>
           </button>
         </div>
       </header>
@@ -196,11 +198,11 @@ const ImageCapture = ({ onBack }: Props) => {
               <Camera className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Captura de imagen</h2>
+              <h2 className="text-2xl font-bold text-gray-800">{t('imageCapture', 'title')}</h2>
               <p className="text-gray-600">
                 {user
-                  ? `Hola ${user.nombre?.split(' ').slice(0, 3).join(' ')}, aquí podrás capturar una imagen para su análisis.`
-                  : 'Aquí podrás capturar una imagen para su análisis.'}
+                  ? `${t('imageCapture', 'subtitle').toLowerCase()} ${user.nombre?.split(' ').slice(0, 3).join(' ')}`
+                  : t('imageCapture', 'subtitle')}
               </p>
             </div>
           </div>
@@ -211,7 +213,7 @@ const ImageCapture = ({ onBack }: Props) => {
               <div className="space-y-4">
                 <img
                   src={imagenCapturada}
-                  alt="Imagen capturada"
+                  alt={t('imageCapture', 'title')}
                   className="mx-auto max-w-full h-auto rounded-lg shadow-md"
                 />
                 <div className="flex items-center justify-center gap-4">
@@ -223,7 +225,7 @@ const ImageCapture = ({ onBack }: Props) => {
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
                   >
                     <Camera className="w-5 h-5" />
-                    <span>Capturar nueva imagen</span>
+                    <span>{t('imageCapture', 'retake')}</span>
                   </button>
                   <button
                     onClick={realizarDiagnostico}
@@ -233,10 +235,10 @@ const ImageCapture = ({ onBack }: Props) => {
                     {isDiagnosing ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Analizando...</span>
+                        <span>{t('imageCapture', 'analyzing')}</span>
                       </>
                     ) : (
-                      <span>Realizar diagnóstico</span>
+                      <span>{t('imageCapture', 'analyze')}</span>
                     )}
                   </button>
                 </div>
@@ -247,14 +249,14 @@ const ImageCapture = ({ onBack }: Props) => {
             ) : (
               <>
                 <p className="text-gray-500 mb-4">
-                  Aquí irá el componente de cámara / carga de imagen.
+                  {t('imageCapture', 'subtitle')}
                 </p>
                 <button
                   onClick={() => setMostrarCamara(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
                 >
                   <Camera className="w-5 h-5" />
-                  <span>Capturar imagen</span>
+                  <span>{t('imageCapture', 'capture')}</span>
                 </button>
               </>
             )}
@@ -265,7 +267,7 @@ const ImageCapture = ({ onBack }: Props) => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-xl p-6 shadow-2xl max-w-2xl w-full mx-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">Captura de imagen</h3>
+                  <h3 className="text-xl font-bold text-gray-800">{t('imageCapture', 'title')}</h3>
                   <button
                     onClick={cerrarCamara}
                     className="text-gray-500 hover:text-gray-700 transition"
@@ -292,14 +294,14 @@ const ImageCapture = ({ onBack }: Props) => {
                     className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-500 text-white hover:bg-gray-600 transition"
                   >
                     <ArrowLeft className="w-5 h-5" />
-                    <span>Volver</span>
+                    <span>{t('common', 'back')}</span>
                   </button>
                   <button
                     onClick={capturarImagen}
                     className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
                   >
                     <Camera className="w-5 h-5" />
-                    <span>Capturar</span>
+                    <span>{t('imageCapture', 'capture')}</span>
                   </button>
                 </div>
               </div>

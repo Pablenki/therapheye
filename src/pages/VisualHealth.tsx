@@ -1,18 +1,25 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ArrowLeft, HeartPulse, Play, Pause, RotateCcw, Clock,
-  AlarmClock, StopCircle, Calendar, TrendingUp, X,
+  AlarmClock, StopCircle, Calendar, TrendingUp, X, Settings, Trash2,
 } from 'lucide-react';
 import { Eye } from 'lucide-react';
+import { sql, localISOString } from '../neonCliente';
+import { useUser } from '../context/UserContext';
+import { useLanguage } from '../i18n';
+import { loadTimerPrefs, saveTimerPrefs } from '../components/GlobalTimerWidget';
 
 type Props = {
   onBack: () => void;
 };
 
-// ─── Configura aquí los intervalos ───────────────────────────────────────────
-const WORK_MINUTES  = 1; // minutos de trabajo antes de cada descanso
-const BREAK_MINUTES = 1; // minutos de descanso recomendados
+// ─── Configura aquí los intervalos (regla 20-20-20) ──────────────────────────
+const WORK_MINUTES  = 20; // minutos de trabajo antes de cada descanso
+const BREAK_MINUTES = 1;  // minutos de descanso recomendados
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Límite de seguridad: sesión máxima de 16h (evita datos corruptos) ────────
+const MAX_SESSION_MS = 16 * 60 * 60 * 1000;
 
 type PersistedTimerState = {
   isRunning: boolean;
@@ -20,6 +27,8 @@ type PersistedTimerState = {
   accumulatedMs: number;
   nextBreakAtMs: number | null;
   sessionStartTimestamp: number | null;
+  finalized?: boolean;
+  stateDate?: string | null;
 };
 
 type SessionRecord = {
@@ -43,10 +52,10 @@ const SESSIONS_STORAGE_KEY = 'therapeye_visual_health_sessions';
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 
-const speakText = (text: string) => {
+const speakText = (text: string, lang: 'es' | 'en' = 'es') => {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'es-MX';
+  u.lang = lang === 'en' ? 'en-US' : 'es-MX';
   u.rate = 1.2;
   window.speechSynthesis.speak(u);
 };
@@ -68,11 +77,31 @@ const playBeep = () => {
 };
 
 const formatDuration = (totalSeconds: number) => {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
+  // Guard: nunca mostrar valores negativos (protección contra cambio de reloj del sistema)
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = safe % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
+};
+
+// ─── Calcular ms transcurridos con protección anti-clock-change ───────────────
+const calcElapsedMs = (state: PersistedTimerState): number => {
+  const now = Date.now();
+  let ms = state.accumulatedMs;
+  if (state.isRunning && state.startTimestamp) {
+    const delta = now - state.startTimestamp;
+    // Si el reloj se movió hacia atrás → delta negativo → ignorar esa diferencia
+    // Si el delta es absurdamente grande (> 16h) → probablemente cambio de fecha para testing
+    if (delta > 0 && delta < MAX_SESSION_MS) {
+      ms += delta;
+    } else if (delta <= 0) {
+      // Reloj atrasado: resetear startTimestamp al "ahora" para no acumular negativos
+      // (se corrige en el siguiente guardado)
+    }
+  }
+  return Math.max(0, Math.min(ms, MAX_SESSION_MS));
 };
 
 const formatSessionDuration = (ms: number) => {
@@ -84,14 +113,14 @@ const formatSessionDuration = (ms: number) => {
   return `${hours} h ${minutes} min`;
 };
 
-const formatDateTime = (ts: number) =>
-  new Date(ts).toLocaleString('es-MX', {
+const formatDateTime = (ts: number, lang: 'es' | 'en' = 'es') =>
+  new Date(ts).toLocaleString(lang === 'en' ? 'en-US' : 'es-MX', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: false,
   });
 
-const formatHour = (ts: number) =>
-  new Date(ts).toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+const formatHour = (ts: number, lang: 'es' | 'en' = 'es') =>
+  new Date(ts).toLocaleString(lang === 'en' ? 'en-US' : 'es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
 
 const loadSessions = (): SessionRecord[] => {
   try {
@@ -155,16 +184,18 @@ const ScreenTimeTrendChart = ({
   data,
   onSelectDay,
   selectedDateKey,
+  t,
 }: {
   data: DailyAggregate[];
   onSelectDay: (dateKey: string | null) => void;
   selectedDateKey: string | null;
+  t: any;
 }) => {
   if (data.length < 2) {
     return (
       <div className="flex flex-col items-center justify-center h-40 text-gray-400">
         <TrendingUp className="w-10 h-10 mb-2 opacity-30" />
-        <p className="text-sm">Necesitas al menos 2 días con sesiones para ver la tendencia</p>
+        <p className="text-sm">{t('visualHealth', 'needMoreDays')}</p>
       </div>
     );
   }
@@ -207,7 +238,7 @@ const ScreenTimeTrendChart = ({
   ].filter(z => z.from < ceilHour);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full cursor-pointer" aria-label="Tendencia de tiempo en pantalla">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full cursor-pointer" aria-label={t('visualHealth', 'trendTitle')}>
       <defs>
         <linearGradient id="screenAreaGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor="#6366f1" stopOpacity="0.25" />
@@ -290,7 +321,7 @@ const ScreenTimeTrendChart = ({
 
 // ─── Panel de detalle del día seleccionado ────────────────────────────────────
 
-const DayDetailPanel = ({ day, onClose }: { day: DailyAggregate; onClose: () => void }) => {
+const DayDetailPanel = ({ day, onClose, t }: { day: DailyAggregate; onClose: () => void; t: any }) => {
   // Calcular las horas del día donde más se usó (buckets de 1h: 0-23)
   // Usamos las sesiones con su hora de inicio para llenar los buckets
   const hourBuckets: number[] = new Array(24).fill(0);
@@ -323,11 +354,11 @@ const DayDetailPanel = ({ day, onClose }: { day: DailyAggregate; onClose: () => 
             <Calendar className="w-5 h-5" style={{ color }} />
           </div>
           <div>
-            <p className="font-bold text-gray-800">Detalle del {day.dateLabel}</p>
+            <p className="font-bold text-gray-800">{t('visualHealth', 'dayDetail')} {day.dateLabel}</p>
             <p className="text-xs text-gray-500">
-              {day.sessions.length} {day.sessions.length === 1 ? 'sesión' : 'sesiones'} — Total:{' '}
+              {day.sessions.length} {day.sessions.length === 1 ? t('common', 'session') : t('common', 'sessions')} — {t('common', 'total')}:{' '}
               <span className="font-semibold" style={{ color }}>
-                {totalH > 0 ? `${totalH} h ` : ''}{totalM} min
+                {totalH > 0 ? `${totalH} ${t('common', 'hours')} ` : ''}{totalM} {t('common', 'min')}
               </span>
             </p>
           </div>
@@ -341,7 +372,7 @@ const DayDetailPanel = ({ day, onClose }: { day: DailyAggregate; onClose: () => 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Sesiones del día */}
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Sesiones</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">{t('visualHealth', 'sessionsHistory')}</p>
           <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
             {day.sessions.map((s, i) => (
               <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
@@ -359,9 +390,9 @@ const DayDetailPanel = ({ day, onClose }: { day: DailyAggregate; onClose: () => 
 
         {/* Horas pico */}
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Horarios más activos</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">{t('visualHealth', 'peakHours')}</p>
           {topHours.length === 0 ? (
-            <p className="text-xs text-gray-400">Sin datos suficientes</p>
+            <p className="text-xs text-gray-400">{t('visualHealth', 'noSufficientData')}</p>
           ) : (
             <div className="space-y-2">
               {topHours.map(({ h, min }) => {
@@ -392,12 +423,23 @@ const DayDetailPanel = ({ day, onClose }: { day: DailyAggregate; onClose: () => 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 const VisualHealth = ({ onBack }: Props) => {
+  const { user } = useUser();
+  const { t, lang } = useLanguage();
   const [isRunning, setIsRunning]                   = useState(false);
   const [elapsedSeconds, setElapsedSeconds]         = useState(0);
   const [nextBreakInMinutes, setNextBreakInMinutes] = useState<number | null>(null);
   const [sessions, setSessions]                     = useState<SessionRecord[]>([]);
   const [selectedDay, setSelectedDay]               = useState<string | null>(null);
   const [countdown, setCountdown]                   = useState<number | null>(null);
+
+  // ── Preferencias / onboarding ──────────────────────────────────────────────
+  const [notifyOnLogin, setNotifyOnLogin]           = useState(() => loadTimerPrefs().notifyOnLogin);
+  const [showOnboarding, setShowOnboarding]         = useState(() => !loadTimerPrefs().onboardingCompleted);
+
+  // ── Modales de confirmación ────────────────────────────────────────────────
+  type ConfirmAction = 'reset' | 'terminate' | null;
+  const [confirmAction, setConfirmAction]           = useState<ConfirmAction>(null);
+  const [deleteSessionId, setDeleteSessionId]       = useState<string | null>(null);
 
   const stateRef = useRef<PersistedTimerState>({
     isRunning: false,
@@ -413,37 +455,106 @@ const VisualHealth = ({ onBack }: Props) => {
     catch { /* noop */ }
   }, []);
 
+  // Cargar sesiones SOLO desde BD — localStorage ya no es fuente de verdad para sesiones
+  const loadSessionsFromDB = useCallback(async () => {
+    // Sin usuario autenticado → historial vacío (no mostrar datos locales obsoletos)
+    if (!user?.id) {
+      setSessions([]);
+      return;
+    }
+
+    try {
+      // Crear tabla si no existe (idempotente)
+      await sql`
+        CREATE TABLE IF NOT EXISTS sesiones_salud_visual (
+          id          SERIAL PRIMARY KEY,
+          user_id     TEXT        NOT NULL,
+          started_at  TIMESTAMPTZ NOT NULL,
+          ended_at    TIMESTAMPTZ NOT NULL,
+          duration_ms BIGINT      NOT NULL,
+          created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+
+      const rows = await sql`
+        SELECT id, started_at, ended_at, duration_ms
+        FROM   sesiones_salud_visual
+        WHERE  user_id = ${user.id}
+        ORDER  BY started_at DESC
+        LIMIT  200
+      `;
+
+      // Siempre usar el resultado de BD (aunque sea vacío), borrando cualquier dato local obsoleto
+      const dbSessions: SessionRecord[] = rows.map((r: Record<string, unknown>) => {
+        const startTs = new Date(String(r.started_at)).getTime();
+        const endTs   = new Date(String(r.ended_at)).getTime();
+        return {
+          id:                String(r.id),
+          startedAt:         formatDateTime(startTs, lang),
+          endedAt:           formatDateTime(endTs, lang),
+          durationMs:        Number(r.duration_ms),
+          startTimestampRaw: startTs,
+          endTimestampRaw:   endTs,
+        };
+      });
+      setSessions(dbSessions);
+      // Limpiar localStorage de sesiones para que no queden datos huérfanos
+      try { localStorage.removeItem(SESSIONS_STORAGE_KEY); } catch { /* noop */ }
+    } catch (err) {
+      console.warn('[VisualHealth] Error cargando sesiones de BD:', err);
+      // En caso de fallo de red → mostrar vacío en lugar de datos locales obsoletos
+      setSessions([]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // Cargar estado y sesiones al montar
   useEffect(() => {
-    setSessions(loadSessions());
+    loadSessionsFromDB();
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed: PersistedTimerState = JSON.parse(raw);
-        const now = Date.now();
-        let elapsedMs = parsed.accumulatedMs;
-        if (parsed.isRunning && parsed.startTimestamp) elapsedMs += now - parsed.startTimestamp;
+        const elapsedMs = calcElapsedMs(parsed);
         setElapsedSeconds(Math.floor(elapsedMs / 1000));
         setIsRunning(parsed.isRunning);
         if (parsed.nextBreakAtMs != null) {
           const rem = parsed.nextBreakAtMs - elapsedMs;
           setNextBreakInMinutes(rem > 0 ? Math.round(rem / 60000) : 0);
         }
+        // Si el reloj fue manipulado y tenemos un startTimestamp inválido, corregirlo
+        if (parsed.isRunning && parsed.startTimestamp) {
+          const delta = Date.now() - parsed.startTimestamp;
+          if (delta < 0 || delta > MAX_SESSION_MS) {
+            // Resetear startTimestamp al ahora con los ms acumulados correctos
+            saveState({ ...parsed, startTimestamp: Date.now(), accumulatedMs: elapsedMs });
+            return;
+          }
+        }
         stateRef.current = parsed;
       } else {
         saveState(stateRef.current);
       }
     } catch { saveState(stateRef.current); }
-  }, [saveState]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Intervalo
+  // Intervalo — con protección anti-clock-change
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
       const cur = stateRef.current;
-      let ms = cur.accumulatedMs;
-      if (cur.isRunning && cur.startTimestamp) ms += now - cur.startTimestamp;
+      const ms  = calcElapsedMs(cur);
       setElapsedSeconds(Math.floor(ms / 1000));
+
+      // Detectar salto de reloj: si delta entre ticks > 5s, corregir startTimestamp
+      if (cur.isRunning && cur.startTimestamp) {
+        const delta = now - cur.startTimestamp;
+        if (delta < 0 || delta > MAX_SESSION_MS) {
+          saveState({ ...cur, startTimestamp: now, accumulatedMs: ms });
+          return;
+        }
+      }
 
       if (cur.isRunning) {
         if (cur.nextBreakAtMs == null) {
@@ -454,7 +565,8 @@ const VisualHealth = ({ onBack }: Props) => {
         }
         if (ms >= cur.nextBreakAtMs) {
           playBeep();
-          speakText('Es momento de tomar un descanso visual');
+          // lang from useLanguage destructuring
+          speakText(t('visualHealth', 'takeBreakVoice'), lang);
           const nb = cur.nextBreakAtMs + WORK_MINUTES * 60_000;
           saveState({ ...cur, nextBreakAtMs: nb });
           setNextBreakInMinutes(Math.max(0, Math.round((nb - ms) / 60000)));
@@ -470,8 +582,29 @@ const VisualHealth = ({ onBack }: Props) => {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleStartWithCountdown = () => {
+  const doStart = () => {
+    const now = Date.now();
+    saveState({
+      ...stateRef.current,
+      isRunning: true,
+      startTimestamp: now,
+      sessionStartTimestamp: stateRef.current.sessionStartTimestamp ?? now,
+      finalized: false,
+      stateDate: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(),
+    });
+    setIsRunning(true);
+  };
+
+  const handleStartOrResume = () => {
     if (stateRef.current.isRunning || countdown !== null) return;
+
+    // Si ya tiene tiempo acumulado → reanudar directo, sin conteo
+    if (stateRef.current.accumulatedMs > 0) {
+      doStart();
+      return;
+    }
+
+    // Primera vez (0:00) → conteo 3-2-1
     let count = 3;
     const tick = () => {
       if (count > 0) {
@@ -480,62 +613,135 @@ const VisualHealth = ({ onBack }: Props) => {
         setTimeout(tick, 1000);
       } else {
         setCountdown(null);
-        const now = Date.now();
-        saveState({
-          ...stateRef.current,
-          isRunning: true,
-          startTimestamp: now,
-          sessionStartTimestamp: stateRef.current.sessionStartTimestamp ?? now,
-        });
-        setIsRunning(true);
+        doStart();
       }
     };
-    speakText('El conteo comienza en');
+    speakText(t('visualHealth', 'countdownStarts'), lang);
     setTimeout(tick, 700);
   };
 
   const handlePause = () => {
     const cur = stateRef.current;
     if (!cur.isRunning) return;
-    const now = Date.now();
-    let ms = cur.accumulatedMs;
-    if (cur.startTimestamp) ms += now - cur.startTimestamp;
+    const ms = calcElapsedMs(cur);
     saveState({ ...cur, isRunning: false, startTimestamp: null, accumulatedMs: ms });
     setIsRunning(false);
   };
 
-  const handleReset = () => {
-    saveState({ isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null });
+  const handleReset = () => setConfirmAction('reset');
+
+  const doReset = () => {
+    const todayDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+    saveState({ isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null, finalized: false, stateDate: todayDate });
     setIsRunning(false);
     setElapsedSeconds(0);
     setNextBreakInMinutes(null);
+    setConfirmAction(null);
   };
 
-  const handleTerminate = () => {
+  // ── Toggle preferencia notifyOnLogin ──────────────────────────────────────
+  const handleToggleNotifyOnLogin = () => {
+    const prefs = loadTimerPrefs();
+    const next = !prefs.notifyOnLogin;
+    saveTimerPrefs({ ...prefs, notifyOnLogin: next }, user?.id);
+    setNotifyOnLogin(next);
+  };
+
+  // ── Completar onboarding ───────────────────────────────────────────────────
+  const handleOnboardingActivate = () => {
+    const prefs = loadTimerPrefs();
+    saveTimerPrefs({ ...prefs, onboardingCompleted: true, notifyOnLogin: true }, user?.id);
+    setNotifyOnLogin(true);
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingSkip = () => {
+    const prefs = loadTimerPrefs();
+    saveTimerPrefs({ ...prefs, onboardingCompleted: true }, user?.id);
+    setShowOnboarding(false);
+  };
+
+  const terminatingRef = useRef(false);
+
+  const handleTerminate = () => setConfirmAction('terminate');
+
+  const doTerminate = async () => {
+    setConfirmAction(null);
+    await executeTerminate();
+  };
+
+  const executeTerminate = async () => {
+    // Guard against double-fire
+    if (terminatingRef.current) return;
+    terminatingRef.current = true;
+
     const cur = stateRef.current;
     const now = Date.now();
-    let ms = cur.accumulatedMs;
-    if (cur.isRunning && cur.startTimestamp) ms += now - cur.startTimestamp;
+    const ms  = calcElapsedMs(cur);
+    // lang from useLanguage() destructuring
 
-    if (ms > 0) {
+    // Solo guardar si la sesión duró al menos 3 minutos (evita ruido en el historial)
+    if (ms > 3 * 60_000 && cur.sessionStartTimestamp) {
       const start = cur.sessionStartTimestamp ?? (now - ms);
       const record: SessionRecord = {
         id:                String(now),
-        startedAt:         formatDateTime(start),
-        endedAt:           formatDateTime(now),
+        startedAt:         formatDateTime(start, lang),
+        endedAt:           formatDateTime(now, lang),
         durationMs:        ms,
         startTimestampRaw: start,
         endTimestampRaw:   now,
       };
-      const updated = [record, ...loadSessions()];
-      saveSessions(updated);
-      setSessions(updated);
+
+      // Guardar solo en BD — localStorage ya no es fuente de verdad para sesiones
+      if (user?.id) {
+        try {
+          await sql`
+            INSERT INTO sesiones_salud_visual
+              (user_id, started_at, ended_at, duration_ms, created_at)
+            VALUES (
+              ${user.id},
+              ${localISOString(new Date(start))},
+              ${localISOString(new Date(now))},
+              ${ms},
+              NOW()
+            )
+          `;
+          // Actualizar estado local con la sesión recién guardada
+          setSessions(prev => [record, ...prev]);
+        } catch (err) {
+          console.warn('[VisualHealth] No se pudo guardar sesión en BD:', err);
+        }
+      }
     }
 
-    saveState({ isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null });
+    // Finalizar: resetear el timer a cero y marcarlo como finalizado
+    const todayDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+    saveState({
+      isRunning: false,
+      startTimestamp: null,
+      accumulatedMs: 0,           // Reset a 0 — la sesión ya quedó guardada en historial
+      nextBreakAtMs: null,
+      sessionStartTimestamp: null,
+      finalized: true,            // Prevents auto-start on next login
+      stateDate: todayDate,
+    });
     setIsRunning(false);
-    setElapsedSeconds(0);
+    setElapsedSeconds(0);         // Mostrar 0 en todos lados
     setNextBreakInMinutes(null);
+    terminatingRef.current = false;
+  };
+
+  // ── Eliminar sesión del historial ─────────────────────────────────────────
+  const handleDeleteSession = async (sessionId: string) => {
+    setDeleteSessionId(null);
+    if (user?.id) {
+      try {
+        await sql`DELETE FROM sesiones_salud_visual WHERE id = ${sessionId} AND user_id = ${user.id}`;
+      } catch (err) {
+        console.warn('[VisualHealth] Error eliminando sesión:', err);
+      }
+    }
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
   };
 
   // ── Datos derivados ─────────────────────────────────────────────────────────
@@ -546,6 +752,88 @@ const VisualHealth = ({ onBack }: Props) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+
+      {/* ── Modal de confirmación: Reiniciar / Finalizar ── */}
+      {(confirmAction === 'reset' || confirmAction === 'terminate') && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4 flex flex-col gap-4">
+            <h2 className="text-lg font-bold text-gray-800">
+              {confirmAction === 'reset' ? t('visualHealth', 'confirmResetTitle') : t('visualHealth', 'confirmTerminateTitle')}
+            </h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {confirmAction === 'reset' ? t('visualHealth', 'confirmResetMsg') : t('visualHealth', 'confirmTerminateMsg')}
+            </p>
+            <div className="flex gap-3 justify-end mt-1">
+              <button onClick={() => setConfirmAction(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition">
+                {t('visualHealth', 'confirmNo')}
+              </button>
+              <button
+                onClick={confirmAction === 'reset' ? doReset : doTerminate}
+                className={`px-5 py-2 rounded-xl text-sm font-semibold text-white transition shadow ${
+                  confirmAction === 'reset' ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {confirmAction === 'reset' ? t('visualHealth', 'confirmYesReset') : t('visualHealth', 'confirmYesTerminate')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de confirmación: Eliminar sesión ── */}
+      {deleteSessionId && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4 flex flex-col gap-4">
+            <h2 className="text-lg font-bold text-gray-800">{t('visualHealth', 'confirmDeleteTitle')}</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">{t('visualHealth', 'confirmDeleteMsg')}</p>
+            <div className="flex gap-3 justify-end mt-1">
+              <button onClick={() => setDeleteSessionId(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition">
+                {t('visualHealth', 'confirmNo')}
+              </button>
+              <button onClick={() => handleDeleteSession(deleteSessionId)}
+                className="px-5 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow">
+                {t('visualHealth', 'confirmYesDelete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de onboarding (primera vez) ── */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 flex flex-col gap-5">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                <HeartPulse className="w-6 h-6 text-indigo-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">{t('visualHealth', 'onboardingTitle')}</h2>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">{t('visualHealth', 'onboardingDesc')}</p>
+            <div className="bg-indigo-50 rounded-xl p-4 text-sm text-indigo-900 space-y-1.5 border border-indigo-100">
+              <p className="font-semibold flex items-center gap-2"><AlarmClock className="w-4 h-4 text-indigo-500" /> {t('visualHealth', 'breakReminders')}</p>
+              <p className="text-xs text-indigo-700">{t('visualHealth', 'breakMsg1')} <strong>{WORK_MINUTES}</strong> {t('visualHealth', 'breakMsg2')} <strong>{BREAK_MINUTES}</strong> {t('visualHealth', 'breakMsg3')}</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleOnboardingSkip}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 transition"
+              >
+                {t('visualHealth', 'onboardingSkip')}
+              </button>
+              <button
+                onClick={handleOnboardingActivate}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow"
+              >
+                {t('visualHealth', 'onboardingActivate')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -558,7 +846,7 @@ const VisualHealth = ({ onBack }: Props) => {
           <button onClick={onBack}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
             <ArrowLeft className="w-5 h-5" />
-            <span>Volver al dashboard</span>
+            <span>{t('common', 'backToDashboard')}</span>
           </button>
         </div>
       </header>
@@ -573,15 +861,15 @@ const VisualHealth = ({ onBack }: Props) => {
                 <HeartPulse className="w-7 h-7 text-indigo-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Salud Visual</h2>
-                <p className="text-gray-500 text-sm">Gestiona tu tiempo en pantalla y programa descansos visuales.</p>
+                <h2 className="text-2xl font-bold text-gray-800">{t('visualHealth', 'title')}</h2>
+                <p className="text-gray-500 text-sm">{t('visualHealth', 'subtitle')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Clock className="w-4 h-4" />
               <span>
-                Tiempo frente a pantalla hoy:{' '}
-                <span className="font-semibold text-gray-800">{totalHours.toFixed(1)} h</span>
+                {t('visualHealth', 'screenTimeToday')}{' '}
+                <span className="font-semibold text-gray-800">{totalHours.toFixed(1)} {t('common', 'hours')}</span>
               </span>
             </div>
           </div>
@@ -590,7 +878,7 @@ const VisualHealth = ({ onBack }: Props) => {
             {/* Reloj */}
             <div className="flex-1 flex flex-col items-center">
               <div className="w-48 h-48 rounded-full bg-gray-900 text-white flex flex-col items-center justify-center shadow-inner mb-4">
-                <span className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-1">Tiempo activo</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-1">{t('visualHealth', 'activeTime')}</span>
                 <span className="text-3xl md:text-4xl font-mono font-bold">{formatDuration(elapsedSeconds)}</span>
               </div>
 
@@ -598,7 +886,7 @@ const VisualHealth = ({ onBack }: Props) => {
                 {isRunning ? (
                   <button onClick={handlePause}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 text-white font-semibold hover:bg-red-700 transition shadow">
-                    <Pause className="w-5 h-5" /> Pausar
+                    <Pause className="w-5 h-5" /> {t('common', 'pause')}
                   </button>
                 ) : countdown !== null ? (
                   <button disabled
@@ -606,18 +894,18 @@ const VisualHealth = ({ onBack }: Props) => {
                     <span className="text-xl leading-none">{countdown}</span>
                   </button>
                 ) : (
-                  <button onClick={handleStartWithCountdown}
+                  <button onClick={handleStartOrResume}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-600 text-white font-semibold hover:bg-green-700 transition shadow">
-                    <Play className="w-5 h-5" /> Iniciar
+                    <Play className="w-5 h-5" /> {t('common', 'start')}
                   </button>
                 )}
-                <button onClick={handleReset} disabled={countdown !== null}
+                <button onClick={handleReset} disabled={countdown !== null || elapsedSeconds === 0}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                  <RotateCcw className="w-5 h-5" /> Reiniciar
+                  <RotateCcw className="w-5 h-5" /> {t('common', 'reset')}
                 </button>
                 <button onClick={handleTerminate} disabled={elapsedSeconds === 0 || countdown !== null}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow disabled:opacity-40 disabled:cursor-not-allowed">
-                  <StopCircle className="w-5 h-5" /> Terminar
+                  <StopCircle className="w-5 h-5" /> {t('visualHealth', 'terminate')}
                 </button>
               </div>
 
@@ -625,31 +913,61 @@ const VisualHealth = ({ onBack }: Props) => {
                 <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
                   <AlarmClock className="w-3 h-3" />
                   <span>
-                    Próximo descanso sugerido en{' '}
+                    {t('visualHealth', 'nextBreak')}{' '}
                     <span className="font-semibold">
-                      {nextBreakInMinutes <= 1 ? 'menos de 1 min' : `${nextBreakInMinutes} min`}
+                      {nextBreakInMinutes <= 1 ? t('visualHealth', 'lessThan1Min') : `${nextBreakInMinutes} ${t('common', 'min')}`}
                     </span>
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Info descansos */}
+            {/* Info descansos + Configuración */}
             <div className="flex-1 space-y-4">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 <AlarmClock className="w-5 h-5 text-indigo-500" />
-                Recordatorios de descanso
+                {t('visualHealth', 'breakReminders')}
               </h3>
               <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-900 space-y-2">
-                <p className="font-semibold">Descanso visual activo</p>
+                <p className="font-semibold">{t('visualHealth', 'activeBreak')}</p>
                 <p>
-                  Por cada <span className="font-bold">{WORK_MINUTES} minutos</span> de trabajo frente a la pantalla,
-                  el sistema te recordará tomar un descanso visual de{' '}
-                  <span className="font-bold">{BREAK_MINUTES} minutos</span>.
+                  {t('visualHealth', 'breakMsg1')} <span className="font-bold">{WORK_MINUTES}</span> {t('visualHealth', 'breakMsg2')}
+                  <span className="font-bold">{BREAK_MINUTES}</span> {t('visualHealth', 'breakMsg3')}
                 </p>
                 <p className="text-xs text-indigo-700 mt-1">
-                  El cronómetro sigue contando tu tiempo activo aunque navegues por otros módulos.
+                  {t('visualHealth', 'timerNote')}
                 </p>
+              </div>
+
+              {/* ── Configuración inline ── */}
+              <div className="border-t border-gray-100 pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
+                  <Settings className="w-4 h-4 text-gray-400" />
+                  {t('visualHealth', 'settingsTitle')}
+                </h3>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-gray-700">{t('visualHealth', 'notifyOnLoginLabel')}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{t('visualHealth', 'notifyOnLoginDesc')}</p>
+                    <p className={`text-xs font-medium mt-1.5 ${notifyOnLogin ? 'text-indigo-600' : 'text-gray-400'}`}>
+                      {notifyOnLogin ? t('visualHealth', 'featureActive') : t('visualHealth', 'featureInactive')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleToggleNotifyOnLogin}
+                    role="switch"
+                    aria-checked={notifyOnLogin}
+                    className={`relative flex-shrink-0 mt-0.5 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+                      notifyOnLogin ? 'bg-indigo-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
+                        notifyOnLogin ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -659,14 +977,14 @@ const VisualHealth = ({ onBack }: Props) => {
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Tendencia de uso diario</h2>
-              <p className="text-sm text-gray-400 mt-1">Haz clic en un punto para ver el detalle del día</p>
+              <h2 className="text-2xl font-bold text-gray-800">{t('visualHealth', 'trendTitle')}</h2>
+              <p className="text-sm text-gray-400 mt-1">{t('visualHealth', 'trendHint')}</p>
             </div>
             <div className="flex gap-3 text-xs flex-wrap">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> &lt; leve</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> Moderado</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> Considerable</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> &gt; Grave</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block" /> &lt; {t('visualHealth', 'mild')}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500 inline-block" /> {t('visualHealth', 'moderateUse')}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> {t('visualHealth', 'considerableUse')}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> &gt; {t('visualHealth', 'severeUse')}</span>
             </div>
           </div>
 
@@ -674,27 +992,28 @@ const VisualHealth = ({ onBack }: Props) => {
             data={dailyData}
             onSelectDay={setSelectedDay}
             selectedDateKey={selectedDay}
+            t={t}
           />
 
           {/* Panel de detalle del día */}
           {selectedDayObj && (
-            <DayDetailPanel day={selectedDayObj} onClose={() => setSelectedDay(null)} />
+            <DayDetailPanel day={selectedDayObj} onClose={() => setSelectedDay(null)} t={t} />
           )}
         </div>
 
         {/* ── Historial de sesiones ── */}
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Historial de sesiones</h2>
-            <p className="text-sm text-gray-400 mt-1">Registro de tiempo frente a pantalla por sesión</p>
+            <h2 className="text-2xl font-bold text-gray-800">{t('visualHealth', 'sessionsHistory')}</h2>
+            <p className="text-sm text-gray-400 mt-1">{t('visualHealth', 'sessionsHistoryHint')}</p>
           </div>
 
           {sessions.length === 0 ? (
             <div className="text-center py-12">
               <Clock className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <p className="text-gray-400">Aún no hay sesiones registradas.</p>
+              <p className="text-gray-400">{t('visualHealth', 'noSessions')}</p>
               <p className="text-xs text-gray-300 mt-1">
-                Inicia el cronómetro y pulsa <span className="font-semibold">Terminar</span> para guardar una sesión.
+                {t('visualHealth', 'startTimerHint')} <span className="font-semibold">{t('visualHealth', 'terminate')}</span> {t('visualHealth', 'toSaveSession')}
               </p>
             </div>
           ) : (
@@ -712,9 +1031,9 @@ const VisualHealth = ({ onBack }: Props) => {
                         <Calendar className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-800 text-sm">Sesión {sessions.length - index}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Iniciada: {session.startedAt}</p>
-                        <p className="text-xs text-gray-400">Finalizada: {session.endedAt}</p>
+                        <p className="font-semibold text-gray-800 text-sm">{t('visualHealth', 'sessionNum')} {sessions.length - index}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{t('visualHealth', 'startedAt')} {session.startedAt}</p>
+                        <p className="text-xs text-gray-400">{t('visualHealth', 'endedAt')} {session.endedAt}</p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -722,6 +1041,14 @@ const VisualHealth = ({ onBack }: Props) => {
                         {hours > 0 ? `${hours} h${minutes > 0 ? ` ${minutes} min` : ''}` : `${minutes} min`}
                       </span>
                       <span className="text-xs text-gray-400">{formatSessionDuration(session.durationMs)}</span>
+                      <button
+                        onClick={() => setDeleteSessionId(session.id)}
+                        className="mt-1 flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition"
+                        title={t('visualHealth', 'deleteSession')}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        {t('visualHealth', 'deleteSession')}
+                      </button>
                     </div>
                   </div>
                 );

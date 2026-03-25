@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { UserProvider } from './context/UserContext'
+import { LanguageProvider } from './i18n'
 import { AccessibilityMenu } from './components/AccessibilityMenu'
+import GlobalTimerWidget from './components/GlobalTimerWidget'
+import SessionGuard from './components/SessionGuard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
@@ -147,8 +150,12 @@ function App() {
 
   return (
     <UserProvider>
-      {renderPage()}
-      <AccessibilityMenu />
+      <LanguageProvider>
+        {renderPage()}
+        <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
+        <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
+        <AccessibilityMenu />
+      </LanguageProvider>
     </UserProvider>
   )
 }

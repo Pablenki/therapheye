@@ -1,4 +1,5 @@
 import { ArrowLeft, Eye, Focus, Maximize2, RotateCw, ZoomIn } from 'lucide-react';
+import { useLanguage } from '../i18n';
 
 interface Exercise {
   id: string;
@@ -10,44 +11,46 @@ interface Exercise {
 }
 
 const Exercises = ({ onBack, onStartExercise }: { onBack: () => void; onStartExercise: (id: string) => void }) => {
+  const { t } = useLanguage();
+
   const exercises: Exercise[] = [
     {
       id: 'palming',
-      title: 'Palming',
-      description: 'Técnica de relajación ocular mediante el calor de las manos',
-      duration: '3 min',
+      title: t('exercises', 'palming'),
+      description: t('exercises', 'palmingDesc'),
+      duration: '1-5 min',
       icon: Eye,
       color: 'bg-blue-500'
     },
     {
       id: 'focus',
-      title: 'Enfoque cercano-lejano',
-      description: 'Alterna el enfoque entre objetos cercanos y lejanos',
-      duration: '5 min',
+      title: t('exercises', 'focus'),
+      description: t('exercises', 'focusDesc'),
+      duration: '1-5 min',
       icon: Focus,
       color: 'bg-green-500'
     },
     {
       id: '20-20-20',
-      title: 'Regla 20-20-20',
-      description: 'Cada 20 min, mira algo a 20 pies por 20 segundos',
+      title: t('exercises', 'rule202020'),
+      description: t('exercises', 'rule202020Desc'),
       duration: '20 seg',
       icon: Maximize2,
       color: 'bg-purple-500'
     },
     {
       id: 'circles',
-      title: 'Círculos oculares',
-      description: 'Ejercicio de movimiento circular para fortalecer músculos oculares',
-      duration: '4 min',
+      title: t('exercises', 'circles'),
+      description: t('exercises', 'circlesDesc'),
+      duration: '1-5 min',
       icon: RotateCw,
       color: 'bg-orange-500'
     },
     {
       id: 'near-far',
-      title: 'Simulación cerca/lejos',
-      description: 'Emula el enfoque de objetos próximos y lejanos para entrenar la acomodación visual',
-      duration: '3 min',
+      title: t('exercises', 'nearFar'),
+      description: t('exercises', 'nearFarDesc'),
+      duration: '1-5 min',
       icon: ZoomIn,
       color: 'bg-teal-500'
     }
@@ -61,15 +64,15 @@ const Exercises = ({ onBack, onStartExercise }: { onBack: () => void; onStartExe
           className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6"
         >
           <ArrowLeft className="w-5 h-5" />
-          Volver al Dashboard
+          {t('common', 'backToDashboard')}
         </button>
 
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Ejercicios Visuales
+            {t('exercises', 'title')}
           </h1>
           <p className="text-gray-600">
-            Selecciona un ejercicio para comenzar tu rutina de descanso visual
+            {t('exercises', 'subtitle')}
           </p>
         </div>
 
@@ -101,7 +104,7 @@ const Exercises = ({ onBack, onStartExercise }: { onBack: () => void; onStartExe
                 onClick={() => onStartExercise(exercise.id)}
                 className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
               >
-                Iniciar ejercicio
+                {t('exercises', 'startExercise')}
               </button>
             </div>
           ))}
@@ -109,24 +112,24 @@ const Exercises = ({ onBack, onStartExercise }: { onBack: () => void; onStartExe
 
         <div className="mt-8 bg-white rounded-xl p-6 shadow-lg">
           <h3 className="text-xl font-semibold text-gray-800 mb-4">
-            Consejos para mejores resultados
+            {t('exercises', 'tipsTitle')}
           </h3>
           <ul className="space-y-3 text-gray-700">
             <li className="flex items-start gap-3">
               <span className="text-green-500 font-bold">•</span>
-              <span>Realiza los ejercicios en un ambiente tranquilo y con buena iluminación</span>
+              <span>{t('exercises', 'tip1')}</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-green-500 font-bold">•</span>
-              <span>Practica regularmente, idealmente 2-3 veces al día</span>
+              <span>{t('exercises', 'tip2')}</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-green-500 font-bold">•</span>
-              <span>No fuerces la vista, si sientes molestia detente inmediatamente</span>
+              <span>{t('exercises', 'tip3')}</span>
             </li>
             <li className="flex items-start gap-3">
               <span className="text-green-500 font-bold">•</span>
-              <span>Combina estos ejercicios con pausas activas durante tu jornada</span>
+              <span>{t('exercises', 'tip4')}</span>
             </li>
           </ul>
         </div>

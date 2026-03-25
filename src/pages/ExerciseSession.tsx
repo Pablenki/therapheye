@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, type ReactElement } from 'react';
 import { ArrowLeft, Play, Pause, RotateCcw, Volume2, VolumeX, SkipForward } from 'lucide-react';
-import { sql } from '../neonCliente';
+import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../i18n';
 
 // ─── Utilidad de audio via Web Audio API ─────────────────────────────────────
 const playTone = (
@@ -32,17 +33,24 @@ const playComplete = () => {
 };
 
 // ─── Utilidad de voz (Text-to-Speech) ────────────────────────────────────────
-const speakText = (text: string, onEnd?: () => void) => {
+const speakText = (text: string, lang: 'es' | 'en' = 'es', onEnd?: () => void) => {
   if (!('speechSynthesis' in window)) { onEnd?.(); return; }
   const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'es-MX';
+  const langCode = lang === 'es' ? 'es-MX' : 'en-US';
+  utt.lang = langCode;
   utt.rate = 1.2;
   utt.pitch = 1.0;
   utt.volume = 1.0;
   const voces = window.speechSynthesis.getVoices();
-  const voz = voces.find(v => v.lang === 'es-MX') ||
-              voces.find(v => v.lang === 'es-US') ||
-              voces.find(v => v.lang.startsWith('es'));
+  let voz: SpeechSynthesisVoice | undefined;
+  if (lang === 'es') {
+    voz = voces.find(v => v.lang === 'es-MX') ||
+          voces.find(v => v.lang === 'es-US') ||
+          voces.find(v => v.lang.startsWith('es'));
+  } else {
+    voz = voces.find(v => v.lang === 'en-US') ||
+          voces.find(v => v.lang.startsWith('en'));
+  }
   if (voz) utt.voice = voz;
   if (onEnd) {
     let fired = false;
@@ -126,6 +134,11 @@ class AmbientMusic {
 const ambientMusic = new AmbientMusic();
 
 // ─── Animación: Palming ───────────────────────────────────────────────────────
+const PalmingTextContent = () => {
+  const { t } = useLanguage();
+  return <text x="100" y="148" textAnchor="middle" fontSize="11" fill="#6b7280">{t('exerciseSession', 'animPalmingText')}</text>;
+};
+
 const PalmingAnimation = () => (
   <svg viewBox="0 0 200 160" className="w-full max-w-xs mx-auto" aria-label="Animación de palming">
     <defs>
@@ -162,11 +175,21 @@ const PalmingAnimation = () => (
     </g>
     {/* Ojos cubiertos */}
     <ellipse cx="100" cy="82" rx="22" ry="14" fill="#1e1b4b" opacity="0.85" />
-    <text x="100" y="148" textAnchor="middle" fontSize="11" fill="#6b7280">Cubre tus ojos con calor</text>
+    <PalmingTextContent />
   </svg>
 );
 
 // ─── Animación: Enfoque cercano-lejano ───────────────────────────────────────
+const FocusDistantLabel = () => {
+  const { t } = useLanguage();
+  return <text x="101" y="62" textAnchor="middle" fontSize="9" fill="#6b7280">{t('exerciseSession', 'animFocusFar')}</text>;
+};
+
+const FocusNearLabel = () => {
+  const { t } = useLanguage();
+  return <text x="103" y="148" textAnchor="middle" fontSize="9" fill="#6b7280">{t('exerciseSession', 'animFocusNear')}</text>;
+};
+
 const FocusAnimation = () => (
   <svg viewBox="0 0 220 160" className="w-full max-w-xs mx-auto" aria-label="Animación enfoque cercano-lejano">
     {/* Objeto LEJANO — árbol */}
@@ -175,7 +198,7 @@ const FocusAnimation = () => (
       <circle cx="101" cy="26" r="14" fill="#16a34a" />
       <animate attributeName="opacity" values="0.35;1;0.35" dur="4s" repeatCount="indefinite" begin="2s" />
     </g>
-    <text x="101" y="62" textAnchor="middle" fontSize="9" fill="#6b7280">Lejos (6 m)</text>
+    <FocusDistantLabel />
 
     {/* Pulgar CERCANO */}
     <g>
@@ -183,7 +206,7 @@ const FocusAnimation = () => (
       <ellipse cx="103" cy="98" rx="8" ry="10" fill="#fcd34d" stroke="#f59e0b" strokeWidth="1.5" />
       <animate attributeName="opacity" values="1;0.35;1" dur="4s" repeatCount="indefinite" begin="2s" />
     </g>
-    <text x="103" y="148" textAnchor="middle" fontSize="9" fill="#6b7280">Cerca (25 cm)</text>
+    <FocusNearLabel />
 
     {/* Ojo que mira arriba/abajo */}
     <g transform="translate(168, 75)">
@@ -208,6 +231,11 @@ const FocusAnimation = () => (
 );
 
 // ─── Animación: 20-20-20 ─────────────────────────────────────────────────────
+const Rule202020TextContent = () => {
+  const { t } = useLanguage();
+  return <text x="100" y="150" textAnchor="middle" fontSize="10" fill="#6b7280">{t('exerciseSession', 'animRule202020')}</text>;
+};
+
 const Rule202020Animation = () => (
   <svg viewBox="0 0 200 160" className="w-full max-w-xs mx-auto" aria-label="Animación regla 20-20-20">
     {/* Monitor */}
@@ -244,11 +272,16 @@ const Rule202020Animation = () => (
       <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite" />
     </line>
 
-    <text x="100" y="150" textAnchor="middle" fontSize="10" fill="#6b7280">Mira 6 m por 20 segundos</text>
+    <Rule202020TextContent />
   </svg>
 );
 
 // ─── Animación: Círculos oculares ────────────────────────────────────────────
+const CirclesTextContent = () => {
+  const { t } = useLanguage();
+  return <text x="100" y="172" textAnchor="middle" fontSize="10" fill="#6b7280">{t('exerciseSession', 'animCircles')}</text>;
+};
+
 const CirclesAnimation = () => (
   <svg viewBox="0 0 200 180" className="w-full max-w-xs mx-auto" aria-label="Animación círculos oculares">
     {/* Cara estilizada */}
@@ -283,11 +316,22 @@ const CirclesAnimation = () => (
     <ellipse cx="122" cy="88" rx="7" ry="7" fill="none" stroke="#6366f1" strokeWidth="1"
       strokeDasharray="3 3" opacity="0.5" />
 
-    <text x="100" y="172" textAnchor="middle" fontSize="10" fill="#6b7280">Mueve los ojos en círculos</text>
+    <CirclesTextContent />
   </svg>
 );
 
 // ─── Animación: Simulación cerca/lejos ───────────────────────────────────────
+const NearFarLabels = () => {
+  const { t } = useLanguage();
+  return (
+    <>
+      <text x="30" y="170" fontSize="9" fill="#1e40af" opacity="0.8">{t('exerciseSession', 'animNearFarFar')}</text>
+      <text x="162" y="170" fontSize="9" fill="#1e40af" opacity="0.8">{t('exerciseSession', 'animNearFarNear')}</text>
+      <text x="110" y="170" textAnchor="middle" fontSize="9" fill="#6b7280">{t('exerciseSession', 'animNearFarText')}</text>
+    </>
+  );
+};
+
 const NearFarSimulation = () => (
   <svg viewBox="0 0 220 180" className="w-full max-w-xs mx-auto" aria-label="Simulación objeto cerca y lejos">
     <defs>
@@ -317,79 +361,57 @@ const NearFarSimulation = () => (
       <animate attributeName="opacity" values="0.6;0;0.6" dur="4s" repeatCount="indefinite" />
     </circle>
 
-    <text x="30" y="170" fontSize="9" fill="#1e40af" opacity="0.8">LEJOS</text>
-    <text x="162" y="170" fontSize="9" fill="#1e40af" opacity="0.8">CERCA</text>
-    <text x="110" y="170" textAnchor="middle" fontSize="9" fill="#6b7280">Enfoca a distintas distancias</text>
+    <NearFarLabels />
   </svg>
 );
 
 // ─── Datos de ejercicios ──────────────────────────────────────────────────────
 type ExerciseDef = {
-  title: string;
-  duration: number;
-  steps: string[];
+  titleKey: string;
+  defaultDuration: number;
+  minDuration?: number;
+  maxDuration?: number;
+  stepsKey: string;
   AnimationComponent: () => ReactElement;
 };
 
 const exerciseData: Record<string, ExerciseDef> = {
   palming: {
-    title: 'Palming',
-    duration: 180,
-    steps: [
-      'Frota tus manos vigorosamente para generar calor',
-      'Coloca las palmas sobre tus ojos cerrados sin presionar',
-      'Mantén esta posición y respira profundamente',
-      'Visualiza oscuridad completa y relájate',
-      'Retira las manos lentamente después de 3 minutos',
-    ],
+    titleKey: 'exercises.palming',
+    defaultDuration: 180,
+    minDuration: 60,
+    maxDuration: 300,
+    stepsKey: 'exerciseSession.palmingSteps',
     AnimationComponent: PalmingAnimation,
   },
   focus: {
-    title: 'Enfoque cercano-lejano',
-    duration: 300,
-    steps: [
-      'Sostén tu pulgar a 25 cm de tu cara',
-      'Enfoca tu vista en el pulgar durante 5 segundos',
-      'Cambia el enfoque a un objeto lejano (3-6 metros)',
-      'Mantén el enfoque en el objeto lejano por 5 segundos',
-      'Repite el ciclo durante 5 minutos',
-    ],
+    titleKey: 'exercises.focus',
+    defaultDuration: 300,
+    minDuration: 60,
+    maxDuration: 300,
+    stepsKey: 'exerciseSession.focusSteps',
     AnimationComponent: FocusAnimation,
   },
   '20-20-20': {
-    title: 'Regla 20-20-20',
-    duration: 20,
-    steps: [
-      'Detén tu trabajo actual',
-      'Mira un objeto a 20 pies de distancia (6 metros)',
-      'Mantén la mirada por 20 segundos',
-      'Parpadea varias veces',
-      'Regresa a tu trabajo',
-    ],
+    titleKey: 'exercises.rule202020',
+    defaultDuration: 20,
+    stepsKey: 'exerciseSession.rule202020Steps',
     AnimationComponent: Rule202020Animation,
   },
   circles: {
-    title: 'Círculos oculares',
-    duration: 240,
-    steps: [
-      'Siéntate cómodamente con la espalda recta',
-      'Mira hacia arriba tanto como puedas',
-      'Mueve lentamente los ojos en círculos (sentido horario)',
-      'Completa 10 círculos, luego cambia de dirección',
-      'Parpadea varias veces al finalizar',
-    ],
+    titleKey: 'exercises.circles',
+    defaultDuration: 240,
+    minDuration: 60,
+    maxDuration: 300,
+    stepsKey: 'exerciseSession.circlesSteps',
     AnimationComponent: CirclesAnimation,
   },
   'near-far': {
-    title: 'Simulación cerca/lejos',
-    duration: 180,
-    steps: [
-      'Observa el objeto que aparece en pantalla',
-      'Cuando se vea grande (cerca), enfoca como si estuviera a 25 cm',
-      'Cuando se vea pequeño (lejos), relaja la vista hacia el horizonte',
-      'Sigue el ritmo de la animación sin forzar',
-      'Parpadea con normalidad durante todo el ejercicio',
-    ],
+    titleKey: 'exercises.nearFar',
+    defaultDuration: 180,
+    minDuration: 60,
+    maxDuration: 300,
+    stepsKey: 'exerciseSession.nearFarSteps',
     AnimationComponent: NearFarSimulation,
   },
 };
@@ -404,6 +426,7 @@ interface ExerciseSessionProps {
 
 const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }: ExerciseSessionProps) => {
   const { user } = useUser();
+  const { t, tArray, lang } = useLanguage();
 
   // Ejercicio actual y animación asociada
   const currentExercise = exerciseData[exerciseId] ?? exerciseData['palming'];
@@ -411,7 +434,8 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
 
   // El tiempo inicial se iguala desde el principio a la duración del ejercicio
   // para evitar que el timer “salte” en el primer render.
-  const [timeLeft, setTimeLeft]     = useState(currentExercise.duration);
+  const [selectedDuration, setSelectedDuration] = useState(currentExercise.defaultDuration);
+  const [timeLeft, setTimeLeft]     = useState(currentExercise.defaultDuration);
   const [isRunning, setIsRunning]   = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [isSaving, setIsSaving]     = useState(false);
@@ -424,8 +448,8 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   mutedRef.current   = muted;
   timeLeftRef.current = timeLeft;
 
-  const speakIfUnmuted = useCallback((text: string, onEnd?: () => void) => {
-    if (!mutedRef.current) speakText(text, onEnd);
+  const speakIfUnmuted = useCallback((text: string, spkLang: 'es' | 'en' = 'es', onEnd?: () => void) => {
+    if (!mutedRef.current) speakText(text, spkLang, onEnd);
     else onEnd?.();
   }, []);
 
@@ -440,7 +464,8 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const completionSpokenRef = useRef(false);
 
   useEffect(() => {
-    setTimeLeft(currentExercise.duration);
+    setSelectedDuration(currentExercise.defaultDuration);
+    setTimeLeft(currentExercise.defaultDuration);
     setIsRunning(false);
     setIsComplete(false);
     setShowSkipConfirm(false);
@@ -451,12 +476,12 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     ambientMusic.stop();
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-  }, [exerciseId, currentExercise.duration]);
+  }, [exerciseId, currentExercise.defaultDuration]);
 
   // ── Quartile milestones pre-computed ──────────────────────────────────────
   const milestones = useRef(new Set<number>());
   useEffect(() => {
-    const d = currentExercise.duration;
+    const d = selectedDuration;
     const m = new Set<number>();
     // 25%, 50%, 75% marks (as seconds remaining)
     if (d > 20) {
@@ -465,7 +490,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
       m.add(Math.floor(d * 0.25)); // 75% elapsed = 25% remaining
     }
     milestones.current = m;
-  }, [currentExercise.duration]);
+  }, [selectedDuration]);
 
   useEffect(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -477,34 +502,36 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           const next = prev - 1;
-          const d    = currentExercise.duration;
+          const d    = selectedDuration;
           const elapsed = d - next;
 
           // ── Voice announcements ──────────────────────────────────────────
           // Every full minute elapsed
           if (next > 0 && elapsed > 0 && elapsed % 60 === 0) {
             const mins = Math.floor(elapsed / 60);
-            speakIfUnmuted(`${mins} minuto${mins > 1 ? 's' : ''}`);
+            const minStr = lang === 'es' ? 'minuto' : 'minute';
+            const minPluralStr = lang === 'es' ? 'minutos' : 'minutes';
+            speakIfUnmuted(`${mins} ${mins > 1 ? minPluralStr : minStr}`, lang);
           }
 
           // Quartile milestones
           if (milestones.current.has(next) && next > 5) {
             const pct = Math.round(((d - next) / d) * 100);
-            if (pct === 25) speakIfUnmuted('Llevas el 25%');
-            else if (pct === 50) speakIfUnmuted('Llevas la mitad');
-            else if (pct === 75) speakIfUnmuted('Llevas el 75%, ya casi');
+            if (pct === 25) speakIfUnmuted(t('exerciseSession', 'voice25'), lang);
+            else if (pct === 50) speakIfUnmuted(t('exerciseSession', 'voice50'), lang);
+            else if (pct === 75) speakIfUnmuted(t('exerciseSession', 'voice75'), lang);
           }
 
           // 30 seconds remaining (only for exercises > 60s)
           if (next === 30 && d > 60) {
-            speakIfUnmuted('Faltan 30 segundos');
+            speakIfUnmuted(t('exerciseSession', 'voice30sec'), lang);
           }
 
           // Last 5 seconds countdown (evitar repetir el mismo número dos veces)
           if (next <= 5 && next > 0) {
             if (lastSpokenCountdownRef.current !== next) {
               lastSpokenCountdownRef.current = next;
-              speakIfUnmuted(`${next}`);
+              speakIfUnmuted(`${next}`, lang);
             }
           }
 
@@ -513,7 +540,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             ambientMusic.stop();
             if (!completionSpokenRef.current) {
               completionSpokenRef.current = true;
-              speakIfUnmuted('¡Ejercicio completado!');
+              speakIfUnmuted(t('exerciseSession', 'voiceComplete'), lang);
               playIfUnmuted(playComplete);
               saveExerciseToDatabase('completed');
             }
@@ -530,15 +557,16 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning]);
+  }, [isRunning, selectedDuration, lang]);
 
   const saveExerciseToDatabase = async (status: 'completed' | 'incomplete') => {
     setIsSaving(true);
     try {
-      const elapsed = currentExercise.duration - timeLeftRef.current;
+      const elapsed = selectedDuration - timeLeftRef.current;
+      const exerciseTitleKey = currentExercise.titleKey.split('.')[1];
       await sql`
         INSERT INTO historial_ejercicios (user_id, tipo_ejercicio, duracion, status, created_at)
-        VALUES (${user?.id}, ${currentExercise.title}, ${elapsed}, ${status}, NOW())
+        VALUES (${user?.id}, ${exerciseTitleKey}, ${elapsed}, ${status}, ${localISOString()})
       `;
       if (status === 'completed') setIsComplete(true);
     } catch (error) {
@@ -599,17 +627,17 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     }
 
     // Cuenta regresiva por voz: "El ejercicio comienza en 3, 2, 1"
-    if (!mutedRef.current && timeLeft === currentExercise.duration) {
+    if (!mutedRef.current && timeLeft === selectedDuration) {
       isCountingDownRef.current = true;
       // Decir "El ejercicio comienza en" y ESPERAR a que termine
-      speakText('El ejercicio comienza en', () => {
+      speakText(t('exerciseSession', 'voiceStartsIn'), lang, () => {
         if (!isCountingDownRef.current) return; // fue cancelado
         let count = 3;
         const tick = () => {
           if (!isCountingDownRef.current) return; // fue cancelado
           if (count > 0) {
             setCountdownNum(count);
-            speakText(`${count}`, () => {
+            speakText(`${count}`, lang, () => {
               count--;
               if (isCountingDownRef.current) {
                 startCountdownRef.current = setTimeout(tick, 300);
@@ -636,7 +664,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   };
 
   const handleReset = () => {
-    setTimeLeft(currentExercise.duration);
+    setTimeLeft(selectedDuration);
     setIsRunning(false);
     setIsComplete(false);
     setShowSkipConfirm(false);
@@ -646,9 +674,19 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     completionSpokenRef.current = false;
   };
 
-  const hasStarted = timeLeft < currentExercise.duration;
-  const rawProgress = ((currentExercise.duration - timeLeft) / currentExercise.duration) * 100;
+  const handleDurationSelect = (duration: number) => {
+    setSelectedDuration(duration);
+    setTimeLeft(duration);
+    setIsRunning(false);
+    cancelCountdown();
+  };
+
+  const hasStarted = timeLeft < selectedDuration;
+  const rawProgress = ((selectedDuration - timeLeft) / selectedDuration) * 100;
   const progress = hasStarted ? Math.min(Math.max(rawProgress, 0), 100) : 0;
+
+  // Show duration selector while exercise hasn't been started and isn't complete
+  const showDurationSelector = !isRunning && !hasStarted && !isComplete && currentExercise.minDuration !== undefined;
 
   if (isComplete) {
     return (
@@ -657,18 +695,18 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <span className="text-4xl text-white">✓</span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">¡Ejercicio Completado!</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">{t('exerciseSession', 'exerciseComplete')}</h2>
           <p className="text-gray-600 mb-2">
-            Has completado "{currentExercise.title}" exitosamente
+            {t('exerciseSession', 'completedSuccess')} "{t(currentExercise.titleKey.split('.')[0], currentExercise.titleKey.split('.')[1])}" {t('exerciseSession', 'completedSuccessSuffix')}
           </p>
           {isSaving ? (
-            <p className="text-sm text-gray-500 mb-6">Guardando en tu historial...</p>
+            <p className="text-sm text-gray-500 mb-6">{t('exerciseSession', 'savingHistory')}</p>
           ) : (
-            <p className="text-sm text-green-600 mb-6">✓ Guardado en tu historial</p>
+            <p className="text-sm text-green-600 mb-6">✓ {t('exerciseSession', 'savedHistory')}</p>
           )}
           {queueRemaining > 0 && (
             <p className="text-sm text-indigo-600 font-medium mb-4">
-              🏃 Rutina en progreso — quedan {queueRemaining} ejercicio{queueRemaining > 1 ? 's' : ''}
+              🏃 {t('exerciseSession', 'routineInProgress')} {queueRemaining} {queueRemaining > 1 ? t('exerciseSession', 'exercisesRemainingPlural') : t('exerciseSession', 'exercisesRemaining')} {t('exerciseSession', 'remaining')}
             </p>
           )}
           <div className="flex gap-4">
@@ -676,21 +714,21 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
               onClick={handleReset}
               className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
             >
-              Repetir
+              {t('common', 'repeat')}
             </button>
             {onComplete ? (
               <button
                 onClick={onComplete}
                 className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
               >
-                {queueRemaining > 0 ? `Siguiente ejercicio →` : 'Finalizar rutina'}
+                {queueRemaining > 0 ? t('exerciseSession', 'nextExercise') : t('exerciseSession', 'finishRoutine')}
               </button>
             ) : (
               <button
                 onClick={onBack}
                 className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
               >
-                Finalizar
+                {t('common', 'finish')}
               </button>
             )}
           </div>
@@ -705,13 +743,13 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button onClick={handleBack} className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
-            <ArrowLeft className="w-5 h-5" /> Volver
+            <ArrowLeft className="w-5 h-5" /> {t('common', 'back')}
           </button>
           <div className="flex items-center gap-2">
             {/* Botón silencio */}
             <button
               onClick={() => setMuted(m => !m)}
-              title={muted ? 'Activar sonido' : 'Silenciar'}
+              title={muted ? t('exerciseSession', 'unmute') : t('exerciseSession', 'mute')}
               className={`p-2 rounded-lg transition ${muted ? 'bg-gray-200 text-gray-500' : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
             >
               {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -723,7 +761,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
                 className="flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-800 bg-orange-50 hover:bg-orange-100 px-3 py-2 rounded-lg transition font-semibold"
               >
                 <SkipForward className="w-4 h-4" />
-                Saltar
+                {t('exerciseSession', 'skip')}
               </button>
             )}
           </div>
@@ -734,23 +772,23 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
               <SkipForward className="w-12 h-12 text-orange-500 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-gray-800 mb-2">¿Saltar este ejercicio?</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">{t('exerciseSession', 'skipConfirmTitle')}</h3>
               <p className="text-sm text-gray-600 mb-5">
-                "{currentExercise.title}" se guardará como <span className="font-semibold text-orange-600">incompleto</span>.
-                {queueRemaining > 0 && ` Quedan ${queueRemaining} ejercicio${queueRemaining > 1 ? 's' : ''} en la rutina.`}
+                "{t(currentExercise.titleKey.split('.')[0], currentExercise.titleKey.split('.')[1])}" {t('exerciseSession', 'skipConfirmMsg')} <span className="font-semibold text-orange-600">incompleto</span>.
+                {queueRemaining > 0 && ` ${t('exerciseSession', 'remainingInRoutine').replace('en la rutina.', '')} ${queueRemaining} ${queueRemaining > 1 ? t('exerciseSession', 'exercisesRemainingPlural') : t('exerciseSession', 'exercisesRemaining')} ${t('exerciseSession', 'remainingInRoutine').split('en la rutina')[0]}`}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowSkipConfirm(false)}
                   className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition"
                 >
-                  Continuar aquí
+                  {t('exerciseSession', 'continueHere')}
                 </button>
                 <button
                   onClick={handleSkipConfirmed}
                   className="flex-1 py-2.5 rounded-xl bg-orange-500 text-white font-semibold hover:bg-orange-600 transition"
                 >
-                  Sí, saltar
+                  {t('exerciseSession', 'yesSkip')}
                 </button>
               </div>
             </div>
@@ -759,17 +797,47 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-1 text-center">
-            {currentExercise.title}
+            {t(currentExercise.titleKey.split('.')[0], currentExercise.titleKey.split('.')[1])}
           </h1>
           <p className="text-gray-500 text-center mb-6 text-sm">
-            Duración: {Math.floor(currentExercise.duration / 60)} min
-            {currentExercise.duration % 60 !== 0 ? ` ${currentExercise.duration % 60} seg` : ''}
+            {t('common', 'duration')}: {Math.floor(selectedDuration / 60)} {t('common', 'min')}
+            {selectedDuration % 60 !== 0 ? ` ${selectedDuration % 60} ${t('common', 'sec')}` : ''}
           </p>
+
+          {/* ── Duration Selector (solo si está disponible y no ha empezado) ── */}
+          {showDurationSelector && currentExercise.minDuration !== undefined && currentExercise.maxDuration !== undefined && (
+            <div className="mb-6 p-4 bg-indigo-50 rounded-lg border-2 border-indigo-200">
+              <p className="text-sm font-semibold text-gray-800 mb-3 text-center">
+                {t('exercises', 'selectDuration')}
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {[60, 90, 120, 150, 180, 210, 240, 270, 300].map((duration) => {
+                  const mins = Math.floor(duration / 60);
+                  const secs = duration % 60;
+                  const durationLabel = secs > 0 ? `${mins}.${secs}` : `${mins}`;
+                  const isSelected = selectedDuration === duration;
+                  return (
+                    <button
+                      key={duration}
+                      onClick={() => handleDurationSelect(duration)}
+                      className={`px-4 py-2 rounded-full font-medium transition ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-lg'
+                          : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-400'
+                      }`}
+                    >
+                      {durationLabel} {t('common', 'min')}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── Animación visual ── */}
           <div className="mb-6 p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-100">
             <p className="text-xs text-center text-indigo-400 mb-3 uppercase tracking-widest font-semibold">
-              Así se realiza
+              {t('exerciseSession', 'howToDo')}
             </p>
             <AnimationComponent />
           </div>
@@ -782,7 +850,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
                 <circle
                   cx="50" cy="50" r="44"
                   fill="none"
-                  stroke={timeLeft <= Math.min(30, Math.floor(currentExercise.duration * 0.25)) ? '#ef4444' : '#6366f1'}
+                  stroke={timeLeft <= Math.min(30, Math.floor(selectedDuration * 0.25)) ? '#ef4444' : '#6366f1'}
                   strokeWidth="8"
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 44}`}
@@ -790,13 +858,13 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
                   style={{ transition: hasStarted ? 'stroke-dashoffset 0.5s ease, stroke 0.3s ease' : 'stroke 0.3s ease' }}
                 />
               </svg>
-              <span className={`text-4xl font-bold z-10 ${timeLeft <= Math.min(30, Math.floor(currentExercise.duration * 0.25)) ? 'text-red-500' : 'text-gray-800'}`}>
+              <span className={`text-4xl font-bold z-10 ${timeLeft <= Math.min(30, Math.floor(selectedDuration * 0.25)) ? 'text-red-500' : 'text-gray-800'}`}>
                 {formatTime(timeLeft)}
               </span>
             </div>
-            {timeLeft <= Math.min(30, Math.floor(currentExercise.duration * 0.25)) && timeLeft > 0 && isRunning && (
+            {timeLeft <= Math.min(30, Math.floor(selectedDuration * 0.25)) && timeLeft > 0 && isRunning && (
               <p className="text-center text-xs text-red-400 mt-2 font-medium">
-                ¡Casi terminas!
+                {t('exerciseSession', 'almostDone')}
               </p>
             )}
             {countdownNum !== null && !isRunning && (
@@ -824,9 +892,9 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
 
           {/* ── Instrucciones ── */}
           <div className="bg-blue-50 rounded-xl p-6">
-            <h3 className="font-semibold text-gray-800 mb-4 text-lg">Pasos a seguir:</h3>
+            <h3 className="font-semibold text-gray-800 mb-4 text-lg">{t('exerciseSession', 'stepsTitle')}</h3>
             <ol className="space-y-3">
-              {currentExercise.steps.map((step, index) => (
+              {tArray(currentExercise.stepsKey.split('.')[0], currentExercise.stepsKey.split('.')[1]).map((step: string, index: number) => (
                 <li key={index} className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
                     {index + 1}

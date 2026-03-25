@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { sql } from '../neonCliente';
+import { useLanguage } from '../i18n';
 import bcrypt from 'bcryptjs';
 import { generarCodigo, enviarCorreoVerificacion } from '../utils/emailService';
 
@@ -28,12 +29,14 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const { t } = useLanguage();
+
   // Validaciones de contraseña en tiempo real
   const passwordRequirements: PasswordRequirement[] = [
-    { label: 'Mínimo 8 caracteres', valid: formData.password.length >= 8 },
-    { label: 'Al menos una mayúscula', valid: /[A-Z]/.test(formData.password) },
-    { label: 'Al menos una minúscula', valid: /[a-z]/.test(formData.password) },
-    { label: 'Al menos un número', valid: /[0-9]/.test(formData.password) },
+    { label: t('register', 'pwdReqMin'), valid: formData.password.length >= 8 },
+    { label: t('register', 'pwdReqUpper'), valid: /[A-Z]/.test(formData.password) },
+    { label: t('register', 'pwdReqLower'), valid: /[a-z]/.test(formData.password) },
+    { label: t('register', 'pwdReqNumber'), valid: /[0-9]/.test(formData.password) },
   ];
 
   const passwordValida = passwordRequirements.every(r => r.valid);
@@ -44,19 +47,19 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
 
     // Validaciones
     if (!passwordValida) {
-      setError('La contraseña no cumple los requisitos');
+      setError(t('register', 'errorPwdReq'));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setError(t('register', 'errorPwdMatch'));
       return;
     }
 
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError('El formato del correo no es válido');
+      setError(t('register', 'errorEmailFormat'));
       return;
     }
 
@@ -65,13 +68,13 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
     try {
       // Verificar si el email ya existe en BD
       const existingUser = await sql`
-        SELECT email FROM users 
+        SELECT email FROM users
         WHERE email = ${formData.email}
         LIMIT 1
       `;
 
       if (existingUser.length > 0) {
-        setError('Este correo ya está registrado');
+        setError(t('register', 'errorEmailExists'));
         setLoading(false);
         return;
       }
@@ -96,7 +99,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
 
     } catch (err) {
       console.error('Error:', err);
-      setError('Error al enviar el correo de verificación. Intenta de nuevo.');
+      setError(t('register', 'errorGeneral'));
     } finally {
       setLoading(false);
     }
@@ -110,15 +113,15 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
         >
           <ArrowLeft className="w-5 h-5" />
-          Volver
+          {t('common', 'back')}
         </button>
 
         <div className="text-center mb-8">
           <div className="inline-block p-3 bg-indigo-600 rounded-full mb-4">
             <Eye className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Crear Cuenta</h1>
-          <p className="text-gray-600">Únete a Therapeye</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t('register', 'title')}</h1>
+          <p className="text-gray-600">{t('register', 'subtitle')}</p>
         </div>
 
         {error && (
@@ -131,7 +134,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
           {/* Nombre */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre completo
+              {t('register', 'nameLabel')}
             </label>
             <input
               id="name"
@@ -139,7 +142,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              placeholder="Juan Pérez"
+              placeholder={t('register', 'namePlaceholder')}
               required
             />
           </div>
@@ -147,7 +150,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
           {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Correo electrónico
+              {t('register', 'emailLabel')}
             </label>
             <input
               id="email"
@@ -155,7 +158,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              placeholder="tu@email.com"
+              placeholder={t('register', 'emailPlaceholder')}
               required
             />
           </div>
@@ -163,7 +166,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
           {/* Contraseña */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Contraseña
+              {t('register', 'passwordLabel')}
             </label>
             <div className="relative">
               <input
@@ -205,7 +208,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
           {/* Confirmar contraseña */}
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-              Confirmar contraseña
+              {t('register', 'confirmPasswordLabel')}
             </label>
             <div className="relative">
               <input
@@ -232,7 +235,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
               </button>
             </div>
             {formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword && (
-              <p className="text-xs text-red-400 mt-1">Las contraseñas no coinciden</p>
+              <p className="text-xs text-red-400 mt-1">{t('register', 'errorPwdMatch')}</p>
             )}
           </div>
 
@@ -241,14 +244,14 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
             disabled={loading || !passwordValida}
             className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Enviando código...' : 'Crear cuenta'}
+            {loading ? t('register', 'submitting') : t('register', 'submit')}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-600 mt-6">
-          ¿Ya tienes cuenta?{' '}
+          {t('register', 'hasAccount')}{' '}
           <button onClick={onBack} className="text-indigo-600 font-semibold hover:text-indigo-700">
-            Inicia sesión
+            {t('register', 'signIn')}
           </button>
         </p>
       </div>

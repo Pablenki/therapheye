@@ -1,93 +1,69 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, Eye, CheckCircle, RefreshCw, Mic, MicOff, Keyboard, Home } from 'lucide-react';
-import { sql } from '../neonCliente';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowLeft, Eye, CheckCircle, RefreshCw, Mic, MicOff, Keyboard, Home, XCircle } from 'lucide-react';
+import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../i18n';
 
 // ─── Letras Snellen válidas (optotipos estándar) ───────────────────────────────
 const SNELLEN_POOL = ['C', 'D', 'E', 'F', 'H', 'N', 'O', 'P', 'R', 'U', 'V', 'Z'];
 
-// Configuración de niveles (tamaño fijo, letras aleatorias cada vez)
+// ─── Configuración de niveles — counts más realistas para validación letra a letra
 const ROWS_CONFIG = [
   { fontSize: 96, acuity: '20/200', level: 1,  count: 1 },
   { fontSize: 72, acuity: '20/150', level: 2,  count: 2 },
   { fontSize: 56, acuity: '20/100', level: 3,  count: 3 },
-  { fontSize: 42, acuity: '20/70',  level: 4,  count: 4 },
-  { fontSize: 32, acuity: '20/50',  level: 5,  count: 5 },
-  { fontSize: 24, acuity: '20/40',  level: 6,  count: 6 },
-  { fontSize: 18, acuity: '20/30',  level: 7,  count: 7 },
-  { fontSize: 14, acuity: '20/20',  level: 8,  count: 8 },
-  { fontSize: 11, acuity: '20/15',  level: 9,  count: 8 },
-  { fontSize: 9,  acuity: '20/10',  level: 10, count: 8 },
+  { fontSize: 42, acuity: '20/70',  level: 4,  count: 3 },
+  { fontSize: 32, acuity: '20/50',  level: 5,  count: 4 },
+  { fontSize: 24, acuity: '20/40',  level: 6,  count: 4 },
+  { fontSize: 18, acuity: '20/30',  level: 7,  count: 3 },
+  { fontSize: 14, acuity: '20/20',  level: 8,  count: 3 },
+  { fontSize: 11, acuity: '20/15',  level: 9,  count: 2 },
+  { fontSize: 9,  acuity: '20/10',  level: 10, count: 1 },
 ];
 
 interface RowData { label: string; fontSize: number; acuity: string; level: number; }
 
-// Genera letras aleatorias para cada nivel, diferente cada test
 const generateRandomRows = (): RowData[] =>
   ROWS_CONFIG.map(cfg => {
     const shuffled = [...SNELLEN_POOL].sort(() => Math.random() - 0.5);
-    const letters  = shuffled.slice(0, cfg.count);
-    return { fontSize: cfg.fontSize, acuity: cfg.acuity, level: cfg.level, label: letters.join(' ') };
+    return {
+      fontSize: cfg.fontSize,
+      acuity: cfg.acuity,
+      level: cfg.level,
+      label: shuffled.slice(0, cfg.count).join(' '),
+    };
   });
 
-// ─── Mapas fonéticos: sonido → letra ──────────────────────────────────────────
-// Español: cómo se pronuncia cada letra del abecedario (más variantes posibles)
+// ─── Mapas fonéticos ───────────────────────────────────────────────────────────
 const LETTER_MAP_ES: Record<string, string> = {
-  // A
-  'a': 'A',
-  // B
-  'b': 'B', 'be': 'B', 'bé': 'B', 've corta': 'B',
-  // C
-  'c': 'C', 'ce': 'C', 'cé': 'C', 'se': 'C',
-  // D
-  'd': 'D', 'de': 'D', 'dé': 'D',
-  // E
-  'e': 'E', 'eh': 'E', 'ee': 'E',
-  // F
-  'f': 'F', 'efe': 'F', 'ef': 'F',
-  // G
-  'g': 'G', 'ge': 'G', 'gé': 'G',
-  // H
-  'h': 'H', 'hache': 'H', 'ache': 'H',
-  // I
-  'i': 'I',
-  // J
-  'j': 'J', 'jota': 'J',
-  // K
+  'a': 'A', 'ah': 'A', 'ha': 'A',
+  'b': 'B', 'be': 'B', 'bé': 'B', 've corta': 'B', 'bbe': 'B',
+  'c': 'C', 'ce': 'C', 'cé': 'C', 'se': 'C', 'si': 'C', 'see': 'C', 'sé': 'C', 'le ce': 'C', 'la ce': 'C', 'sea': 'C', 'ze': 'C',
+  'd': 'D', 'de': 'D', 'dé': 'D', 'the': 'D', 'le de': 'D', 'la de': 'D',
+  'e': 'E', 'eh': 'E', 'ee': 'E', 'le e': 'E', 'la e': 'E', 'hee': 'E', 'le': 'E', 'é': 'E',
+  'f': 'F', 'efe': 'F', 'ef': 'F', 'fe': 'F',
+  'g': 'G', 'ge': 'G', 'gé': 'G', 'je': 'G', 'jé': 'G',
+  'h': 'H', 'hache': 'H', 'ache': 'H', 'hachey': 'H', 'la hache': 'H', 'ach': 'H',
+  'i': 'I', 'hi': 'I', 'la i': 'I',
+  'j': 'J', 'jota': 'J', 'jo': 'J',
   'k': 'K', 'ka': 'K',
-  // L
-  'l': 'L', 'ele': 'L', 'el': 'L',
-  // M
-  'm': 'M', 'eme': 'M', 'em': 'M',
-  // N
-  'n': 'N', 'ene': 'N', 'en': 'N',
-  // O
-  'o': 'O', 'oh': 'O', 'oo': 'O',
-  // P
-  'p': 'P', 'pe': 'P', 'pé': 'P',
-  // Q
+  'l': 'L', 'ele': 'L', 'el': 'L', 'la ele': 'L',
+  'm': 'M', 'eme': 'M', 'em': 'M', 'la eme': 'M',
+  'n': 'N', 'ene': 'N', 'en': 'N', 'la ene': 'N',
+  'o': 'O', 'oh': 'O', 'oo': 'O', 'ho': 'O',
+  'p': 'P', 'pe': 'P', 'pé': 'P', 'la pe': 'P',
   'q': 'Q', 'cu': 'Q',
-  // R
-  'r': 'R', 'erre': 'R', 're': 'R',
-  // S
-  's': 'S', 'ese': 'S',
-  // T
-  't': 'T', 'te': 'T', 'té': 'T',
-  // U
-  'u': 'U', 'uu': 'U',
-  // V
-  'v': 'V', 've': 'V', 'uve': 'V',
-  // W
+  'r': 'R', 'erre': 'R', 're': 'R', 'la erre': 'R', 'ere': 'R',
+  's': 'S', 'ese': 'S', 'la ese': 'S', 'es': 'S',
+  't': 'T', 'te': 'T', 'té': 'T', 'la te': 'T',
+  'u': 'U', 'uu': 'U', 'hu': 'U', 'la u': 'U',
+  'v': 'V', 've': 'V', 'uve': 'V', 'la ve': 'V', 'la uve': 'V', 'be chica': 'V',
   'w': 'W', 'doble ve': 'W', 'doble uve': 'W', 'doble u': 'W',
-  // X
   'x': 'X', 'equis': 'X', 'ex': 'X',
-  // Y
   'y': 'Y', 'ye': 'Y', 'i griega': 'Y',
-  // Z
-  'z': 'Z', 'zeta': 'Z', 'ceta': 'Z', 'seta': 'Z',
+  'z': 'Z', 'zeta': 'Z', 'ceta': 'Z', 'seta': 'Z', 'ceda': 'Z', 'la zeta': 'Z', 'zed': 'Z',
 };
 
-// Inglés: fonética estándar
 const LETTER_MAP_EN: Record<string, string> = {
   'a': 'A', 'ay': 'A',
   'b': 'B', 'bee': 'B',
@@ -96,7 +72,7 @@ const LETTER_MAP_EN: Record<string, string> = {
   'e': 'E', 'ee': 'E', 'eh': 'E',
   'f': 'F', 'ef': 'F', 'eff': 'F',
   'g': 'G', 'gee': 'G',
-  'h': 'H', 'aitch': 'H',
+  'h': 'H', 'aitch': 'H', 'haitch': 'H',
   'i': 'I', 'eye': 'I',
   'j': 'J', 'jay': 'J',
   'k': 'K', 'kay': 'K',
@@ -117,53 +93,64 @@ const LETTER_MAP_EN: Record<string, string> = {
   'z': 'Z', 'zee': 'Z', 'zed': 'Z',
 };
 
-// Para el hint de instrucciones (letra → cómo pronunciarla)
+// Pronunciación para el hint (letra → cómo pronunciarla en ES)
 const PRONOUNCE_ES: Record<string, string> = {
   C: 'ce', D: 'de', E: 'e', F: 'efe', H: 'hache',
   N: 'ene', O: 'o', P: 'pe', R: 'erre', U: 'u', V: 've', Z: 'zeta',
 };
+const PRONOUNCE_EN: Record<string, string> = {
+  C: 'see', D: 'dee', E: 'ee', F: 'eff', H: 'aitch',
+  N: 'en', O: 'oh', P: 'pee', R: 'ar', U: 'you', V: 'vee', Z: 'zee',
+};
 
-// ─── Convierte transcripción a letras ─────────────────────────────────────────
-// Estrategia multicapa para maximizar detección de letras individuales
-const speechToLetters = (
+// ─── Extrae UNA sola letra de la transcripción ────────────────────────────────
+// KEY FIX: si la letra esperada aparece entre las detectadas → aceptar
+// Esto evita el bug de "EEE" cuando el usuario dice "E" repetido.
+const extractSingleLetter = (
   transcript: string,
   lang: 'es' | 'en',
-  expectedLetters?: string[],   // letras que esperamos (para priorizar)
+  expected?: string,
 ): string => {
   const map  = lang === 'es' ? LETTER_MAP_ES : LETTER_MAP_EN;
-  // También probar el mapa opuesto como fallback (alguien puede decir "ef" en modo español)
   const map2 = lang === 'es' ? LETTER_MAP_EN : LETTER_MAP_ES;
   const lower = transcript.toLowerCase().trim();
   const words = lower.split(/\s+/).filter(Boolean);
 
   const mapWord = (word: string): string | null => {
-    if (map[word])  return map[word];   // mapa primario
-    if (map2[word]) return map2[word];  // mapa secundario (cross-lang)
-    if (word.length === 1 && /[a-z]/.test(word)) return word.toUpperCase(); // letra suelta
+    if (map[word])  return map[word];
+    if (map2[word]) return map2[word];
+    if (word.length === 1 && /[a-z]/.test(word)) return word.toUpperCase();
     return null;
   };
 
-  // Estrategia 1: mapear cada palabra
-  const mapped = words.map(mapWord);
-  if (mapped.length > 0 && mapped.every(l => l !== null)) return mapped.join('');
+  const mapped = words.map(mapWord).filter(Boolean) as string[];
 
-  // Estrategia 2: palabras no mapeadas → primera letra de esa palabra
-  // Ej: "hola" → "H", "pato" → "P"
-  const fallback = mapped.map((l, i) => l ?? words[i][0]?.toUpperCase() ?? '').join('');
+  // Si la letra esperada aparece en cualquier posición → aceptar directamente
+  // (cubre el caso de repetición: "EEE" cuando esperamos "E")
+  if (expected && mapped.includes(expected)) return expected;
 
-  // Estrategia 3: Si esperamos letras específicas, verificar si el fallback contiene alguna
-  if (expectedLetters && expectedLetters.length === 1) {
-    const exp = expectedLetters[0];
-    // Si el transcript empieza con el sonido de la letra esperada, aceptarla
-    if (lower.startsWith(exp.toLowerCase())) return exp;
-    // Si la primera letra del fallback coincide con lo esperado, aceptarla
-    if (fallback[0] === exp) return exp;
-  }
+  // Intentar también con todo el texto junto (para "la ce" → map["la ce"])
+  if (map[lower])  return map[lower];
+  if (map2[lower]) return map2[lower];
 
-  return fallback;
+  // Verificar si la transcripción contiene la letra esperada como carácter
+  // (ej: el usuario dice "e" y la API devuelve "e" o "he" o similar)
+  if (expected && lower.includes(expected.toLowerCase())) return expected;
+
+  // Devolver la primera letra mapeada que esté en el pool Snellen
+  const validMapped = mapped.find(l => SNELLEN_POOL.includes(l));
+  if (validMapped) return validMapped;
+
+  // Primera letra mapeada aunque no sea Snellen
+  if (mapped.length > 0) return mapped[0];
+
+  // Último recurso: primera letra del primer carácter (si es una letra válida)
+  const firstChar = lower[0]?.toUpperCase() ?? '';
+  if (firstChar && /[A-Z]/.test(firstChar)) return firstChar;
+  return '';
 };
 
-// ─── Detectar SpeechRecognition (Chrome, Opera, Edge, Safari) ─────────────────
+// ─── Detección de SpeechRecognition ──────────────────────────────────────────
 const SpeechRecognitionAPI: any =
   (window as any).SpeechRecognition ||
   (window as any).webkitSpeechRecognition ||
@@ -173,28 +160,184 @@ const SpeechGrammarListAPI: any =
   (window as any).SpeechGrammarList ||
   (window as any).webkitSpeechGrammarList;
 const hasSpeechSupport = Boolean(SpeechRecognitionAPI);
-
-// Opera usa Chromium pero NO tiene el servicio de Google Speech API integrado.
-// El mic se solicita pero no devuelve resultados. → Redirigir a Chrome.
 const isOpera = /OPR\/|Opera/.test(navigator.userAgent);
 
-type Phase = 'instructions' | 'test' | 'result';
-type VoiceStatus = 'idle' | 'listening' | 'heard' | 'error';
+// ─── Detección de navegador soportado para voz ──────────────────────────────
+// Solo Chrome, Edge y Firefox están confirmados como funcionales con SpeechRecognition.
+// Brave, Opera y otros pueden tener el API pero se traban/fallan.
+const ua = navigator.userAgent;
+const isChrome = /Chrome\//.test(ua) && !/OPR\/|Opera|Brave|Edg/.test(ua);
+const isEdge = /Edg\//.test(ua);
+const isFirefox = /Firefox\//.test(ua);
+const isBrave = (navigator as any).brave !== undefined;
+const isSupportedBrowser = isChrome || isEdge || isFirefox;
+const voiceAvailable = hasSpeechSupport && isSupportedBrowser && !isBrave;
 
-interface RowResult { level: number; acuity: string; canRead: boolean; userInput: string; }
+// ─── Traducciones completas ES / EN ──────────────────────────────────────────
+type Lang = 'es' | 'en';
 
-const getResultInfo = (bestLevel: number) => {
-  if (bestLevel >= 9)  return { label: 'Visión excepcional (20/15 – 20/10)', detail: 'Tu agudeza visual está por encima del promedio normal.', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', recommendation: 'Mantén tus hábitos visuales y descansa la vista cada 20 minutos.' };
-  if (bestLevel >= 8)  return { label: 'Visión normal (20/20)', detail: 'Tu agudeza visual es óptima para la distancia de pantalla.', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', recommendation: 'Mantén buenos hábitos visuales. Realiza ejercicios de prevención.' };
-  if (bestLevel >= 6)  return { label: 'Visión buena (20/30 – 20/40)', detail: 'Ligera dificultad en líneas pequeñas. Puede ser cansancio acumulado.', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', recommendation: 'Realiza el ejercicio de enfoque cercano-lejano y aplica la regla 20-20-20.' };
-  if (bestLevel >= 4)  return { label: 'Visión reducida (20/50 – 20/70)', detail: 'Dificultad notable en caracteres medianos. Posible fatiga acumulada.', color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200', recommendation: 'Practica palming y regla 20-20-20. Si persiste, consulta a un optometrista.' };
-  return { label: 'Visión limitada (20/100 o menos)', detail: 'Solo puedes leer caracteres grandes. Se recomienda evaluación profesional.', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', recommendation: 'Consulta a un optometrista. Evita pantallas prolongadas sin descanso.' };
+const UI: Record<Lang, {
+  title: string; subtitle: string; warning: string;
+  step1: string; step2voice: string; step3voice: string; step4voice: string;
+  step2keyboard: string; step3keyboard: string;
+  voiceTip: string; inputModeLabel: string;
+  voiceBtn: string; keyboardBtn: string;
+  langLabel: string; langEs: string; langEn: string;
+  distanceLabel: string; startBtn: string; notAvailable: string;
+  levelOf: string; targetAcuity: string;
+  letterLabel: string; attemptLabel: string;
+  speakNow: string; iHeard: string;
+  retryBtn: string; confirmBtn: string;
+  useKeyboard: string; useVoice: string; exitBtn: string;
+  typeLetter: string; noSpaces: string;
+  promptSingle: string; promptLetterOf: (n: number, t: number) => string;
+  testCompleted: string; saving: string;
+  detailByLevel: string; repeatBtn: string; backDashboard: string;
+  operaTitle: string; operaDetail: string; copyUrl: string;
+  retryOf: (n: number) => string; failedLevel: string;
+}> = {
+  es: {
+    title: 'Prueba de Agudeza Visual',
+    subtitle: '10 niveles · Carta tipo Snellen · Letras aleatorias',
+    warning: 'Esta prueba es orientativa y no sustituye una evaluación optométrica profesional.',
+    step1: 'Colócate a la distancia indicada y cubre un ojo.',
+    step2voice: 'El micrófono se abrirá automáticamente para cada letra.',
+    step3voice: 'Di la letra en voz alta. Se valida una letra a la vez.',
+    step4voice: 'Tienes un reintento por letra. Si fallas el reintento, termina el test.',
+    step2keyboard: 'Escribe la letra que veas y presiona Enter.',
+    step3keyboard: 'Una letra a la vez. Tienes un reintento si fallas.',
+    voiceTip: 'Consejo: di con calma → "cé", "de", "ene", "erre", "uve", "zeta".',
+    inputModeLabel: 'Modo de entrada:',
+    voiceBtn: 'Voz',
+    keyboardBtn: 'Teclado',
+    langLabel: 'Idioma de reconocimiento:',
+    langEs: '🇲🇽 Español',
+    langEn: '🇺🇸 English',
+    distanceLabel: '¿A qué distancia está tu pantalla?',
+    startBtn: 'Comenzar prueba',
+    notAvailable: '(no disponible)',
+    levelOf: 'de',
+    targetAcuity: 'Agudeza objetivo:',
+    letterLabel: 'Letra',
+    attemptLabel: 'Intento',
+    speakNow: 'Di la letra en voz alta…',
+    iHeard: 'Escuché:',
+    retryBtn: '🔄 Reintentar',
+    confirmBtn: 'Confirmar',
+    useKeyboard: 'Usar teclado',
+    useVoice: 'Usar voz',
+    exitBtn: 'Salir',
+    typeLetter: 'Escribe la letra que ves…',
+    noSpaces: 'Solo una letra · distancia configurada',
+    promptSingle: '¿Qué letra ves?',
+    promptLetterOf: (n, t) => `Letra ${n} de ${t}. ¿Qué letra ves?`,
+    testCompleted: 'Prueba completada',
+    saving: 'Guardando resultado…',
+    detailByLevel: 'Detalle por nivel:',
+    repeatBtn: 'Repetir',
+    backDashboard: 'Volver al Dashboard',
+    operaTitle: 'Reconocimiento de voz no disponible en este navegador',
+    operaDetail: 'El reconocimiento de voz solo funciona en Google Chrome, Microsoft Edge o Firefox. Abre esta página en uno de esos navegadores.',
+    copyUrl: '📋 Copiar URL',
+    retryOf: (n) => `Intento ${n}/2`,
+    failedLevel: 'Nivel fallado — prueba terminada',
+  },
+  en: {
+    title: 'Visual Acuity Test',
+    subtitle: '10 levels · Snellen chart · Random letters',
+    warning: 'This test is informational and does not replace a professional optometric evaluation.',
+    step1: 'Position yourself at the indicated distance and cover one eye.',
+    step2voice: 'The microphone will open automatically for each letter.',
+    step3voice: 'Say each letter clearly. One letter is validated at a time.',
+    step4voice: 'You get one retry per letter. If you fail the retry, the test ends.',
+    step2keyboard: 'Type the letter you see and press Enter.',
+    step3keyboard: 'One letter at a time. One retry if you fail.',
+    voiceTip: 'Tip: speak clearly → "see", "dee", "en", "ar", "vee", "zee".',
+    inputModeLabel: 'Input mode:',
+    voiceBtn: 'Voice',
+    keyboardBtn: 'Keyboard',
+    langLabel: 'Recognition language:',
+    langEs: '🇲🇽 Español',
+    langEn: '🇺🇸 English',
+    distanceLabel: 'How far are you from the screen?',
+    startBtn: 'Start test',
+    notAvailable: '(not available)',
+    levelOf: 'of',
+    targetAcuity: 'Target acuity:',
+    letterLabel: 'Letter',
+    attemptLabel: 'Attempt',
+    speakNow: 'Say the letter out loud…',
+    iHeard: 'I heard:',
+    retryBtn: '🔄 Try again',
+    confirmBtn: 'Confirm',
+    useKeyboard: 'Use keyboard',
+    useVoice: 'Use voice',
+    exitBtn: 'Exit',
+    typeLetter: 'Type the letter you see…',
+    noSpaces: 'One letter only · configured distance',
+    promptSingle: 'What letter do you see?',
+    promptLetterOf: (n, t) => `Letter ${n} of ${t}. What letter do you see?`,
+    testCompleted: 'Test completed',
+    saving: 'Saving result…',
+    detailByLevel: 'Detail by level:',
+    repeatBtn: 'Repeat',
+    backDashboard: 'Back to Dashboard',
+    operaTitle: 'Voice recognition not available in this browser',
+    operaDetail: 'Voice recognition only works in Google Chrome, Microsoft Edge, or Firefox. Open this page in one of those browsers.',
+    copyUrl: '📋 Copy URL',
+    retryOf: (n) => `Attempt ${n}/2`,
+    failedLevel: 'Level failed — test ended',
+  },
 };
 
-const normalize = (s: string) => s.replace(/\s+/g, '').toUpperCase();
-const isMatch   = (input: string, label: string) => normalize(input) === normalize(label);
+// ─── Resultado según nivel ────────────────────────────────────────────────────
+const getResultInfo = (bestLevel: number, lang: Lang) => {
+  const es = lang === 'es';
+  if (bestLevel >= 9)  return {
+    label: es ? 'Visión excepcional (20/15 – 20/10)' : 'Exceptional vision (20/15 – 20/10)',
+    detail: es ? 'Tu agudeza visual está por encima del promedio normal.' : 'Your visual acuity is above the normal average.',
+    color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200',
+    recommendation: es ? 'Mantén tus hábitos visuales y descansa la vista cada 20 minutos.' : 'Maintain your visual habits and rest your eyes every 20 minutes.',
+  };
+  if (bestLevel >= 8)  return {
+    label: es ? 'Visión normal (20/20)' : 'Normal vision (20/20)',
+    detail: es ? 'Tu agudeza visual es óptima para la distancia de pantalla.' : 'Your visual acuity is optimal for screen distance.',
+    color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200',
+    recommendation: es ? 'Mantén buenos hábitos visuales. Realiza ejercicios de prevención.' : 'Maintain good visual habits. Do preventive exercises.',
+  };
+  if (bestLevel >= 6)  return {
+    label: es ? 'Visión buena (20/30 – 20/40)' : 'Good vision (20/30 – 20/40)',
+    detail: es ? 'Ligera dificultad en líneas pequeñas. Puede ser cansancio acumulado.' : 'Slight difficulty with small lines. May be accumulated fatigue.',
+    color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200',
+    recommendation: es ? 'Realiza el ejercicio de enfoque cercano-lejano y aplica la regla 20-20-20.' : 'Do near-far focus exercises and apply the 20-20-20 rule.',
+  };
+  if (bestLevel >= 4)  return {
+    label: es ? 'Visión reducida (20/50 – 20/70)' : 'Reduced vision (20/50 – 20/70)',
+    detail: es ? 'Dificultad notable en caracteres medianos. Posible fatiga acumulada.' : 'Notable difficulty with medium characters. Possible accumulated fatigue.',
+    color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200',
+    recommendation: es ? 'Practica palming y regla 20-20-20. Si persiste, consulta a un optometrista.' : 'Practice palming and 20-20-20 rule. If it persists, consult an optometrist.',
+  };
+  return {
+    label: es ? 'Visión limitada (20/100 o menos)' : 'Limited vision (20/100 or less)',
+    detail: es ? 'Solo puedes leer caracteres grandes. Se recomienda evaluación profesional.' : 'You can only read large characters. Professional evaluation recommended.',
+    color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200',
+    recommendation: es ? 'Consulta a un optometrista. Evita pantallas prolongadas sin descanso.' : 'Consult an optometrist. Avoid prolonged screen use without breaks.',
+  };
+};
 
-// ─── Barras de onda animadas ───────────────────────────────────────────────────
+// ─── Leer idioma desde configuración de accesibilidad ────────────────────────
+const getStoredLanguage = (): Lang => {
+  try {
+    const saved = localStorage.getItem('therapeye_accessibility_settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.appLanguage === 'en') return 'en';
+    }
+  } catch { /* noop */ }
+  return 'es';
+};
+
+// ─── Barras de onda animadas ──────────────────────────────────────────────────
 const SoundWaveBars = ({ active }: { active: boolean }) => (
   <div className="flex items-end gap-0.5 h-5">
     {[1, 3, 2, 4, 2, 3, 1].map((h, i) => (
@@ -211,101 +354,102 @@ const SoundWaveBars = ({ active }: { active: boolean }) => (
   </div>
 );
 
-// ─── Componente principal ──────────────────────────────────────────────────────
+type Phase = 'instructions' | 'test' | 'result';
+type VoiceStatus = 'idle' | 'listening' | 'heard' | 'error';
+interface RowResult { level: number; acuity: string; canRead: boolean; userInput: string; }
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 const VisionTest = ({ onBack }: { onBack: () => void }) => {
-  const [phase, setPhase]           = useState<Phase>('instructions');
-  const [currentRow, setCurrentRow] = useState(0);
-  const [results, setResults]       = useState<RowResult[]>([]);
-  const [input, setInput]           = useState('');
-  const [shake, setShake]           = useState(false);
-  const [isSaving, setIsSaving]     = useState(false);
-  const [distance, setDistance]     = useState<'40' | '60' | '80'>('60');
-  const [language, setLanguage]     = useState<'es' | 'en'>('es');
+  const { lang: ctxLang } = useLanguage();
+  const lang = (ctxLang || 'es') as 'es' | 'en';
+  const [phase, setPhase]                     = useState<Phase>('instructions');
+  const [currentRow, setCurrentRow]           = useState(0);
+  const [currentLetterIdx, setCurrentLetterIdx] = useState(0);
+  const [letterAttempts, setLetterAttempts]   = useState(0);  // 0 = first try, 1 = retry
+  const [rowLetterResults, setRowLetterResults] = useState<boolean[]>([]);
+  const [results, setResults]                 = useState<RowResult[]>([]);
 
-  // Filas de test con letras aleatorias — se regeneran al reiniciar
-  const [testRows, setTestRows] = useState<RowData[]>(() => generateRandomRows());
+  const [testRows, setTestRows]               = useState<RowData[]>(() => generateRandomRows());
 
-  // Reintentos por fila y clave de reset de efecto
-  const [rowAttempts, setRowAttempts] = useState(0);
-  const [rowResetKey, setRowResetKey] = useState(0);   // trigger para reactivar mic/TTS
-
-  // Modo voz
-  const [voiceMode, setVoiceMode]             = useState(hasSpeechSupport);
+  const [voiceMode, setVoiceMode]             = useState(voiceAvailable);
   const [voiceStatus, setVoiceStatus]         = useState<VoiceStatus>('idle');
   const [heardText, setHeardText]             = useState('');
-  const [heardLetters, setHeardLetters]       = useState('');
+  const [heardLetter, setHeardLetter]         = useState('');
   const [interimText, setInterimText]         = useState('');
   const [autoConfirmSecs, setAutoConfirmSecs] = useState<number | null>(null);
 
-  const inputRef    = useRef<HTMLInputElement>(null);
-  const recognRef   = useRef<any>(null);
-  const autoConfRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const resultsRef  = useRef<RowResult[]>([]);
-  resultsRef.current = results;
+  const [input, setInput]                     = useState('');
+  const [shake, setShake]                     = useState(false);
+  const [distance, setDistance]               = useState<'40' | '60' | '80'>('60');
+  const language: Lang = (ctxLang || 'es') as Lang;  // Usa idioma de accesibilidad
+  const [isSaving, setIsSaving]               = useState(false);
 
-  // ── Refs para callbacks sin stale closures ───────────────────────────────────
-  const voiceStatusRef    = useRef<VoiceStatus>('idle');
-  const currentRowRef     = useRef(currentRow);
-  const languageRef       = useRef(language);
-  const testRowsRef       = useRef(testRows);
-  const rowAttemptsRef    = useRef(rowAttempts);
-  const isActiveRef       = useRef(false);   // ¿Debe el mic seguir escuchando?
-  const isSubmittingRef   = useRef(false);   // ¿Procesando resultado?
-  // Acumulación de letras entre frases dentro de la misma fila
-  const accumulatedRef    = useRef('');      // letras acumuladas en esta fila
+  const inputRef        = useRef<HTMLInputElement>(null);
+  const recognRef       = useRef<any>(null);
+  const autoConfRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resultsRef      = useRef<RowResult[]>([]);
+  const isActiveRef     = useRef(false);
+  const isSubmittingRef = useRef(false);
 
-  useEffect(() => { currentRowRef.current  = currentRow;   }, [currentRow]);
-  useEffect(() => { languageRef.current    = language;     }, [language]);
-  useEffect(() => { testRowsRef.current    = testRows;     }, [testRows]);
-  useEffect(() => { rowAttemptsRef.current = rowAttempts;  }, [rowAttempts]);
+  // Refs para evitar stale closures
+  const voiceStatusRef      = useRef<VoiceStatus>('idle');
+  const currentRowRef       = useRef(currentRow);
+  const currentLetterIdxRef = useRef(currentLetterIdx);
+  const letterAttemptsRef   = useRef(letterAttempts);
+  const languageRef         = useRef(language);
+  const testRowsRef         = useRef(testRows);
+  const voiceModeRef        = useRef(voiceMode);
+  const phaseRef            = useRef<Phase>('instructions');
+
+  useEffect(() => { currentRowRef.current       = currentRow;       }, [currentRow]);
+  useEffect(() => { currentLetterIdxRef.current = currentLetterIdx; }, [currentLetterIdx]);
+  useEffect(() => { letterAttemptsRef.current   = letterAttempts;   }, [letterAttempts]);
+  useEffect(() => { languageRef.current         = language;         }, [language]);
+  useEffect(() => { testRowsRef.current         = testRows;         }, [testRows]);
+  useEffect(() => { voiceModeRef.current        = voiceMode;        }, [voiceMode]);
+  useEffect(() => { phaseRef.current            = phase;            }, [phase]);
+  useEffect(() => { resultsRef.current          = results;          }, [results]);
 
   const { user } = useUser();
+  const ui = UI[language];
   const distanceScale: Record<string, number> = { '40': 0.75, '60': 1, '80': 1.3 };
   const scale = distanceScale[distance];
 
-  // ── setVoiceStatus + ref en sincronía ────────────────────────────────────────
   const setVS = useCallback((s: VoiceStatus) => {
     voiceStatusRef.current = s;
     setVoiceStatus(s);
   }, []);
 
-  // ── Limpiar auto-confirmar ───────────────────────────────────────────────────
   const clearAutoConfirm = useCallback(() => {
     if (autoConfRef.current) { clearInterval(autoConfRef.current); autoConfRef.current = null; }
     setAutoConfirmSecs(null);
   }, []);
 
-  // ── Detener recognition completamente ───────────────────────────────────────
   const stopMic = useCallback(() => {
     isActiveRef.current = false;
-    if (recognRef.current) {
-      try { recognRef.current.abort(); } catch { /* noop */ }
-      recognRef.current = null;
-    }
+    if (recognRef.current) { try { recognRef.current.abort(); } catch { } recognRef.current = null; }
     setVS('idle');
     clearAutoConfirm();
     setInterimText('');
   }, [setVS, clearAutoConfirm]);
 
-  // ── TTS (síntesis de voz) ────────────────────────────────────────────────────
-  const speakPrompt = useCallback((text: string, onEnd?: () => void) => {
+  // ── TTS con idioma correcto ───────────────────────────────────────────────────
+  const speakPrompt = useCallback((text: string, lang: Lang, onEnd?: () => void) => {
     if (!('speechSynthesis' in window)) { onEnd?.(); return; }
     window.speechSynthesis.cancel();
     const utt   = new SpeechSynthesisUtterance(text);
-    utt.lang    = 'es-MX';
+    utt.lang    = lang === 'es' ? 'es-MX' : 'en-US';
     utt.rate    = 1.1;
     utt.pitch   = 1.0;
     utt.volume  = 1.0;
 
-    // Intentar voz en español
     const loadVoice = () => {
       const voces = window.speechSynthesis.getVoices();
-      const voz   = voces.find(v => v.lang === 'es-MX')
-                 || voces.find(v => v.lang === 'es-US')
-                 || voces.find(v => v.lang.startsWith('es'));
+      const voz   = lang === 'es'
+        ? (voces.find(v => v.lang === 'es-MX') || voces.find(v => v.lang.startsWith('es')))
+        : (voces.find(v => v.lang === 'en-US') || voces.find(v => v.lang.startsWith('en')));
       if (voz) utt.voice = voz;
     };
-
     if (window.speechSynthesis.getVoices().length > 0) {
       loadVoice();
     } else {
@@ -314,121 +458,108 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
 
     let fired = false;
     const done = () => { if (!fired) { fired = true; setTimeout(() => onEnd?.(), 150); } };
-    const fallback = setTimeout(done, 2500); // máx 2.5s por frase
-    utt.onend = () => { clearTimeout(fallback); done(); };
+    const fallback = setTimeout(done, 3000);
+    utt.onend  = () => { clearTimeout(fallback); done(); };
     utt.onerror = () => { clearTimeout(fallback); done(); };
     window.speechSynthesis.speak(utt);
   }, []);
 
-  // ── Submit ────────────────────────────────────────────────────────────────────
-  const MAX_RETRIES = 2; // máx 2 reintentos por fila (3 intentos en total)
-
-  const submitInput = useCallback(async (value: string) => {
+  // ── submitLetter — validar UNA letra ─────────────────────────────────────────
+  const submitLetter = useCallback(async (detectedLetter: string) => {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
 
     isActiveRef.current = false;
     clearAutoConfirm();
-    if (recognRef.current) { try { recognRef.current.abort(); } catch { /**/ } recognRef.current = null; }
+    if (recognRef.current) { try { recognRef.current.abort(); } catch { } recognRef.current = null; }
 
-    const rowIdx = currentRowRef.current;
-    const row    = testRowsRef.current[rowIdx];
-    const matched = isMatch(value, row.label);
+    const rowIdx    = currentRowRef.current;
+    const letterIdx = currentLetterIdxRef.current;
+    const row       = testRowsRef.current[rowIdx];
+    const letters   = row.label.split(' ');
+    const expected  = letters[letterIdx];
+    const matched   = detectedLetter === expected;
 
-    if (!matched) {
+    if (matched) {
+      const isLastLetter = letterIdx >= letters.length - 1;
+
+      if (!isLastLetter) {
+        // Correcto, más letras en esta fila — avanzar al siguiente índice
+        setRowLetterResults(prev => [...prev, true]);
+        setCurrentLetterIdx(letterIdx + 1);
+        setLetterAttempts(0);
+        setHeardText(''); setHeardLetter(''); setInput('');
+        setVS('idle');
+        isSubmittingRef.current = false;
+        // El useEffect con [currentLetterIdx, letterAttempts] reinicia el mic
+      } else {
+        // Todas las letras de la fila correctas — avanzar a la siguiente fila
+        const newResult: RowResult = {
+          level: row.level, acuity: row.acuity, canRead: true,
+          userInput: letters.join(''),
+        };
+        const newResults = [...resultsRef.current, newResult];
+        setResults(newResults);
+        setRowLetterResults([]);
+        setCurrentLetterIdx(0);
+        setLetterAttempts(0);
+        setHeardText(''); setHeardLetter(''); setInput('');
+        setVS('idle');
+        isSubmittingRef.current = false;
+
+        if (rowIdx < testRowsRef.current.length - 1) {
+          setCurrentRow(rowIdx + 1);
+        } else {
+          await saveResult(newResults);
+          setPhase('result');
+        }
+      }
+    } else {
+      // Incorrecto — animar shake
       setShake(true);
       setTimeout(() => {
         setShake(false);
 
-        if (rowAttemptsRef.current < MAX_RETRIES) {
-          // ── Reintento: nuevas letras para el mismo nivel ──────────────
-          const nextAttempt = rowAttemptsRef.current + 1;
-          setRowAttempts(nextAttempt);
-          // Regenerar letras de esta fila
-          setTestRows(prev => {
-            const newRows = [...prev];
-            const cfg     = ROWS_CONFIG[rowIdx];
-            const shuffled = [...SNELLEN_POOL].sort(() => Math.random() - 0.5);
-            newRows[rowIdx] = { ...newRows[rowIdx], label: shuffled.slice(0, cfg.count).join(' ') };
-            return newRows;
-          });
-          accumulatedRef.current = '';
+        if (letterAttemptsRef.current < 1) {
+          // Primer error → dar reintento
+          setLetterAttempts(1);
+          setHeardText(''); setHeardLetter(''); setInput('');
+          setVS('idle');
           isSubmittingRef.current = false;
-          setRowResetKey(k => k + 1); // re-dispara el useEffect → TTS + mic
+          // El cambio de letterAttempts dispara el useEffect → reinicia mic
         } else {
-          // ── Después de 2 reintentos → saltar al siguiente nivel ───────
-          setRowAttempts(0);
+          // Segundo error → terminar test
+          const newResult: RowResult = {
+            level: row.level, acuity: row.acuity, canRead: false,
+            userInput: detectedLetter,
+          };
+          const newResults = [...resultsRef.current, newResult];
           isSubmittingRef.current = false;
-          accumulatedRef.current = '';
-          if (rowIdx < testRowsRef.current.length - 1) {
-            setCurrentRow(prev => prev + 1);
-          } else {
-            saveResult(resultsRef.current).then(() => setPhase('result'));
-          }
+          setResults(newResults);
+          saveResult(newResults).then(() => setPhase('result'));
         }
       }, 600);
-      return;
-    }
-
-    // Correcto → avanzar y resetear intentos
-    setRowAttempts(0);
-    accumulatedRef.current = '';
-    isSubmittingRef.current = false;
-    if (rowIdx < testRowsRef.current.length - 1) {
-      setCurrentRow(prev => prev + 1);
-    } else {
-      await saveResult(resultsRef.current);
-      setPhase('result');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearAutoConfirm]);
+  }, [clearAutoConfirm, setVS]);
 
-  // ── Procesar resultado de voz ─────────────────────────────────────────────────
-  // precomputedLetters: si ya se calculó en spawnRecognition, evitar hacerlo dos veces
-  //
-  // Acumulación: con continuous=true, el usuario puede decir letras en varias frases.
-  // Ej: dice "O" → "C" → acumulamos "OC" antes de autoconfirmar.
-  // El mic se mantiene activo (isActiveRef = true) para capturar frases adicionales.
-  const handleFinalResult = useCallback((transcript: string, precomputedLetters?: string) => {
-    const row      = testRowsRef.current[currentRowRef.current];
-    const expected = row.label.split(' ');
-    const expectedCount = normalize(row.label).length; // letras esperadas sin espacios
+  // ── handleFinalResult — procesar resultado de voz ─────────────────────────────
+  const handleFinalResult = useCallback((transcript: string, precomputed?: string) => {
+    const row    = testRowsRef.current[currentRowRef.current];
+    const letters = row.label.split(' ');
+    const expected = letters[currentLetterIdxRef.current];
 
-    const newLetters = precomputedLetters ?? speechToLetters(transcript, languageRef.current, expected);
+    const detected = precomputed ?? extractSingleLetter(transcript, languageRef.current, expected);
 
-    // ── Lógica de acumulación inteligente ──────────────────────────────────
-    // Si las nuevas letras ya contienen suficientes o las mismas que lo esperado,
-    // REEMPLAZAR en vez de acumular (evita duplicados como "FCFC" cuando dicen "FC" 2 veces)
-    let displayLetters: string;
-
-    if (newLetters.length >= expectedCount) {
-      // El usuario dijo todas las letras de una vez → reemplazar
-      displayLetters = newLetters.slice(0, expectedCount);
-      accumulatedRef.current = displayLetters;
-    } else if (accumulatedRef.current.length > 0 &&
-               newLetters === accumulatedRef.current.slice(-newLetters.length)) {
-      // El usuario repitió exactamente lo mismo → NO acumular, mantener lo anterior
-      displayLetters = accumulatedRef.current;
-    } else {
-      // El usuario dijo letras nuevas/diferentes → acumular
-      const accumulated = accumulatedRef.current + newLetters;
-      displayLetters = accumulated.slice(0, expectedCount); // limitar al máximo esperado
-      accumulatedRef.current = displayLetters;
-    }
-
+    clearAutoConfirm();
     setInterimText('');
     setVS('heard');
     setHeardText(transcript);
-    setHeardLetters(displayLetters);
-    setInput(displayLetters);
+    setHeardLetter(detected);
+    setInput(detected);
 
-    // Si coincide exactamente → autoconfirmar rápido (1.5s)
-    // Si no coincide → dar más tiempo (3s) para que siga hablando
-    const matchesExpected = isMatch(displayLetters, row.label);
-    const confirmTime = matchesExpected ? 1.5 : 3;
-
-    clearAutoConfirm();
-    let secs = confirmTime;
+    // Auto-confirmar — siempre 1.5s (letra a letra es rápido)
+    let secs = 1.5;
     setAutoConfirmSecs(Math.ceil(secs));
     autoConfRef.current = setInterval(() => {
       secs -= 1;
@@ -437,41 +568,41 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         clearInterval(autoConfRef.current!);
         autoConfRef.current = null;
         setAutoConfirmSecs(null);
-        submitInput(displayLetters);
+        submitLetter(detected);
       }
     }, 1000);
-  }, [setVS, submitInput, clearAutoConfirm]);
+  }, [setVS, submitLetter, clearAutoConfirm]);
 
-  // ── Lanzar recognition (siempre instancia nueva) ─────────────────────────────
+  // ── spawnRecognition — siempre nueva instancia ────────────────────────────────
   const spawnRecognition = useCallback(() => {
-    if (!hasSpeechSupport || !isActiveRef.current) return;
+    if (!voiceAvailable || !isActiveRef.current) return;
 
-    const row      = testRowsRef.current[currentRowRef.current];
-    const letters  = row.label.split(' ');
-    const lang     = languageRef.current;
+    const row    = testRowsRef.current[currentRowRef.current];
+    const letters = row.label.split(' ');
+    const expected = letters[currentLetterIdxRef.current];
+    const lang   = languageRef.current;
 
     const recognition = new SpeechRecognitionAPI();
     recognition.lang             = lang === 'es' ? 'es-MX' : 'en-US';
-    recognition.interimResults   = true;    // feedback en tiempo real
+    recognition.interimResults   = true;
     recognition.maxAlternatives  = 8;
-    // continuous: true → NO hace timeout por silencio; el usuario puede
-    // intentar varias veces sin tocar el botón. Funciona mejor en Opera/Chrome
-    recognition.continuous       = true;
+    recognition.continuous       = false; // una sola emisión por letra
 
-    // Gramáticas (pista al motor de lo que esperamos) — opcional pero ayuda
-    if (SpeechGrammarListAPI) {
+    // Gramáticas con variantes fonéticas de la letra esperada
+    if (SpeechGrammarListAPI && expected) {
       try {
         const gl = new SpeechGrammarListAPI();
-        // Incluir todas las variantes fonéticas de las letras esperadas
-        const variants = letters.flatMap(l => {
-          const esVars = Object.entries(LETTER_MAP_ES).filter(([, v]) => v === l).map(([k]) => k);
-          const enVars = Object.entries(LETTER_MAP_EN).filter(([, v]) => v === l).map(([k]) => k);
-          return [...new Set([...esVars, ...enVars, l.toLowerCase()])];
-        });
-        const grammar = `#JSGF V1.0; grammar letters; public <letter> = ${variants.join(' | ')};`;
+        const mapSrc = lang === 'es' ? LETTER_MAP_ES : LETTER_MAP_EN;
+        const mapAlt = lang === 'es' ? LETTER_MAP_EN : LETTER_MAP_ES;
+        const variants = [
+          ...Object.entries(mapSrc).filter(([, v]) => v === expected).map(([k]) => k),
+          ...Object.entries(mapAlt).filter(([, v]) => v === expected).map(([k]) => k),
+          expected.toLowerCase(),
+        ];
+        const grammar = `#JSGF V1.0; grammar letters; public <letter> = ${[...new Set(variants)].join(' | ')};`;
         gl.addFromString(grammar, 1);
         recognition.grammars = gl;
-      } catch { /* silenciar si el navegador no lo soporta */ }
+      } catch { /* noop */ }
     }
 
     recognition.onstart = () => {
@@ -480,51 +611,47 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
     };
 
     recognition.onresult = (event: any) => {
-      // Con continuous=true procesamos desde resultIndex
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
 
         if (!result.isFinal) {
-          // Mostrar lo que se va captando en tiempo real
           setInterimText(result[0].transcript);
           continue;
         }
 
-        // Resultado final: buscar la mejor alternativa
+        // Resultado final: buscar mejor alternativa (priorizar la que coincide con expected)
         let bestTranscript = result[0].transcript;
-        let bestLetters    = speechToLetters(bestTranscript, lang, letters);
+        let bestLetter     = extractSingleLetter(bestTranscript, lang, expected);
 
         for (let alt = 1; alt < result.length; alt++) {
           const altT = result[alt].transcript;
-          const altL = speechToLetters(altT, lang, letters);
-          if (isMatch(altL, row.label)) {
+          const altL = extractSingleLetter(altT, lang, expected);
+          if (altL === expected) {
             bestTranscript = altT;
-            bestLetters    = altL;
+            bestLetter     = altL;
             break;
           }
         }
 
-        handleFinalResult(bestTranscript.trim(), bestLetters);
-        // Solo tomamos el primer resultado final de esta sesión
+        handleFinalResult(bestTranscript.trim(), bestLetter);
         return;
       }
     };
 
     recognition.onerror = (ev: any) => {
-      console.warn('[VisionTest] error:', ev.error);
       if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
         isActiveRef.current = false;
         setVS('error');
-        setHeardText('Sin permiso de micrófono. Revisa la configuración del navegador.');
+        setHeardText(language === 'es'
+          ? 'Sin permiso de micrófono. Revisa la configuración del navegador.'
+          : 'No microphone permission. Check your browser settings.');
       }
-      // Para otros errores (no-speech, network, etc.) dejamos que onend reintente
       setInterimText('');
     };
 
     recognition.onend = () => {
       recognRef.current = null;
       if (isActiveRef.current && voiceStatusRef.current !== 'heard') {
-        // Reiniciar con nueva instancia después de pequeña pausa
         setTimeout(() => { if (isActiveRef.current) spawnRecognition(); }, 250);
       } else if (voiceStatusRef.current !== 'heard') {
         setVS('idle');
@@ -535,67 +662,65 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
     try {
       recognition.start();
     } catch (e) {
-      console.error('[VisionTest] start failed:', e);
-      recognRef.current       = null;
-      isActiveRef.current     = false;
+      recognRef.current   = null;
+      isActiveRef.current = false;
       setVS('error');
     }
-  // spawnRecognition no depende de estados de React, solo de refs
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setVS, handleFinalResult]);
+  }, [setVS, handleFinalResult, language]);
 
-  // ── Iniciar escucha ──────────────────────────────────────────────────────────
   const startListening = useCallback(() => {
-    if (!hasSpeechSupport) return;
+    if (!voiceAvailable) return;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    if (recognRef.current) { try { recognRef.current.abort(); } catch {/**/ } recognRef.current = null; }
+    if (recognRef.current) { try { recognRef.current.abort(); } catch { } recognRef.current = null; }
     clearAutoConfirm();
-    setHeardText('');
-    setHeardLetters('');
-    setInterimText('');
+    setHeardText(''); setHeardLetter(''); setInterimText('');
     isActiveRef.current = true;
     spawnRecognition();
   }, [spawnRecognition, clearAutoConfirm]);
 
-  // ── Al entrar a cada fila (o reintento): TTS prompt → luego abrir mic ───────
+  // ── Efecto principal: al cambiar fila, letra, o intento → reiniciar mic/TTS ──
+  // Nota: letterAttempts=1 (reintento) también dispara este efecto correctamente.
   useEffect(() => {
     if (phase !== 'test') return;
 
-    // Limpiar estado previo
     isActiveRef.current = false;
-    if (recognRef.current) { try { recognRef.current.abort(); } catch {/**/ } recognRef.current = null; }
+    if (recognRef.current) { try { recognRef.current.abort(); } catch { } recognRef.current = null; }
     clearAutoConfirm();
     setInput('');
-    setHeardText('');
-    setHeardLetters('');
-    setInterimText('');
+    setHeardText(''); setHeardLetter(''); setInterimText('');
     setVS('idle');
-    accumulatedRef.current = '';    // resetear acumulación para esta fila
     isSubmittingRef.current = false;
 
     if (voiceMode) {
-      const row    = testRows[currentRow];
-      const prompt = row.label.split(' ').length === 1 ? '¿Qué letra ves?' : '¿Qué letras ves?';
-      const t = setTimeout(() => {
-        speakPrompt(prompt, () => {
-          if (phase === 'test') startListening();
+      const row     = testRows[currentRow];
+      const letters = row.label.split(' ');
+      const total   = letters.length;
+      const prompt  = total === 1
+        ? ui.promptSingle
+        : ui.promptLetterOf(currentLetterIdx + 1, total);
+
+      const timer = setTimeout(() => {
+        speakPrompt(prompt, language, () => {
+          if (phaseRef.current === 'test') startListening();
         });
       }, 400);
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     } else {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentRow, phase, voiceMode, rowResetKey]); // rowResetKey dispara reintento
+  }, [currentRow, currentLetterIdx, letterAttempts, phase, voiceMode]);
 
-  // ── Limpiar al desmontar ──────────────────────────────────────────────────────
+  // ── Cleanup al desmontar ──────────────────────────────────────────────────────
   useEffect(() => () => {
     isActiveRef.current = false;
-    if (recognRef.current) { try { recognRef.current.abort(); } catch {/**/ } }
+    if (recognRef.current) { try { recognRef.current.abort(); } catch { } }
     clearAutoConfirm();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   }, [clearAutoConfirm]);
 
+  // ── Guardar resultado en BD ──────────────────────────────────────────────────
   const saveResult = async (finalResults: RowResult[]) => {
     setIsSaving(true);
     try {
@@ -603,35 +728,37 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
       const bestAcuity = testRows.find(r => r.level === bestLevel)?.acuity ?? 'N/A';
       await sql`
         INSERT INTO historial_vision_test (user_id, mejor_nivel, agudeza, distancia_cm, resultados_json, created_at)
-        VALUES (${user?.id}, ${bestLevel}, ${bestAcuity}, ${parseInt(distance)}, ${JSON.stringify(finalResults)}, NOW())
+        VALUES (${user?.id}, ${bestLevel}, ${bestAcuity}, ${parseInt(distance)}, ${JSON.stringify(finalResults)}, ${localISOString()})
       `;
-    } catch (err) { console.error('Error al guardar:', err); }
+    } catch (err) { console.error('Error guardando resultado:', err); }
     finally { setIsSaving(false); }
   };
 
   const handleRestart = () => {
     stopMic();
-    setTestRows(generateRandomRows()); // ← Nuevas letras aleatorias
+    setTestRows(generateRandomRows());
     setPhase('instructions');
     setCurrentRow(0);
+    setCurrentLetterIdx(0);
+    setLetterAttempts(0);
+    setRowLetterResults([]);
     setResults([]);
     setInput('');
-    setHeardText('');
-    setHeardLetters('');
-    setInterimText('');
+    setHeardText(''); setHeardLetter(''); setInterimText('');
   };
 
   const bestLevel  = results.filter(r => r.canRead).reduce((max, r) => Math.max(max, r.level), 0);
-  const resultInfo = getResultInfo(bestLevel);
+  const resultInfo = getResultInfo(bestLevel, language);
 
-  // Hint de cómo pronunciar las letras de la fila actual
-  const pronunciationHint = useMemo(() => {
+  // Hint de pronunciación para la letra actual
+  const currentLetterHint = (() => {
     if (phase !== 'test' || !testRows[currentRow]) return '';
-    return testRows[currentRow].label
-      .split(' ')
-      .map(l => language === 'es' ? (PRONOUNCE_ES[l] ?? l.toLowerCase()) : l.toLowerCase())
-      .join(', ');
-  }, [phase, currentRow, testRows, language]);
+    const letters = testRows[currentRow].label.split(' ');
+    const l = letters[currentLetterIdx];
+    if (!l) return '';
+    const map = language === 'es' ? PRONOUNCE_ES : PRONOUNCE_EN;
+    return map[l] ?? l.toLowerCase();
+  })();
 
   // ─── INSTRUCCIONES ──────────────────────────────────────────────────────────
   if (phase === 'instructions') {
@@ -639,88 +766,78 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
       <div className="vision-test-root min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
           <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
-            <ArrowLeft className="w-4 h-4" /> Volver
+            <ArrowLeft className="w-4 h-4" /> {language === 'es' ? 'Volver' : 'Back'}
           </button>
 
-          {/* Banner Opera: redirigir a Chrome para reconocimiento de voz */}
-          {isOpera && voiceMode && (
+          {/* Banner navegador no soportado — siempre visible si voz no disponible */}
+          {!voiceAvailable && (
             <div className="bg-orange-50 border border-orange-300 rounded-xl p-4 mb-5 flex items-start gap-3">
               <span className="text-2xl">⚠️</span>
               <div className="flex-1">
-                <p className="text-sm font-bold text-orange-800">Reconocimiento de voz no disponible en Opera</p>
-                <p className="text-xs text-orange-700 mt-1">
-                  Opera no incluye el servicio de Google Speech API. Para usar el micrófono, abre esta página en <strong>Google Chrome</strong>.
-                </p>
+                <p className="text-sm font-bold text-orange-800">{ui.operaTitle}</p>
+                <p className="text-xs text-orange-700 mt-1">{ui.operaDetail}</p>
                 <button
                   onClick={() => { navigator.clipboard?.writeText(window.location.href).catch(() => {}); }}
                   className="mt-2 text-xs bg-orange-200 hover:bg-orange-300 text-orange-900 px-3 py-1 rounded-lg transition font-semibold"
                 >
-                  📋 Copiar URL para Chrome
+                  {ui.copyUrl}
                 </button>
               </div>
             </div>
           )}
+
           <div className="text-center mb-6">
             <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Eye className="w-8 h-8 text-indigo-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-1">Prueba de Agudeza Visual</h1>
-            <p className="text-gray-400 text-sm">10 niveles · Carta tipo Snellen · Letras aleatorias</p>
+            <h1 className="text-2xl font-bold text-gray-800 mb-1">{ui.title}</h1>
+            <p className="text-gray-400 text-sm">{ui.subtitle}</p>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
-            ⚠️ Esta prueba es orientativa y <strong>no sustituye</strong> una evaluación optométrica profesional.
+            ⚠️ {ui.warning}
           </div>
 
-          {voiceMode ? (
-            <div className="space-y-2 mb-5 text-sm text-gray-700">
-              <p className="flex gap-2"><span className="font-bold text-indigo-600">1.</span> Colócate a la distancia indicada y cubre un ojo.</p>
-              <p className="flex gap-2"><span className="font-bold text-indigo-600">2.</span> Escucharás <strong>"¿Qué letra ves?"</strong> y el micrófono se abrirá solo.</p>
-              <p className="flex gap-2"><span className="font-bold text-indigo-600">3.</span> Di las letras en voz alta y claro. Si el mic no abre, tócalo manualmente.</p>
-              <p className="flex gap-2"><span className="font-bold text-indigo-600">4.</span> Se confirma automáticamente en 2 s. Puedes reintentar antes si quieres.</p>
-              <p className="text-gray-400 text-xs mt-1">Consejo: pronuncia con calma, por ej. <em>"cé"</em>, <em>"de"</em>, <em>"ene"</em> en lugar de la letra suelta.</p>
-            </div>
-          ) : (
-            <div className="space-y-2 mb-5 text-sm text-gray-700">
-              <p className="flex gap-2"><span className="font-bold text-indigo-600">1.</span> Colócate a la distancia indicada y cubre un ojo.</p>
-              <p className="flex gap-2"><span className="font-bold text-indigo-600">2.</span> Escribe las letras que veas y presiona <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs">Enter</kbd>.</p>
-            </div>
-          )}
+          {/* Instrucciones de uso */}
+          <div className="space-y-2 mb-5 text-sm text-gray-700">
+            <p className="flex gap-2"><span className="font-bold text-indigo-600">1.</span> {ui.step1}</p>
+            {voiceMode ? (
+              <>
+                <p className="flex gap-2"><span className="font-bold text-indigo-600">2.</span> {ui.step2voice}</p>
+                <p className="flex gap-2"><span className="font-bold text-indigo-600">3.</span> {ui.step3voice}</p>
+                <p className="flex gap-2"><span className="font-bold text-indigo-600">4.</span> {ui.step4voice}</p>
+                <p className="text-gray-400 text-xs mt-1">{ui.voiceTip}</p>
+              </>
+            ) : (
+              <>
+                <p className="flex gap-2"><span className="font-bold text-indigo-600">2.</span> {ui.step2keyboard}</p>
+                <p className="flex gap-2"><span className="font-bold text-indigo-600">3.</span> {ui.step3keyboard}</p>
+              </>
+            )}
+          </div>
 
+          {/* Modo de entrada */}
           <div className="bg-gray-50 rounded-xl p-4 mb-5 space-y-3">
-            <p className="text-sm font-semibold text-gray-700">Modo de entrada:</p>
+            <p className="text-sm font-semibold text-gray-700">{ui.inputModeLabel}</p>
             <div className="flex gap-2">
-              <button onClick={() => setVoiceMode(true)} disabled={!hasSpeechSupport}
+              <button onClick={() => setVoiceMode(true)} disabled={!voiceAvailable}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 text-sm font-semibold transition
                   ${voiceMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600'}
-                  ${!hasSpeechSupport ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                <Mic className="w-4 h-4" /> Voz {!hasSpeechSupport && '(no disponible)'}
+                  ${!voiceAvailable ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                <Mic className="w-4 h-4" /> {ui.voiceBtn} {!voiceAvailable && ui.notAvailable}
               </button>
               <button onClick={() => setVoiceMode(false)}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 text-sm font-semibold transition
                   ${!voiceMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600'}`}>
-                <Keyboard className="w-4 h-4" /> Teclado
+                <Keyboard className="w-4 h-4" /> {ui.keyboardBtn}
               </button>
             </div>
 
-            {voiceMode && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Idioma:</p>
-                <div className="flex gap-2">
-                  {(['es', 'en'] as const).map(lang => (
-                    <button key={lang} onClick={() => setLanguage(lang)}
-                      className={`flex-1 py-2 rounded-lg border-2 text-sm font-semibold transition
-                        ${language === lang ? 'bg-indigo-100 text-indigo-700 border-indigo-400' : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300'}`}>
-                      {lang === 'es' ? '🇲🇽 Español' : '🇺🇸 English'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
+          {/* Distancia */}
           <div className="mb-6">
-            <p className="text-sm font-semibold text-gray-700 mb-2">¿A qué distancia está tu pantalla?</p>
+            <p className="text-sm font-semibold text-gray-700 mb-2">{ui.distanceLabel}</p>
             <div className="flex gap-2">
               {(['40', '60', '80'] as const).map(d => (
                 <button key={d} onClick={() => setDistance(d)}
@@ -732,16 +849,18 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
             </div>
           </div>
 
-          <button onClick={() => {
-            if (voiceMode && hasSpeechSupport) {
-              navigator.mediaDevices?.getUserMedia({ audio: true })
-                .then(stream => { stream.getTracks().forEach(t => t.stop()); setPhase('test'); })
-                .catch(() => setPhase('test'));
-            } else {
-              setPhase('test');
-            }
-          }} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">
-            Comenzar prueba
+          <button
+            onClick={() => {
+              if (voiceMode && voiceAvailable) {
+                navigator.mediaDevices?.getUserMedia({ audio: true })
+                  .then(stream => { stream.getTracks().forEach(t => t.stop()); setPhase('test'); })
+                  .catch(() => setPhase('test'));
+              } else {
+                setPhase('test');
+              }
+            }}
+            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition">
+            {ui.startBtn}
           </button>
         </div>
       </div>
@@ -750,9 +869,11 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
 
   // ─── PRUEBA ─────────────────────────────────────────────────────────────────
   if (phase === 'test') {
-    const row        = testRows[currentRow];
-    const progress   = (currentRow / testRows.length) * 100;
-    const listening  = voiceStatus === 'listening';
+    const row       = testRows[currentRow];
+    const letters   = row.label.split(' ');
+    const totalLetters = letters.length;
+    const progress  = (currentRow / testRows.length) * 100;
+    const listening = voiceStatus === 'listening';
 
     return (
       <>
@@ -764,32 +885,28 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         `}</style>
         <div className="vision-test-root min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4">
 
-          {/* Banner Opera inline (pequeño) */}
-          {isOpera && voiceMode && (
+          {/* Banner navegador no soportado (durante test) */}
+          {!voiceAvailable && (
             <div className="w-full max-w-2xl mb-3 bg-orange-900/80 border border-orange-500/50 rounded-xl px-4 py-2 flex items-center gap-3">
               <span className="text-lg">⚠️</span>
-              <p className="text-xs text-orange-200 flex-1">
-                Opera no soporta reconocimiento de voz. Usa <strong>Google Chrome</strong> para esta función.
-              </p>
-              <button
-                onClick={() => navigator.clipboard?.writeText(window.location.href).catch(() => {})}
-                className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded-lg transition whitespace-nowrap"
-              >
-                📋 Copiar URL
+              <p className="text-xs text-orange-200 flex-1">{ui.operaDetail}</p>
+              <button onClick={() => navigator.clipboard?.writeText(window.location.href).catch(() => {})}
+                className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded-lg transition whitespace-nowrap">
+                {ui.copyUrl}
               </button>
             </div>
           )}
 
           {/* Header */}
-          <div className="w-full max-w-2xl mb-5 flex items-end gap-4">
+          <div className="w-full max-w-2xl mb-4 flex items-end gap-4">
             <button onClick={() => { stopMic(); if ('speechSynthesis' in window) window.speechSynthesis.cancel(); onBack(); }}
               className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition px-3 py-1.5 rounded-lg border border-gray-700 hover:border-gray-400">
-              <Home className="w-3.5 h-3.5" /> Salir
+              <Home className="w-3.5 h-3.5" /> {ui.exitBtn}
             </button>
             <div className="flex-1">
               <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Nivel {currentRow + 1} de {testRows.length}</span>
-                <span>Agudeza objetivo: <span className="font-bold text-indigo-400">{row.acuity}</span></span>
+                <span>{language === 'es' ? 'Nivel' : 'Level'} {currentRow + 1} {ui.levelOf} {testRows.length}</span>
+                <span>{ui.targetAcuity} <span className="font-bold text-indigo-400">{row.acuity}</span></span>
               </div>
               <div className="w-full bg-gray-800 rounded-full h-1.5">
                 <div className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
@@ -797,29 +914,75 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
             </div>
             <button onClick={() => { stopMic(); if ('speechSynthesis' in window) window.speechSynthesis.cancel(); setVoiceMode(v => !v); }}
               className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition px-3 py-1.5 rounded-lg border border-gray-700 hover:border-gray-400">
-              {voiceMode ? <><MicOff className="w-3.5 h-3.5" /> Usar teclado</> : <><Mic className="w-3.5 h-3.5" /> Usar voz</>}
+              {voiceMode ? <><MicOff className="w-3.5 h-3.5" /> {ui.useKeyboard}</> : <><Mic className="w-3.5 h-3.5" /> {ui.useVoice}</>}
             </button>
           </div>
 
-          {/* Carta Snellen */}
+          {/* Carta Snellen — muestra todas las letras, resalta la actual */}
           <div
-            className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-10 mb-6 flex flex-col items-center transition-all duration-200
+            className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-10 mb-4 flex flex-col items-center transition-all duration-200
               ${shake ? 'ring-4 ring-red-500 scale-[0.98]' : ''}`}
             style={{ minHeight: '180px' }}
           >
-            <p className="font-mono font-black tracking-[0.3em] text-black text-center select-none"
-               style={{ fontSize: `${Math.round(row.fontSize * scale)}px`, lineHeight: 1.1 }}>
-              {row.label}
-            </p>
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              {letters.map((letter, idx) => {
+                const isDone    = idx < currentLetterIdx;
+                const isCurrent = idx === currentLetterIdx;
+                const isFuture  = idx > currentLetterIdx;
+                const wasCorrect = rowLetterResults[idx];
+
+                return (
+                  <span
+                    key={idx}
+                    className={`font-mono font-black select-none transition-all duration-300 ${
+                      isDone
+                        ? wasCorrect
+                          ? 'text-green-500'
+                          : 'text-red-400'
+                        : isCurrent
+                        ? 'text-black'
+                        : isFuture
+                        ? 'text-gray-300'
+                        : 'text-black'
+                    }`}
+                    style={{
+                      fontSize: isCurrent
+                        ? `${Math.round(row.fontSize * scale)}px`
+                        : isDone
+                        ? `${Math.round(row.fontSize * scale * 0.85)}px`
+                        : `${Math.round(row.fontSize * scale * 0.7)}px`,
+                      lineHeight: 1.1,
+                      textDecoration: isCurrent ? 'underline' : 'none',
+                      textDecorationColor: '#6366f1',
+                      textUnderlineOffset: '6px',
+                    }}
+                  >
+                    {isDone ? (wasCorrect ? '✓' : '✗') : letter}
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Indicador letra actual / intento */}
+            <div className="mt-4 flex items-center gap-3">
+              {totalLetters > 1 && (
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                  {ui.letterLabel} {currentLetterIdx + 1} / {totalLetters}
+                </span>
+              )}
+              {letterAttempts > 0 && (
+                <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-2 py-1 rounded-full font-semibold">
+                  ⚠ {ui.retryOf(letterAttempts + 1)}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* ── Modo voz ── */}
           {voiceMode ? (
             <div className="w-full max-w-2xl flex flex-col items-center gap-3">
-
               {/* Botón micrófono */}
               <div className="relative flex items-center justify-center">
-                {/* Anillos de onda */}
                 {listening && (
                   <>
                     <div className="absolute w-36 h-36 rounded-full border-2 border-red-400/30 animate-ping"
@@ -832,7 +995,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                   onClick={() => {
                     if (voiceStatus === 'heard') {
                       clearAutoConfirm();
-                      setInput(''); setHeardText(''); setHeardLetters('');
+                      setInput(''); setHeardText(''); setHeardLetter('');
                       startListening();
                     } else if (listening) {
                       stopMic();
@@ -850,59 +1013,55 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                       : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:scale-105'}`}
                 >
                   {listening ? (
-                    <><SoundWaveBars active={true} /><span className="text-xs font-semibold leading-none">Habla</span></>
+                    <><SoundWaveBars active={true} /><span className="text-xs font-semibold leading-none">{language === 'es' ? 'Habla' : 'Speak'}</span></>
                   ) : voiceStatus === 'heard' ? (
                     <><CheckCircle className="w-9 h-9" /><span className="text-xs font-semibold leading-none">OK</span></>
                   ) : voiceStatus === 'error' ? (
-                    <><MicOff className="w-9 h-9" /><span className="text-xs font-semibold leading-none">Error</span></>
+                    <><MicOff className="w-9 h-9" /><span className="text-xs font-semibold leading-none">{language === 'es' ? 'Error' : 'Error'}</span></>
                   ) : (
-                    <><Mic className="w-9 h-9" /><span className="text-xs font-semibold leading-none">Habla</span></>
+                    <><Mic className="w-9 h-9" /><span className="text-xs font-semibold leading-none">{language === 'es' ? 'Habla' : 'Speak'}</span></>
                   )}
                 </button>
               </div>
 
-              {/* Texto en tiempo real mientras habla */}
+              {/* Texto en tiempo real */}
               {listening && interimText && (
                 <p className="text-indigo-300 font-mono text-xl tracking-widest animate-pulse">{interimText}</p>
               )}
               {listening && !interimText && (
-                <p className="text-gray-400 text-sm">Di {row.label.split(' ').length === 1 ? 'la letra' : 'las letras'} en voz alta…</p>
+                <p className="text-gray-400 text-sm">{ui.speakNow}</p>
               )}
 
               {/* Resultado capturado */}
               {voiceStatus === 'heard' && (
                 <div className="text-center">
                   <p className="text-gray-400 text-xs mb-1">
-                    Escuché: <span className="text-white font-mono">"{heardText}"</span>
+                    {ui.iHeard} <span className="text-white font-mono">"{heardText}"</span>
                   </p>
-                  <p className="text-indigo-300 font-mono font-bold text-2xl tracking-widest">{heardLetters}</p>
+                  <p className="text-indigo-300 font-mono font-bold text-4xl tracking-widest">{heardLetter}</p>
                   <div className="flex gap-3 mt-3">
-                    <button onClick={() => { clearAutoConfirm(); setInput(''); setHeardText(''); setHeardLetters(''); startListening(); }}
+                    <button onClick={() => { clearAutoConfirm(); setInput(''); setHeardText(''); setHeardLetter(''); startListening(); }}
                       className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition">
-                      🔄 Reintentar
+                      {ui.retryBtn}
                     </button>
-                    <button onClick={() => submitInput(heardLetters)}
+                    <button onClick={() => submitLetter(heardLetter)}
                       className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition">
-                      ✓ Confirmar {autoConfirmSecs !== null && `(${autoConfirmSecs}s)`}
+                      {ui.confirmBtn} {autoConfirmSecs !== null && `(${autoConfirmSecs}s)`}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Idle: hint de pronunciación */}
+              {/* Idle: hint */}
               {voiceStatus === 'idle' && (
                 <p className="text-gray-500 text-xs text-center">
-                  {language === 'es'
-                    ? `Di: "${pronunciationHint}"`
-                    : `Say: "${pronunciationHint}"`}
+                  {language === 'es' ? `Di: "${currentLetterHint}"` : `Say: "${currentLetterHint}"`}
                 </p>
               )}
 
               {/* Error */}
               {voiceStatus === 'error' && (
-                <p className="text-red-400 text-sm text-center">
-                  {heardText || 'Error de micrófono. Toca el botón o cambia a teclado.'}
-                </p>
+                <p className="text-red-400 text-sm text-center">{heardText || (language === 'es' ? 'Error de micrófono.' : 'Microphone error.')}</p>
               )}
             </div>
           ) : (
@@ -913,23 +1072,23 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                   ref={inputRef}
                   type="text"
                   value={input}
-                  onChange={e => setInput(e.target.value.toUpperCase())}
-                  onKeyDown={e => { if (e.key === 'Enter' && input.trim()) submitInput(input); }}
-                  placeholder="Escribe las letras que ves…"
-                  maxLength={20}
-                  className="flex-1 px-4 py-3 rounded-xl bg-gray-800 text-white text-lg font-mono tracking-widest border-2 border-gray-600 focus:border-indigo-500 focus:outline-none placeholder-gray-500"
+                  onChange={e => setInput(e.target.value.toUpperCase().slice(0, 1))}
+                  onKeyDown={e => { if (e.key === 'Enter' && input.trim()) submitLetter(input.trim()); }}
+                  placeholder={ui.typeLetter}
+                  maxLength={1}
+                  className="flex-1 px-4 py-3 rounded-xl bg-gray-800 text-white text-2xl font-mono tracking-widest border-2 border-gray-600 focus:border-indigo-500 focus:outline-none placeholder-gray-500 text-center"
                   autoComplete="off" autoCapitalize="characters" spellCheck={false}
                 />
-                <button onClick={() => submitInput(input)} disabled={!input.trim()}
+                <button onClick={() => { if (input.trim()) submitLetter(input.trim()); }} disabled={!input.trim()}
                   className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold transition">
-                  ↵ Confirmar
+                  ↵
                 </button>
               </div>
-              <p className="text-gray-500 text-xs mt-2 text-center">Sin espacios o con espacios · {distance} cm</p>
+              <p className="text-gray-500 text-xs mt-2 text-center">{ui.noSpaces} · {distance} cm</p>
             </div>
           )}
 
-          {/* Historial de filas */}
+          {/* Historial de filas completadas */}
           {results.length > 0 && (
             <div className="w-full max-w-2xl flex flex-wrap gap-2 justify-center mt-4">
               {results.map((r, i) => (
@@ -950,9 +1109,12 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
     <div className="vision-test-root min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
         <div className="text-center mb-6">
-          <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-3" />
-          <h2 className="text-2xl font-bold text-gray-800">Prueba completada</h2>
-          {isSaving && <p className="text-xs text-gray-400 mt-1">Guardando resultado...</p>}
+          {bestLevel >= 6
+            ? <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-3" />
+            : <XCircle className="w-14 h-14 text-yellow-500 mx-auto mb-3" />
+          }
+          <h2 className="text-2xl font-bold text-gray-800">{ui.testCompleted}</h2>
+          {isSaving && <p className="text-xs text-gray-400 mt-1">{ui.saving}</p>}
         </div>
 
         <div className={`${resultInfo.bg} border ${resultInfo.border} rounded-xl p-5 mb-5`}>
@@ -961,13 +1123,14 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         </div>
 
         <div className="mb-5">
-          <p className="text-sm font-semibold text-gray-700 mb-2">Detalle por nivel:</p>
+          <p className="text-sm font-semibold text-gray-700 mb-2">{ui.detailByLevel}</p>
           <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
             {results.map((res, i) => (
               <div key={i} className="flex items-center justify-between text-sm px-3 py-1.5 rounded-lg bg-gray-50">
                 <span className="text-gray-400 font-mono w-14">{res.acuity}</span>
-                <span className="font-mono text-gray-600 tracking-widest text-xs flex-1 text-center">{testRows[i]?.label}</span>
-                <span className="font-mono text-xs text-gray-400 italic w-24 text-right truncate">"{res.userInput}"</span>
+                <span className="font-mono text-gray-600 tracking-widest text-xs flex-1 text-center">
+                  {testRows[i]?.label}
+                </span>
                 <span className={`ml-2 font-bold w-4 ${res.canRead ? 'text-green-600' : 'text-red-500'}`}>
                   {res.canRead ? '✓' : '✗'}
                 </span>
@@ -977,17 +1140,17 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         </div>
 
         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 text-sm text-indigo-800">
-          💡 {resultInfo.recommendation}
+          {ui.detailByLevel.includes('D') ? '💡 ' : '💡 '}{resultInfo.recommendation}
         </div>
 
         <div className="flex gap-3">
           <button onClick={handleRestart}
             className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold transition">
-            <RefreshCw className="w-4 h-4" /> Repetir
+            <RefreshCw className="w-4 h-4" /> {ui.repeatBtn}
           </button>
           <button onClick={onBack}
             className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition">
-            Volver al Dashboard
+            {ui.backDashboard}
           </button>
         </div>
       </div>

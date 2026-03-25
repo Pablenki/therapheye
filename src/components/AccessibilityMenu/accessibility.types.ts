@@ -4,8 +4,12 @@
 
 export type FontFamily = 'default' | 'Arial, sans-serif' | 'Georgia, serif' | 'Courier New, monospace' | 'Comic Sans MS, cursive' | 'OpenDyslexic, sans-serif';
 export type ColorBlindMode = 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'achromatopsia';
+export type AppLanguage = 'es' | 'en';
 
 export interface AccessibilitySettings {
+  // Idioma de la aplicación
+  appLanguage: AppLanguage;
+
   // Visuales
   highContrast: boolean;
   fontSize: number;       // 75–125 → aplicado en html font-size (escala rem)
@@ -29,6 +33,7 @@ export interface AccessibilitySettings {
 }
 
 export const defaultSettings: AccessibilitySettings = {
+  appLanguage: 'es',
   highContrast: false,
   fontSize: 100,
   fontFamily: 'default',

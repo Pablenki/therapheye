@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle, Eye, Droplets, Brain, Zap, Play, ListOrdered } from 'lucide-react';
-import { sql } from '../neonCliente';
+import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../i18n';
 
 interface Question {
   id: number;
@@ -12,20 +13,20 @@ interface Question {
 
 // ─── Mapa de síntomas enriquecido ──────────────────────────────────────────────
 const SYMPTOM_INFO: Record<string, {
-  label: string;
-  description: string;
-  clinical: string;
+  label: { es: string; en: string };
+  description: { es: string; en: string };
+  clinical: { es: string; en: string };
   color: string;
   bg: string;
   border: string;
   iconBg: string;
   Icon: typeof Eye;
-  exercises: Array<{ id: string; title: string; duration: string; reason: string; clinicalBasis: string }>;
+  exercises: Array<{ id: string; title: { es: string; en: string }; duration: string; reason: { es: string; en: string }; clinicalBasis: { es: string; en: string } }>;
 }> = {
   visual: {
-    label: 'Disfunción de acomodación',
-    description: 'Presentas dificultad para enfocar y episodios de visión borrosa o doble.',
-    clinical: 'El trabajo prolongado en pantalla obliga al músculo ciliar a mantenerse en estado de contracción sostenida (espasmo de acomodación). Esto reduce la amplitud de acomodación y puede provocar miopía pseudoprogresiva. La alternancia entre distancias cercanas y lejanas es el tratamiento de elección para restaurar la flexibilidad del cristalino.',
+    label: { es: 'Disfunción de acomodación', en: 'Accommodation dysfunction' },
+    description: { es: 'Presentas dificultad para enfocar y episodios de visión borrosa o doble.', en: 'You have difficulty focusing and episodes of blurry or double vision.' },
+    clinical: { es: 'El trabajo prolongado en pantalla obliga al músculo ciliar a mantenerse en estado de contracción sostenida (espasmo de acomodación). Esto reduce la amplitud de acomodación y puede provocar miopía pseudoprogresiva. La alternancia entre distancias cercanas y lejanas es el tratamiento de elección para restaurar la flexibilidad del cristalino.', en: 'Prolonged screen work forces the ciliary muscle to maintain sustained contraction (accommodation spasm). This reduces accommodation amplitude and can cause pseudo-progressive myopia. Alternating between near and far distances is the treatment of choice to restore crystalline lens flexibility.' },
     color: 'text-blue-700',
     bg: 'bg-blue-50',
     border: 'border-blue-200',
@@ -34,31 +35,31 @@ const SYMPTOM_INFO: Record<string, {
     exercises: [
       {
         id: 'focus',
-        title: 'Enfoque cercano-lejano',
+        title: { es: 'Enfoque cercano-lejano', en: 'Near-Far Focus' },
         duration: '5 min',
-        reason: 'Entrena y relaja los músculos de acomodación',
-        clinicalBasis: 'Ejercita activamente el músculo ciliar en ambas direcciones, previniendo el espasmo y mejorando la amplitud de acomodación en 2–4 semanas de práctica regular.',
+        reason: { es: 'Entrena y relaja los músculos de acomodación', en: 'Trains and relaxes accommodation muscles' },
+        clinicalBasis: { es: 'Ejercita activamente el músculo ciliar en ambas direcciones, previniendo el espasmo y mejorando la amplitud de acomodación en 2–4 semanas de práctica regular.', en: 'Actively exercises the ciliary muscle in both directions, preventing spasm and improving accommodation amplitude within 2-4 weeks of regular practice.' },
       },
       {
         id: 'near-far',
-        title: 'Simulación cerca/lejos',
+        title: { es: 'Simulación cerca/lejos', en: 'Near/Far Simulation' },
         duration: '3 min',
-        reason: 'Ejercita la flexibilidad del cristalino',
-        clinicalBasis: 'Estimula la respuesta vergencial y acomodativa sincrónica mediante un estímulo visual controlado, sin requerir movimiento físico del paciente.',
+        reason: { es: 'Ejercita la flexibilidad del cristalino', en: 'Exercises crystalline lens flexibility' },
+        clinicalBasis: { es: 'Estimula la respuesta vergencial y acomodativa sincrónica mediante un estímulo visual controlado, sin requerir movimiento físico del paciente.', en: 'Stimulates synchronized vergence and accommodation response through controlled visual stimulus, without requiring physical patient movement.' },
       },
       {
         id: '20-20-20',
-        title: 'Regla 20-20-20',
+        title: { es: 'Regla 20-20-20', en: '20-20-20 Rule' },
         duration: '20 seg',
-        reason: 'Rompe el ciclo de enfoque fijo cada 20 minutos',
-        clinicalBasis: 'Basada en las guías de la American Optometric Association. Permite que el músculo ciliar alcance su punto de reposo (punto remoto) y reduce la fatiga acumulada.',
+        reason: { es: 'Rompe el ciclo de enfoque fijo cada 20 minutos', en: 'Breaks the fixed focus cycle every 20 minutes' },
+        clinicalBasis: { es: 'Basada en las guías de la American Optometric Association. Permite que el músculo ciliar alcance su punto de reposo (punto remoto) y reduce la fatiga acumulada.', en: 'Based on American Optometric Association guidelines. Allows the ciliary muscle to reach its resting point (far point) and reduces accumulated fatigue.' },
       },
     ],
   },
   comfort: {
-    label: 'Síndrome de ojo seco digital',
-    description: 'Presentas sequedad, sensación arenosa e irritación ocular.',
-    clinical: 'La frecuencia de parpadeo disminuye un 60 % durante el uso de pantallas (de 15–20 a 5–7 veces por minuto). Esto reduce la distribución de la película lagrimal, acelera su evaporación y genera inestabilidad del film precorneal. El calor húmedo de las palmas estimula las glándulas de Meibomio, mejorando la capa lipídica de la lágrima.',
+    label: { es: 'Síndrome de ojo seco digital', en: 'Digital dry eye syndrome' },
+    description: { es: 'Presentas sequedad, sensación arenosa e irritación ocular.', en: 'You experience dryness, grittiness, and eye irritation.' },
+    clinical: { es: 'La frecuencia de parpadeo disminuye un 60 % durante el uso de pantallas (de 15–20 a 5–7 veces por minuto). Esto reduce la distribución de la película lagrimal, acelera su evaporación y genera inestabilidad del film precorneal. El calor húmedo de las palmas estimula las glándulas de Meibomio, mejorando la capa lipídica de la lágrima.', en: 'Blink frequency decreases by 60% during screen use (from 15-20 to 5-7 times per minute). This reduces tear film distribution, accelerates evaporation, and causes precorneal film instability. The warm, moist heat from the palms stimulates Meibomian glands, improving the lipid layer of tears.' },
     color: 'text-teal-700',
     bg: 'bg-teal-50',
     border: 'border-teal-200',
@@ -67,31 +68,31 @@ const SYMPTOM_INFO: Record<string, {
     exercises: [
       {
         id: 'palming',
-        title: 'Palming',
+        title: { es: 'Palming', en: 'Palming' },
         duration: '3 min',
-        reason: 'El calor relaja y estimula la lubricación natural',
-        clinicalBasis: 'El calor generado por las palmas (≈36 °C) incrementa la secreción de las glándulas de Meibomio, mejorando la estabilidad de la capa lipídica de la lágrima hasta por 45 min.',
+        reason: { es: 'El calor relaja y estimula la lubricación natural', en: 'Heat relaxes and stimulates natural lubrication' },
+        clinicalBasis: { es: 'El calor generado por las palmas (≈36 °C) incrementa la secreción de las glándulas de Meibomio, mejorando la estabilidad de la capa lipídica de la lágrima hasta por 45 min.', en: 'The heat generated by the palms (≈36°C) increases Meibomian gland secretion, improving tear lipid layer stability for up to 45 minutes.' },
       },
       {
         id: '20-20-20',
-        title: 'Regla 20-20-20',
+        title: { es: 'Regla 20-20-20', en: '20-20-20 Rule' },
         duration: '20 seg',
-        reason: 'Obliga a parpadear y rehidratar la córnea',
-        clinicalBasis: 'Al alejar la vista, el estímulo de convergencia disminuye y la frecuencia de parpadeo se normaliza, redistribuyendo la película lagrimal sobre la superficie ocular.',
+        reason: { es: 'Obliga a parpadear y rehidratar la córnea', en: 'Forces blinking and rehydrates cornea' },
+        clinicalBasis: { es: 'Al alejar la vista, el estímulo de convergencia disminuye y la frecuencia de parpadeo se normaliza, redistribuyendo la película lagrimal sobre la superficie ocular.', en: 'As gaze is redirected away, convergence stimulus decreases and blink frequency normalizes, redistributing tear film over the ocular surface.' },
       },
       {
         id: 'circles',
-        title: 'Círculos oculares',
+        title: { es: 'Círculos oculares', en: 'Eye Circles' },
         duration: '4 min',
-        reason: 'Activa las glándulas de Meibomio mediante movimiento',
-        clinicalBasis: 'Los movimientos de versión estimulan mecánicamente las glándulas de Meibomio ubicadas en el margen palpebral, favoreciendo la secreción lipídica sin necesidad de compresas calientes externas.',
+        reason: { es: 'Activa las glándulas de Meibomio mediante movimiento', en: 'Activates Meibomian glands through movement' },
+        clinicalBasis: { es: 'Los movimientos de versión estimulan mecánicamente las glándulas de Meibomio ubicadas en el margen palpebral, favoreciendo la secreción lipídica sin necesidad de compresas calientes externas.', en: 'Versional movements mechanically stimulate Meibomian glands located at the eyelid margin, promoting lipid secretion without external warm compress need.' },
       },
     ],
   },
   pain: {
-    label: 'Cefalea tensional digital',
-    description: 'Presentas dolores de cabeza frecuentes asociados al uso de pantallas.',
-    clinical: 'La tensión sostenida de los músculos extraoculares, el músculo frontal y el trapecio superior genera cefalea de tipo tensional en el 60 % de los trabajadores que usan pantallas más de 4 horas diarias. El umbral de dolor disminuye con la acumulación de metabolitos (lactato, adenosina) en los músculos fatigados. La relajación activa revierte este proceso.',
+    label: { es: 'Cefalea tensional digital', en: 'Digital tension headache' },
+    description: { es: 'Presentas dolores de cabeza frecuentes asociados al uso de pantallas.', en: 'You experience frequent headaches associated with screen use.' },
+    clinical: { es: 'La tensión sostenida de los músculos extraoculares, el músculo frontal y el trapecio superior genera cefalea de tipo tensional en el 60 % de los trabajadores que usan pantallas más de 4 horas diarias. El umbral de dolor disminuye con la acumulación de metabolitos (lactato, adenosina) en los músculos fatigados. La relajación activa revierte este proceso.', en: 'Sustained tension in extraocular muscles, frontal muscle, and upper trapezius causes tension-type headache in 60% of workers using screens over 4 hours daily. Pain threshold decreases with metabolite accumulation (lactate, adenosine) in fatigued muscles. Active relaxation reverses this process.' },
     color: 'text-purple-700',
     bg: 'bg-purple-50',
     border: 'border-purple-200',
@@ -100,31 +101,31 @@ const SYMPTOM_INFO: Record<string, {
     exercises: [
       {
         id: 'palming',
-        title: 'Palming',
+        title: { es: 'Palming', en: 'Palming' },
         duration: '3 min',
-        reason: 'Reduce la tensión ocular y de cuello',
-        clinicalBasis: 'La oscuridad total elimina el estímulo visual y permite la relajación refleja de los músculos extraoculares, el orbicular y el frontal, reduciendo la tensión miofascial asociada a la cefalea.',
+        reason: { es: 'Reduce la tensión ocular y de cuello', en: 'Reduces eye and neck tension' },
+        clinicalBasis: { es: 'La oscuridad total elimina el estímulo visual y permite la relajación refleja de los músculos extraoculares, el orbicular y el frontal, reduciendo la tensión miofascial asociada a la cefalea.', en: 'Total darkness eliminates visual stimulus and allows reflex relaxation of extraocular, orbicular, and frontal muscles, reducing headache-associated myofascial tension.' },
       },
       {
         id: 'circles',
-        title: 'Círculos oculares',
+        title: { es: 'Círculos oculares', en: 'Eye Circles' },
         duration: '4 min',
-        reason: 'Relaja los músculos extraoculares',
-        clinicalBasis: 'Los movimientos circulares lentos actúan como estiramiento excéntrico de los seis músculos extraoculares, disipando la acumulación de metabolitos y aliviando la tensión miofascial periocular.',
+        reason: { es: 'Relaja los músculos extraoculares', en: 'Relaxes extraocular muscles' },
+        clinicalBasis: { es: 'Los movimientos circulares lentos actúan como estiramiento excéntrico de los seis músculos extraoculares, disipando la acumulación de metabolitos y aliviando la tensión miofascial periocular.', en: 'Slow circular movements act as eccentric stretch of six extraocular muscles, dissipating metabolite accumulation and relieving periocular myofascial tension.' },
       },
       {
         id: 'focus',
-        title: 'Enfoque cercano-lejano',
+        title: { es: 'Enfoque cercano-lejano', en: 'Near-Far Focus' },
         duration: '5 min',
-        reason: 'Descomprime la musculatura ciliar',
-        clinicalBasis: 'La relajación intermitente del músculo ciliar interrumpe el ciclo de isquemia tisular → acumulación de lactato → dolor, que es el mecanismo fisiopatológico de la cefalea tensional digital.',
+        reason: { es: 'Descomprime la musculatura ciliar', en: 'Decompresses ciliary muscles' },
+        clinicalBasis: { es: 'La relajación intermitente del músculo ciliar interrumpe el ciclo de isquemia tisular → acumulación de lactato → dolor, que es el mecanismo fisiopatológico de la cefalea tensional digital.', en: 'Intermittent ciliary muscle relaxation breaks the tissue ischemia → lactate accumulation → pain cycle, which is the pathophysiologic mechanism of digital tension headache.' },
       },
     ],
   },
   fatigue: {
-    label: 'Astenopia digital severa',
-    description: 'Presentas fatiga visual acumulada con empeoramiento progresivo durante el día.',
-    clinical: 'La astenopia digital (Computer Vision Syndrome) afecta al 90 % de usuarios que pasan más de 3 h/día frente a pantallas. La combinación de parpadeo reducido, brillo excesivo, reflejos en pantalla y postura inadecuada sobrecarga el sistema visual. Las pausas activas estructuradas con ejercicios específicos reducen los síntomas en un 68 % según estudios de la AOA.',
+    label: { es: 'Astenopia digital severa', en: 'Severe digital asthenopia' },
+    description: { es: 'Presentas fatiga visual acumulada con empeoramiento progresivo durante el día.', en: 'You experience accumulated visual fatigue with progressive worsening during the day.' },
+    clinical: { es: 'La astenopia digital (Computer Vision Syndrome) afecta al 90 % de usuarios que pasan más de 3 h/día frente a pantallas. La combinación de parpadeo reducido, brillo excesivo, reflejos en pantalla y postura inadecuada sobrecarga el sistema visual. Las pausas activas estructuradas con ejercicios específicos reducen los síntomas en un 68 % según estudios de la AOA.', en: 'Digital asthenopia (Computer Vision Syndrome) affects 90% of users spending over 3h/day on screens. The combination of reduced blinking, excessive brightness, screen glare, and poor posture overloads the visual system. Structured active breaks with specific exercises reduce symptoms by 68% according to AOA studies.' },
     color: 'text-orange-700',
     bg: 'bg-orange-50',
     border: 'border-orange-200',
@@ -133,24 +134,24 @@ const SYMPTOM_INFO: Record<string, {
     exercises: [
       {
         id: '20-20-20',
-        title: 'Regla 20-20-20',
+        title: { es: 'Regla 20-20-20', en: '20-20-20 Rule' },
         duration: '20 seg',
-        reason: 'Pausa activa cada 20 min para recuperar',
-        clinicalBasis: 'Las microdescansos programados son más efectivos que los descansos prolongados ocasionales. La AOA estima que aplicar esta regla reduce los síntomas de astenopia en un 40 % en la primera semana.',
+        reason: { es: 'Pausa activa cada 20 min para recuperar', en: 'Active break every 20 min to recover' },
+        clinicalBasis: { es: 'Las microdescansos programados son más efectivos que los descansos prolongados ocasionales. La AOA estima que aplicar esta regla reduce los síntomas de astenopia en un 40 % en la primera semana.', en: 'Programmed microbreaks are more effective than occasional prolonged breaks. AOA estimates that applying this rule reduces asthenopia symptoms by 40% in the first week.' },
       },
       {
         id: 'palming',
-        title: 'Palming',
+        title: { es: 'Palming', en: 'Palming' },
         duration: '3 min',
-        reason: 'Restablece el nivel de energía ocular',
-        clinicalBasis: 'La privación sensorial visual total (oscuridad completa) activa el sistema parasimpático, reduce la carga cognitiva visual y permite la recuperación funcional del córtex visual occipital.',
+        reason: { es: 'Restablece el nivel de energía ocular', en: 'Restores eye energy levels' },
+        clinicalBasis: { es: 'La privación sensorial visual total (oscuridad completa) activa el sistema parasimpático, reduce la carga cognitiva visual y permite la recuperación funcional del córtex visual occipital.', en: 'Total visual sensory deprivation (complete darkness) activates the parasympathetic system, reduces visual cognitive load, and enables functional recovery of the occipital visual cortex.' },
       },
       {
         id: 'near-far',
-        title: 'Simulación cerca/lejos',
+        title: { es: 'Simulación cerca/lejos', en: 'Near/Far Simulation' },
         duration: '3 min',
-        reason: 'Previene el espasmo de acomodación crónico',
-        clinicalBasis: 'El espasmo de acomodación es la principal causa de pseudomiopía progresiva en adultos jóvenes que trabajan en pantallas. Este ejercicio actúa como profilaxis cuando se realiza al inicio de la jornada.',
+        reason: { es: 'Previene el espasmo de acomodación crónico', en: 'Prevents chronic accommodation spasm' },
+        clinicalBasis: { es: 'El espasmo de acomodación es la principal causa de pseudomiopía progresiva en adultos jóvenes que trabajan en pantallas. Este ejercicio actúa como profilaxis cuando se realiza al inicio de la jornada.', en: 'Accommodation spasm is the main cause of progressive pseudo-myopia in young adults working on screens. This exercise acts as prophylaxis when performed at the start of the workday.' },
       },
     ],
   },
@@ -169,6 +170,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
 
   const { user } = useUser();
+  const { t, lang } = useLanguage();
 
   const questions: Question[] = [
     {
@@ -234,11 +236,11 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
   ];
 
   const options = [
-    { value: 0, label: 'Nunca',          desc: 'No me ocurre',                  color: 'bg-green-500'  },
-    { value: 1, label: 'Rara vez',       desc: 'Una vez a la semana o menos',   color: 'bg-blue-500'   },
-    { value: 2, label: 'A veces',        desc: 'Varios días a la semana',        color: 'bg-yellow-500' },
-    { value: 3, label: 'Frecuentemente', desc: 'Casi todos los días',            color: 'bg-orange-500' },
-    { value: 4, label: 'Siempre',        desc: 'A diario, de manera intensa',   color: 'bg-red-500'    },
+    { value: 0, label: 'never',          descKey: 'neverDesc',          color: 'bg-green-500'  },
+    { value: 1, label: 'rarely',         descKey: 'rarelyDesc',         color: 'bg-blue-500'   },
+    { value: 2, label: 'sometimes',      descKey: 'sometimesDesc',       color: 'bg-yellow-500' },
+    { value: 3, label: 'frequently',     descKey: 'frequentlyDesc',     color: 'bg-orange-500' },
+    { value: 4, label: 'always',         descKey: 'alwaysDesc',         color: 'bg-red-500'    },
   ];
 
   // ─── Puntaje general ────────────────────────────────────────────────────────
@@ -271,10 +273,10 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
   };
 
   const getScoreMessage = (score: number) => {
-    if (score < 25) return { text: 'Fatiga visual leve',         color: 'text-green-600',  bg: 'bg-green-50',  border: 'border-green-200'  };
-    if (score < 50) return { text: 'Fatiga visual moderada',     color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' };
-    if (score < 75) return { text: 'Fatiga visual considerable', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
-    return             { text: 'Fatiga visual severa',           color: 'text-red-600',    bg: 'bg-red-50',    border: 'border-red-200'    };
+    if (score < 25) return { text: t('questionnaire', 'fatigueMild'),         color: 'text-green-600',  bg: 'bg-green-50',  border: 'border-green-200'  };
+    if (score < 50) return { text: t('questionnaire', 'fatigueModerate'),     color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-200' };
+    if (score < 75) return { text: t('questionnaire', 'fatigueConsiderable'), color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+    return             { text: t('questionnaire', 'fatigueSevere'),           color: 'text-red-600',    bg: 'bg-red-50',    border: 'border-red-200'    };
   };
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
@@ -297,7 +299,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
       const dominant = getDominantSymptom(finalAnswers);
       await sql`
         INSERT INTO respuestas_cuestionario (user_id, respuestas_json, puntaje_fatiga, sintoma_dominante, created_at)
-        VALUES (${user?.id}, ${JSON.stringify(finalAnswers)}, ${score}, ${dominant}, NOW())
+        VALUES (${user?.id}, ${JSON.stringify(finalAnswers)}, ${score}, ${dominant}, ${localISOString()})
       `;
     } catch (error) {
       console.error('Error al guardar respuestas:', error);
@@ -322,9 +324,9 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
           {/* Encabezado */}
           <div className="text-center mb-6">
             <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-3" />
-            <h2 className="text-2xl font-bold text-gray-800">¡Evaluación completada!</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t('questionnaire', 'evalComplete')}</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Analizamos tus {questions.length} respuestas para personalizar tu plan
+              {t('questionnaire', 'analyzeMsg')} {questions.length} {t('questionnaire', 'analyzeMsgSuffix')}
             </p>
           </div>
 
@@ -332,7 +334,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
           <div className={`${scoreMsg.bg} border ${scoreMsg.border} rounded-xl p-4 mb-4 flex items-center justify-between`}>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-0.5">
-                Nivel de fatiga visual
+                {t('questionnaire', 'fatigueLevel')}
               </p>
               <p className={`text-lg font-bold ${scoreMsg.color}`}>{scoreMsg.text}</p>
             </div>
@@ -347,15 +349,15 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
               </div>
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-widest font-semibold">
-                  Síntoma dominante
+                  {t('questionnaire', 'dominantSymptom')}
                 </p>
-                <p className={`font-bold ${symptomInfo.color}`}>{symptomInfo.label}</p>
+                <p className={`font-bold ${symptomInfo.color}`}>{symptomInfo.label[lang]}</p>
               </div>
             </div>
-            <p className="text-sm text-gray-700 mb-3">{symptomInfo.description}</p>
+            <p className="text-sm text-gray-700 mb-3">{symptomInfo.description[lang]}</p>
             <div className="bg-white/70 rounded-lg p-3 text-xs text-gray-600 leading-relaxed border border-white">
-              <span className="font-semibold text-gray-700">¿Por qué ocurre? </span>
-              {symptomInfo.clinical}
+              <span className="font-semibold text-gray-700">{t('questionnaire', 'whyHappens')} </span>
+              {symptomInfo.clinical[lang]}
             </div>
           </div>
 
@@ -363,7 +365,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
           <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mb-5">
             <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
               <span className="text-indigo-500">★</span>
-              Rutina personalizada — 3 ejercicios
+              {t('questionnaire', 'personalRoutine')}
             </h3>
             <div className="space-y-2">
               {symptomInfo.exercises.map((ex, i) => (
@@ -374,8 +376,8 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 text-sm leading-tight">{ex.title}</p>
-                      <p className="text-xs text-gray-400">{ex.duration} · {ex.reason}</p>
+                      <p className="font-semibold text-gray-800 text-sm leading-tight">{ex.title[lang]}</p>
+                      <p className="text-xs text-gray-400">{ex.duration} · {ex.reason[lang]}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {/* Botón info clínica */}
@@ -383,7 +385,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
                         onClick={() => setExpandedExercise(expandedExercise === ex.id ? null : ex.id)}
                         className="text-xs text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
                       >
-                        {expandedExercise === ex.id ? 'Menos' : '¿Por qué?'}
+                        {expandedExercise === ex.id ? t('questionnaire', 'lessBtn') : t('questionnaire', 'whyBtn')}
                       </button>
                       {/* Botón ejercicio individual */}
                       {onStartRoutine && (
@@ -391,7 +393,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
                           onClick={() => onStartRoutine([ex.id])}
                           className="flex items-center gap-1 text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg transition font-semibold"
                         >
-                          <Play className="w-3 h-3" /> Hacer
+                          <Play className="w-3 h-3" /> {t('questionnaire', 'doBtn')}
                         </button>
                       )}
                     </div>
@@ -400,7 +402,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
                   {expandedExercise === ex.id && (
                     <div className="px-4 pb-3 pt-0">
                       <p className="text-xs text-gray-600 bg-indigo-50 rounded-lg p-2.5 leading-relaxed border border-indigo-100">
-                        {ex.clinicalBasis}
+                        {ex.clinicalBasis[lang]}
                       </p>
                     </div>
                   )}
@@ -417,14 +419,14 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
                 className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition shadow-md"
               >
                 <ListOrdered className="w-5 h-5" />
-                Empezar rutina completa (3 ejercicios seguidos)
+                {t('questionnaire', 'startFullRoutine')}
               </button>
             )}
             <button
               onClick={onBack}
               className="w-full py-3 rounded-xl border-2 border-indigo-200 text-indigo-600 font-semibold hover:bg-indigo-50 transition"
             >
-              Volver al Dashboard
+              {t('common', 'backToDashboard')}
             </button>
           </div>
         </div>
@@ -448,15 +450,15 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
           onClick={onBack}
           className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6"
         >
-          <ArrowLeft className="w-5 h-5" /> Volver
+          <ArrowLeft className="w-5 h-5" /> {t('common', 'back')}
         </button>
 
         {/* Barra de progreso */}
         <div className="mb-6">
           <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-            <span className="font-medium">Pregunta {currentQuestion + 1} / {questions.length}</span>
+            <span className="font-medium">{t('questionnaire', 'questionOf')} {currentQuestion + 1} {t('questionnaire', 'of')} {questions.length}</span>
             <span className={`px-2 py-0.5 rounded-full text-white text-xs font-semibold ${categoryColors[currentQ.category]}`}>
-              {categoryNames[currentQ.category]}
+              {lang === 'en' ? t('questionnaire', `cat${currentQ.category.charAt(0).toUpperCase() + currentQ.category.slice(1)}`) : categoryNames[currentQ.category]}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -469,10 +471,10 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">
-            {currentQ.text}
+            {t('questionnaire', `q${currentQ.id}`)}
           </h2>
           <p className="text-xs text-gray-400 text-center mb-7 leading-relaxed">
-            💡 {currentQ.hint}
+            💡 {t('questionnaire', `q${currentQ.id}hint`)}
           </p>
 
           <div className="space-y-2.5">
@@ -489,15 +491,15 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
               >
                 <div className={`w-3.5 h-3.5 rounded-full flex-shrink-0 ${option.color}`} />
                 <div>
-                  <p className="font-semibold text-gray-800 text-sm">{option.label}</p>
-                  <p className="text-xs text-gray-400">{option.desc}</p>
+                  <p className="font-semibold text-gray-800 text-sm">{t('questionnaire', option.label)}</p>
+                  <p className="text-xs text-gray-400">{t('questionnaire', option.descKey)}</p>
                 </div>
               </button>
             ))}
           </div>
 
           {isSaving && (
-            <p className="text-center text-gray-500 text-sm mt-5">Guardando evaluación…</p>
+            <p className="text-center text-gray-500 text-sm mt-5">{t('questionnaire', 'saving')}</p>
           )}
         </div>
       </div>
