@@ -89,11 +89,10 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
           console.warn('[Login] Error cargando preferencias:', err);
         }
 
-        login({
-          id: user.id,
-          email: user.email,
-          nombre: user.nombre,
-        });
+        const userData = { id: user.id, email: user.email, nombre: user.nombre };
+        // Guardar usuario en localStorage para que la extensión pueda leerlo
+        try { localStorage.setItem('therapeye_user', JSON.stringify(userData)); } catch {}
+        login(userData);
         onLogin();
       } else {
         setError(t('login', 'error'));

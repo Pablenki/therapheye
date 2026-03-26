@@ -273,6 +273,15 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     if (!cameFromAuth) {
       setIsRunning(localSt.isRunning);
     } else {
+      // Pausar INMEDIATAMENTE en localStorage para que el tick no lea isRunning=true
+      // y lo sobreescriba antes de que handleLoginTimer termine su carga asíncrona de BD.
+      if (localSt.isRunning) {
+        const pausedMs = calcElapsedMs(localSt);
+        const immediatelyPaused: PersistedTimerState = {
+          ...localSt, isRunning: false, startTimestamp: null, accumulatedMs: pausedMs,
+        };
+        persistState(immediatelyPaused);
+      }
       setIsRunning(false);
     }
 
@@ -281,18 +290,27 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       dbLoadedRef.current = true;
       loadTimerFromDB(user.id).then(dbState => {
         if (!dbState) return;
-        const dbMs     = calcElapsedMs(dbState);
-        const localMs2 = calcElapsedMs(loadState());
-        if (dbMs > localMs2) {
-          persistState(dbState);
-          setElapsedSeconds(Math.floor(dbMs / 1000));
-          // Mismo principio: no arrancar si venimos del login
-          if (!cameFromAuth) {
+        // Al hacer login, BD es la fuente de verdad SIEMPRE — localStorage puede
+        // tener datos viejos de otra sesión en este navegador.
+        if (cameFromAuth) {
+          // Pausar la versión de BD (no arrancar) y sobrescribir localStorage
+          const pausedDb: PersistedTimerState = {
+            ...dbState, isRunning: false, startTimestamp: null,
+          };
+          persistState(pausedDb);
+          setElapsedSeconds(Math.floor(dbState.accumulatedMs / 1000));
+        } else {
+          // Navegación normal (no login) → solo sobrescribir si BD tiene más
+          const dbMs     = calcElapsedMs(dbState);
+          const localMs2 = calcElapsedMs(loadState());
+          if (dbMs > localMs2) {
+            persistState(dbState);
+            setElapsedSeconds(Math.floor(dbMs / 1000));
             setIsRunning(dbState.isRunning);
-          }
-          if (dbState.isRunning && dbState.nextBreakAtMs != null && !cameFromAuth) {
-            const rem = dbState.nextBreakAtMs - dbMs;
-            setNextBreakInMinutes(rem > 0 ? Math.round(rem / 60000) : 0);
+            if (dbState.isRunning && dbState.nextBreakAtMs != null) {
+              const rem = dbState.nextBreakAtMs - dbMs;
+              setNextBreakInMinutes(rem > 0 ? Math.round(rem / 60000) : 0);
+            }
           }
         }
       });
@@ -363,19 +381,23 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       };
 
       // Cargar desde BD para sincronización cross-browser.
-      // Preferir localStorage (siempre más actualizado) salvo que BD tenga
-      // estrictamente MÁS tiempo acumulado (otro navegador avanzó más).
+      // Al hacer login, BD es SIEMPRE la fuente de verdad — localStorage puede
+      // tener datos de una sesión vieja de ESTE navegador (días atrás).
       if (user?.id) {
         loadTimerFromDB(user.id).then(dbState => {
-          const localSt = loadState();
-          const dbAccMs    = dbState ? dbState.accumulatedMs : 0;
-          const localAccMs = localSt.accumulatedMs;
-
-          if (dbState && dbAccMs > localAccMs) {
+          if (dbState) {
+            // BD tiene datos para hoy → SIEMPRE usar BD (no comparar con localStorage)
             persistState(dbState);
             handleLoginTimer(dbState);
           } else {
-            handleLoginTimer(localSt);
+            // No hay datos en BD para hoy → usar localStorage pero con accumulatedMs=0
+            // (nueva sesión del día)
+            const fresh: PersistedTimerState = {
+              ...DEFAULT_STATE,
+              stateDate: todayLocalDate(),
+            };
+            persistState(fresh);
+            handleLoginTimer(fresh);
           }
         }).catch(() => {
           handleLoginTimer(loadState());
@@ -397,9 +419,38 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     if (isAuthPage) return;
 
     let lastFiredBreakAtMs: number | null = null;
+    let lastTickTs = Date.now();
+    const SLEEP_THRESHOLD_MS = 30_000; // Si pasan >30s entre ticks → la máquina estuvo dormida
 
     const interval = setInterval(() => {
+      const now = Date.now();
+      const gap = now - lastTickTs;
+      lastTickTs = now;
+
       const st  = loadState();
+
+      // ═══ Detección de sleep/suspend ═══
+      // Si el gap entre ticks es >30s y el timer estaba corriendo → pausar automáticamente.
+      // La máquina estuvo dormida; no es justo contar ese tiempo como pantalla activa.
+      if (gap > SLEEP_THRESHOLD_MS && st.isRunning) {
+        // Calcular el tiempo real ANTES del sleep (accumulatedMs + tiempo hasta el sleep)
+        // Aproximamos que el sleep empezó ~1s después del último tick
+        const msBeforeSleep = st.accumulatedMs + (st.startTimestamp ? (lastTickTs - gap + 1000 - st.startTimestamp) : 0);
+        const safeMsBeforeSleep = Math.max(0, Math.min(msBeforeSleep, MAX_SESSION_MS));
+        const paused: PersistedTimerState = {
+          ...st,
+          isRunning: false,
+          startTimestamp: null,
+          accumulatedMs: safeMsBeforeSleep,
+        };
+        persistState(paused);
+        setIsRunning(false);
+        setElapsedSeconds(Math.floor(safeMsBeforeSleep / 1000));
+        setNextBreakInMinutes(null);
+        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused); }
+        return;
+      }
+
       const ms  = calcElapsedMs(st);
       setElapsedSeconds(Math.floor(ms / 1000));
       setIsRunning(st.isRunning);

@@ -25,6 +25,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    // Limpiar datos de usuario y sesión de localStorage para que la extensión lo detecte
+    try {
+      localStorage.removeItem('therapeye_user');
+      localStorage.removeItem('therapeye_session_token');
+    } catch {}
   };
 
   const isAuthenticated = user !== null;

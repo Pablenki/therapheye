@@ -4,19 +4,21 @@ import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 
-// ─── Letras Snellen válidas (optotipos estándar) ───────────────────────────────
-const SNELLEN_POOL = ['C', 'D', 'E', 'F', 'H', 'N', 'O', 'P', 'R', 'U', 'V', 'Z'];
+// ─── Letras Snellen válidas ──────────────────────────────────────────────────
+// Solo letras con nombre de ≥2 sílabas en español para mejor reconocimiento de voz:
+// efe, hache, jota, ele, eme, ene, erre, ese, zeta + ka, de, te (cortas pero claras)
+const SNELLEN_POOL = ['D', 'F', 'H', 'J', 'K', 'L', 'M', 'N', 'R', 'S', 'T', 'Z'];
 
 // ─── Configuración de niveles — counts más realistas para validación letra a letra
 const ROWS_CONFIG = [
   { fontSize: 96, acuity: '20/200', level: 1,  count: 1 },
   { fontSize: 72, acuity: '20/150', level: 2,  count: 2 },
-  { fontSize: 56, acuity: '20/100', level: 3,  count: 3 },
+  { fontSize: 56, acuity: '20/100', level: 3,  count: 2 },
   { fontSize: 42, acuity: '20/70',  level: 4,  count: 3 },
-  { fontSize: 32, acuity: '20/50',  level: 5,  count: 4 },
-  { fontSize: 24, acuity: '20/40',  level: 6,  count: 4 },
+  { fontSize: 32, acuity: '20/50',  level: 5,  count: 3 },
+  { fontSize: 24, acuity: '20/40',  level: 6,  count: 3 },
   { fontSize: 18, acuity: '20/30',  level: 7,  count: 3 },
-  { fontSize: 14, acuity: '20/20',  level: 8,  count: 3 },
+  { fontSize: 14, acuity: '20/20',  level: 8,  count: 2 },
   { fontSize: 11, acuity: '20/15',  level: 9,  count: 2 },
   { fontSize: 9,  acuity: '20/10',  level: 10, count: 1 },
 ];
@@ -93,15 +95,6 @@ const LETTER_MAP_EN: Record<string, string> = {
   'z': 'Z', 'zee': 'Z', 'zed': 'Z',
 };
 
-// Pronunciación para el hint (letra → cómo pronunciarla en ES)
-const PRONOUNCE_ES: Record<string, string> = {
-  C: 'ce', D: 'de', E: 'e', F: 'efe', H: 'hache',
-  N: 'ene', O: 'o', P: 'pe', R: 'erre', U: 'u', V: 've', Z: 'zeta',
-};
-const PRONOUNCE_EN: Record<string, string> = {
-  C: 'see', D: 'dee', E: 'ee', F: 'eff', H: 'aitch',
-  N: 'en', O: 'oh', P: 'pee', R: 'ar', U: 'you', V: 'vee', Z: 'zee',
-};
 
 // ─── Extrae UNA sola letra de la transcripción ────────────────────────────────
 // KEY FIX: si la letra esperada aparece entre las detectadas → aceptar
@@ -206,7 +199,7 @@ const UI: Record<Lang, {
     step4voice: 'Tienes un reintento por letra. Si fallas el reintento, termina el test.',
     step2keyboard: 'Escribe la letra que veas y presiona Enter.',
     step3keyboard: 'Una letra a la vez. Tienes un reintento si fallas.',
-    voiceTip: 'Consejo: di con calma → "cé", "de", "ene", "erre", "uve", "zeta".',
+    voiceTip: 'Consejo: di con calma → "efe", "jota", "ele", "eme", "ene", "erre", "ese", "zeta".',
     inputModeLabel: 'Modo de entrada:',
     voiceBtn: 'Voz',
     keyboardBtn: 'Teclado',
@@ -230,7 +223,7 @@ const UI: Record<Lang, {
     typeLetter: 'Escribe la letra que ves…',
     noSpaces: 'Solo una letra · distancia configurada',
     promptSingle: '¿Qué letra ves?',
-    promptLetterOf: (n, t) => `Letra ${n} de ${t}. ¿Qué letra ves?`,
+    promptLetterOf: (_n, _t) => '¿Qué letra ves?',
     testCompleted: 'Prueba completada',
     saving: 'Guardando resultado…',
     detailByLevel: 'Detalle por nivel:',
@@ -252,7 +245,7 @@ const UI: Record<Lang, {
     step4voice: 'You get one retry per letter. If you fail the retry, the test ends.',
     step2keyboard: 'Type the letter you see and press Enter.',
     step3keyboard: 'One letter at a time. One retry if you fail.',
-    voiceTip: 'Tip: speak clearly → "see", "dee", "en", "ar", "vee", "zee".',
+    voiceTip: 'Tip: speak clearly → "eff", "jay", "el", "em", "en", "ar", "ess", "zee".',
     inputModeLabel: 'Input mode:',
     voiceBtn: 'Voice',
     keyboardBtn: 'Keyboard',
@@ -276,7 +269,7 @@ const UI: Record<Lang, {
     typeLetter: 'Type the letter you see…',
     noSpaces: 'One letter only · configured distance',
     promptSingle: 'What letter do you see?',
-    promptLetterOf: (n, t) => `Letter ${n} of ${t}. What letter do you see?`,
+    promptLetterOf: (_n, _t) => 'What letter do you see?',
     testCompleted: 'Test completed',
     saving: 'Saving result…',
     detailByLevel: 'Detail by level:',
@@ -434,9 +427,15 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   }, [setVS, clearAutoConfirm]);
 
   // ── TTS con idioma correcto ───────────────────────────────────────────────────
+  // Chrome bug workaround: speechSynthesis puede quedar "paused" internamente.
+  // Solución: cancel() + resume() + pequeño delay antes de speak().
   const speakPrompt = useCallback((text: string, lang: Lang, onEnd?: () => void) => {
     if (!('speechSynthesis' in window)) { onEnd?.(); return; }
+
+    // Reset completo del engine para evitar estados fantasma
     window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
+
     const utt   = new SpeechSynthesisUtterance(text);
     utt.lang    = lang === 'es' ? 'es-MX' : 'en-US';
     utt.rate    = 1.1;
@@ -461,7 +460,15 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
     const fallback = setTimeout(done, 3000);
     utt.onend  = () => { clearTimeout(fallback); done(); };
     utt.onerror = () => { clearTimeout(fallback); done(); };
-    window.speechSynthesis.speak(utt);
+
+    // Pequeño delay para que Chrome procese el cancel()/resume() antes del speak()
+    setTimeout(() => {
+      try {
+        window.speechSynthesis.speak(utt);
+      } catch {
+        done();
+      }
+    }, 50);
   }, []);
 
   // ── submitLetter — validar UNA letra ─────────────────────────────────────────
@@ -750,16 +757,6 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   const bestLevel  = results.filter(r => r.canRead).reduce((max, r) => Math.max(max, r.level), 0);
   const resultInfo = getResultInfo(bestLevel, language);
 
-  // Hint de pronunciación para la letra actual
-  const currentLetterHint = (() => {
-    if (phase !== 'test' || !testRows[currentRow]) return '';
-    const letters = testRows[currentRow].label.split(' ');
-    const l = letters[currentLetterIdx];
-    if (!l) return '';
-    const map = language === 'es' ? PRONOUNCE_ES : PRONOUNCE_EN;
-    return map[l] ?? l.toLowerCase();
-  })();
-
   // ─── INSTRUCCIONES ──────────────────────────────────────────────────────────
   if (phase === 'instructions') {
     return (
@@ -806,7 +803,6 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                 <p className="flex gap-2"><span className="font-bold text-indigo-600">2.</span> {ui.step2voice}</p>
                 <p className="flex gap-2"><span className="font-bold text-indigo-600">3.</span> {ui.step3voice}</p>
                 <p className="flex gap-2"><span className="font-bold text-indigo-600">4.</span> {ui.step4voice}</p>
-                <p className="text-gray-400 text-xs mt-1">{ui.voiceTip}</p>
               </>
             ) : (
               <>
@@ -1052,10 +1048,10 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                 </div>
               )}
 
-              {/* Idle: hint */}
+              {/* Idle: solo indicar que escucha */}
               {voiceStatus === 'idle' && (
                 <p className="text-gray-500 text-xs text-center">
-                  {language === 'es' ? `Di: "${currentLetterHint}"` : `Say: "${currentLetterHint}"`}
+                  {language === 'es' ? 'Di la letra en voz alta…' : 'Say the letter out loud…'}
                 </p>
               )}
 

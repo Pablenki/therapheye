@@ -539,11 +539,33 @@ const VisualHealth = ({ onBack }: Props) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Intervalo — con protección anti-clock-change
+  // Intervalo — con protección anti-clock-change y detección de sleep/suspend
   useEffect(() => {
+    let lastTickTs = Date.now();
+    const SLEEP_THRESHOLD_MS = 30_000;
+
     const interval = setInterval(() => {
       const now = Date.now();
+      const gap = now - lastTickTs;
+      lastTickTs = now;
       const cur = stateRef.current;
+
+      // ═══ Detección de sleep/suspend ═══
+      if (gap > SLEEP_THRESHOLD_MS && cur.isRunning) {
+        const msBeforeSleep = cur.accumulatedMs + (cur.startTimestamp ? (now - gap + 1000 - cur.startTimestamp) : 0);
+        const safeMsBeforeSleep = Math.max(0, Math.min(msBeforeSleep, MAX_SESSION_MS));
+        saveState({
+          ...cur,
+          isRunning: false,
+          startTimestamp: null,
+          accumulatedMs: safeMsBeforeSleep,
+        });
+        setIsRunning(false);
+        setElapsedSeconds(Math.floor(safeMsBeforeSleep / 1000));
+        setNextBreakInMinutes(null);
+        return;
+      }
+
       const ms  = calcElapsedMs(cur);
       setElapsedSeconds(Math.floor(ms / 1000));
 
@@ -632,7 +654,24 @@ const VisualHealth = ({ onBack }: Props) => {
 
   const doReset = () => {
     const todayDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
-    saveState({ isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null, finalized: false, stateDate: todayDate });
+    const resetState: PersistedTimerState = { isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null, finalized: false, stateDate: todayDate };
+    saveState(resetState);
+    // Sincronizar a BD inmediatamente (no esperar el debounce de 30s)
+    if (user?.id) {
+      sql`
+        INSERT INTO timer_state (user_id, fecha, accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, updated_at)
+        VALUES (${user.id}, ${todayDate}, 0, false, NULL, NULL, NULL, false, NOW())
+        ON CONFLICT (user_id, fecha)
+        DO UPDATE SET
+          accumulated_ms   = 0,
+          is_running       = false,
+          last_start_ts    = NULL,
+          session_start_ts = NULL,
+          next_break_at_ms = NULL,
+          finalized        = false,
+          updated_at       = NOW()
+      `.catch(err => console.warn('[VisualHealth] Error syncing reset to DB:', err));
+    }
     setIsRunning(false);
     setElapsedSeconds(0);
     setNextBreakInMinutes(null);
@@ -725,6 +764,22 @@ const VisualHealth = ({ onBack }: Props) => {
       finalized: true,            // Prevents auto-start on next login
       stateDate: todayDate,
     });
+    // Sincronizar a BD inmediatamente
+    if (user?.id) {
+      sql`
+        INSERT INTO timer_state (user_id, fecha, accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, updated_at)
+        VALUES (${user.id}, ${todayDate}, 0, false, NULL, NULL, NULL, true, NOW())
+        ON CONFLICT (user_id, fecha)
+        DO UPDATE SET
+          accumulated_ms   = 0,
+          is_running       = false,
+          last_start_ts    = NULL,
+          session_start_ts = NULL,
+          next_break_at_ms = NULL,
+          finalized        = true,
+          updated_at       = NOW()
+      `.catch(err => console.warn('[VisualHealth] Error syncing terminate to DB:', err));
+    }
     setIsRunning(false);
     setElapsedSeconds(0);         // Mostrar 0 en todos lados
     setNextBreakInMinutes(null);

@@ -460,8 +460,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                   }`}
                 >
                   {screenTimeRunning
-                    ? <><Pause className="w-3.5 h-3.5" /> Pausar</>
-                    : <><Play  className="w-3.5 h-3.5" /> Iniciar</>
+                    ? <><Pause className="w-3.5 h-3.5" /> {t('common', 'pause')}</>
+                    : <><Play  className="w-3.5 h-3.5" /> {t('common', 'start')}</>
                   }
                 </button>
                 <button
