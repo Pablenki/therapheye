@@ -580,7 +580,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const handleBack = () => {
     cancelCountdown();
     ambientMusic.stop();
-    if (isRunning || (timeLeft > 0 && timeLeft < currentExercise.duration)) {
+    if (isRunning || (timeLeft > 0 && timeLeft < currentExercise.defaultDuration)) {
       saveExerciseToDatabase('incomplete');
     }
     onBack();

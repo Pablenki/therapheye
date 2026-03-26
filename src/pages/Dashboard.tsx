@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse, Flame, TrendingUp, TrendingDown, Minus, Monitor, Play, Pause } from 'lucide-react';
+import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse, Flame, TrendingUp, TrendingDown, Minus, Play, Pause } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';

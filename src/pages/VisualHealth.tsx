@@ -122,17 +122,7 @@ const formatDateTime = (ts: number, lang: 'es' | 'en' = 'es') =>
 const formatHour = (ts: number, lang: 'es' | 'en' = 'es') =>
   new Date(ts).toLocaleString(lang === 'en' ? 'en-US' : 'es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-const loadSessions = (): SessionRecord[] => {
-  try {
-    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-};
-
-const saveSessions = (sessions: SessionRecord[]) => {
-  try { localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions)); }
-  catch { /* noop */ }
-};
+// Sessions are now loaded/saved via DB (loadSessionsFromDB in the component)
 
 // ─── Agrupar sesiones por día ─────────────────────────────────────────────────
 

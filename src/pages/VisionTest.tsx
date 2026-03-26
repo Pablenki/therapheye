@@ -153,7 +153,7 @@ const SpeechGrammarListAPI: any =
   (window as any).SpeechGrammarList ||
   (window as any).webkitSpeechGrammarList;
 const hasSpeechSupport = Boolean(SpeechRecognitionAPI);
-const isOpera = /OPR\/|Opera/.test(navigator.userAgent);
+// Browser detection handled by isChrome/isEdge/isFirefox below
 
 // ─── Detección de navegador soportado para voz ──────────────────────────────
 // Solo Chrome, Edge y Firefox están confirmados como funcionales con SpeechRecognition.
@@ -318,17 +318,7 @@ const getResultInfo = (bestLevel: number, lang: Lang) => {
   };
 };
 
-// ─── Leer idioma desde configuración de accesibilidad ────────────────────────
-const getStoredLanguage = (): Lang => {
-  try {
-    const saved = localStorage.getItem('therapeye_accessibility_settings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.appLanguage === 'en') return 'en';
-    }
-  } catch { /* noop */ }
-  return 'es';
-};
+// Idioma se obtiene del contexto (useLanguage) en el componente
 
 // ─── Barras de onda animadas ──────────────────────────────────────────────────
 const SoundWaveBars = ({ active }: { active: boolean }) => (
@@ -354,7 +344,6 @@ interface RowResult { level: number; acuity: string; canRead: boolean; userInput
 // ─── Componente principal ─────────────────────────────────────────────────────
 const VisionTest = ({ onBack }: { onBack: () => void }) => {
   const { lang: ctxLang } = useLanguage();
-  const lang = (ctxLang || 'es') as 'es' | 'en';
   const [phase, setPhase]                     = useState<Phase>('instructions');
   const [currentRow, setCurrentRow]           = useState(0);
   const [currentLetterIdx, setCurrentLetterIdx] = useState(0);

@@ -82,7 +82,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   // Función de traducción: t('section', 'key') → string
   const t = useCallback((section: string, key: string): string => {
     try {
-      const sectionObj = (translations as Record<string, Record<string, TranslationValue>>)[section];
+      const sectionObj = (translations as unknown as Record<string, Record<string, TranslationValue>>)[section];
       if (!sectionObj) return `[${section}.${key}]`;
       const entry = sectionObj[key];
       if (!entry) return `[${section}.${key}]`;
@@ -98,7 +98,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   // Para arrays de pasos
   const tArray = useCallback((section: string, key: string): string[] => {
     try {
-      const sectionObj = (translations as Record<string, Record<string, TranslationValue>>)[section];
+      const sectionObj = (translations as unknown as Record<string, Record<string, TranslationValue>>)[section];
       if (!sectionObj) return [];
       const entry = sectionObj[key];
       if (!entry) return [];
