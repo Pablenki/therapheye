@@ -90,9 +90,7 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
         }
 
         const userData = { id: user.id, email: user.email, nombre: user.nombre };
-        // Guardar usuario en localStorage para que la extensión pueda leerlo
-        try { localStorage.setItem('therapeye_user', JSON.stringify(userData)); } catch {}
-        login(userData);
+        login(userData); // UserContext guarda en localStorage automáticamente
         onLogin();
       } else {
         setError(t('login', 'error'));

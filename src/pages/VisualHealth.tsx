@@ -886,7 +886,7 @@ const VisualHealth = ({ onBack }: Props) => {
             <div className="p-2 bg-indigo-600 rounded-lg">
               <Eye className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">Therapeye</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Therapheye</h1>
           </div>
           <button onClick={onBack}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">

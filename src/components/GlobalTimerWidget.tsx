@@ -172,6 +172,7 @@ const playBeep = () => {
 
 // ─── DB sync helpers ─────────────────────────────────────────────────────────
 const DB_SYNC_INTERVAL_MS = 30_000;
+const DB_POLL_INTERVAL_MS = 5_000; // Poll BD cada 5s para detectar cambios de la extensión
 
 const loadTimerFromDB = async (userId: string): Promise<PersistedTimerState | null> => {
   try {
@@ -230,11 +231,12 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   /** Modal "¿Deseas iniciar tu temporizador de hoy?" */
   const [showStartPrompt, setShowStartPrompt]       = useState(false);
   const { t, lang } = useLanguage();
-  const { user }    = useUser();
+  const { user, wasManualLogin, clearManualLogin } = useUser();
 
   const prevPageRef    = useRef<Page | null>(null);
-  const lastDbSyncRef  = useRef<number>(0);
-  const dbLoadedRef    = useRef<boolean>(false);
+  const lastDbSyncRef   = useRef<number>(0);
+  const lastDbPollRef   = useRef<number>(0);
+  const dbLoadedRef     = useRef<boolean>(false);
   const loginHandledRef = useRef<boolean>(false);
 
   // isAuthPage: solo para lógica de pausa/reset — visual-health NO cuenta como auth
@@ -348,9 +350,11 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       return;
     }
 
-    // Login → comportamiento según preferencia del usuario
+    // Login MANUAL → comportamiento según preferencia del usuario
+    // Solo si el usuario hizo click en "Iniciar sesión", NO cuando se restaura la sesión automáticamente
     const fromAuth = prev === 'login' || prev === 'register' || prev === 'verify-email';
-    if (currentPage === 'dashboard' && fromAuth && !loginHandledRef.current) {
+    if (currentPage === 'dashboard' && fromAuth && wasManualLogin && !loginHandledRef.current) {
+      clearManualLogin();
       loginHandledRef.current = true;
 
       const handleLoginTimer = (baseState: PersistedTimerState) => {
@@ -455,7 +459,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       setElapsedSeconds(Math.floor(ms / 1000));
       setIsRunning(st.isRunning);
 
-      // Sync periódico a BD
+      // Sync periódico a BD (write local → DB)
       if (st.isRunning) {
         const snapshotState: PersistedTimerState = {
           ...st,
@@ -463,6 +467,29 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           startTimestamp: Date.now(),
         };
         syncToDB(snapshotState);
+      }
+
+      // Poll BD cada ~10s para detectar cambios de la extensión (read DB → local)
+      if (user?.id && now - lastDbPollRef.current >= DB_POLL_INTERVAL_MS) {
+        lastDbPollRef.current = now;
+        loadTimerFromDB(user.id).then(dbState => {
+          if (!dbState) return;
+          const localNow = loadState();
+          const localMs = calcElapsedMs(localNow);
+          const dbMs = dbState.accumulatedMs;
+          // Si la BD cambió significativamente (>2s diff) o el running state es diferente
+          const msDiff = Math.abs(dbMs - localMs);
+          const runDiff = dbState.isRunning !== localNow.isRunning;
+          if (msDiff > 2000 || runDiff) {
+            persistState(dbState);
+            setElapsedSeconds(Math.floor(calcElapsedMs(dbState) / 1000));
+            setIsRunning(dbState.isRunning);
+            if (dbState.nextBreakAtMs != null) {
+              const rem = dbState.nextBreakAtMs - calcElapsedMs(dbState);
+              setNextBreakInMinutes(rem > 0 ? Math.round(rem / 60000) : 0);
+            }
+          }
+        }).catch(() => { /* ignore poll errors */ });
       }
 
       if (!st.isRunning) {

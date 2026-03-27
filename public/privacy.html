@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Política de Privacidad – Therapheye</title>
+  <link rel="icon" href="/therapheye-icon.svg" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+      color: #1e293b;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(79,70,229,0.08);
+      padding: 2.5rem 2rem;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.5rem;
+    }
+    .logo span {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #4f46e5;
+    }
+    h1 {
+      font-size: 1.6rem;
+      color: #312e81;
+      margin-bottom: 0.5rem;
+    }
+    .date {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-bottom: 2rem;
+    }
+    h2 {
+      font-size: 1.15rem;
+      color: #4338ca;
+      margin-top: 1.8rem;
+      margin-bottom: 0.6rem;
+    }
+    p, li {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #374151;
+    }
+    ul {
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
+    }
+    li { margin-bottom: 0.3rem; }
+    a { color: #4f46e5; }
+    .footer {
+      margin-top: 2.5rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.85rem;
+      color: #9ca3af;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <span>👁 Therapheye</span>
+    </div>
+
+    <h1>Política de Privacidad</h1>
+    <p class="date">Última actualización: 26 de marzo de 2026</p>
+
+    <p>Therapheye ("nosotros", "nuestro") es una aplicación web y extensión de navegador diseñada para ayudar a los usuarios a proteger su salud visual mediante el seguimiento del tiempo de pantalla y recordatorios de descanso. Esta política explica qué datos recopilamos, cómo los usamos y cómo los protegemos.</p>
+
+    <h2>1. Datos que recopilamos</h2>
+    <p>Recopilamos únicamente la información necesaria para el funcionamiento de la aplicación:</p>
+    <ul>
+      <li><strong>Información de cuenta:</strong> nombre, correo electrónico y contraseña (almacenada como hash seguro) cuando te registras.</li>
+      <li><strong>Datos del temporizador:</strong> tiempo acumulado de uso de pantalla, estado del temporizador (activo/pausado), marcas de tiempo de inicio y pausa.</li>
+      <li><strong>Historial de actividad:</strong> registro de sesiones de ejercicios visuales completados, resultados de evaluaciones de salud visual y cuestionarios.</li>
+      <li><strong>Datos de navegación (extensión):</strong> la extensión registra el tiempo que pasas navegando para calcular tu tiempo de pantalla. No registramos las URLs específicas que visitas ni el contenido de las páginas.</li>
+    </ul>
+
+    <h2>2. Cómo usamos tus datos</h2>
+    <p>Utilizamos la información recopilada exclusivamente para:</p>
+    <ul>
+      <li>Autenticar tu cuenta y mantener tu sesión activa.</li>
+      <li>Rastrear tu tiempo de pantalla y enviarte recordatorios de descanso visual.</li>
+      <li>Sincronizar el estado del temporizador entre la aplicación web y la extensión del navegador.</li>
+      <li>Mostrar tu historial de ejercicios, evaluaciones y progreso.</li>
+    </ul>
+
+    <h2>3. Almacenamiento y seguridad</h2>
+    <p>Tus datos se almacenan en una base de datos segura en Neon (PostgreSQL serverless) con conexiones cifradas mediante TLS/SSL. Las contraseñas se almacenan como hashes criptográficos y nunca en texto plano. Los datos del temporizador se almacenan localmente en tu navegador (localStorage) y se sincronizan con la base de datos.</p>
+
+    <h2>4. Compartición de datos con terceros</h2>
+    <p>No vendemos, alquilamos ni compartimos tus datos personales con terceros. No utilizamos tus datos con fines publicitarios. No transferimos datos a terceros excepto los servicios esenciales para el funcionamiento de la aplicación (hosting en Netlify, base de datos en Neon).</p>
+
+    <h2>5. Permisos de la extensión</h2>
+    <p>La extensión de navegador solicita los siguientes permisos:</p>
+    <ul>
+      <li><strong>storage:</strong> para guardar localmente la configuración y el estado del temporizador.</li>
+      <li><strong>alarms:</strong> para programar recordatorios de descanso visual.</li>
+      <li><strong>tabs:</strong> para abrir la aplicación web desde la extensión.</li>
+      <li><strong>host_permissions:</strong> para comunicarse con la base de datos y sincronizar tu temporizador.</li>
+    </ul>
+
+    <h2>6. Retención y eliminación de datos</h2>
+    <p>Conservamos tus datos mientras mantengas una cuenta activa. Puedes solicitar la eliminación completa de tu cuenta y todos los datos asociados contactándonos por correo electrónico. Los datos del temporizador del día se reinician automáticamente cada día.</p>
+
+    <h2>7. Menores de edad</h2>
+    <p>Therapheye no está dirigido a menores de 13 años. No recopilamos intencionalmente información de menores de 13 años.</p>
+
+    <h2>8. Cambios a esta política</h2>
+    <p>Podemos actualizar esta política ocasionalmente. Publicaremos cualquier cambio en esta página con la fecha de actualización correspondiente.</p>
+
+    <h2>9. Contacto</h2>
+    <p>Si tienes preguntas sobre esta política de privacidad o sobre tus datos, contáctanos en: <a href="mailto:therapheye@gmail.com">therapheye@gmail.com</a></p>
+
+    <div class="footer">
+      &copy; 2026 Therapheye. Todos los derechos reservados.
+    </div>
+  </div>
+</body>
+</html>

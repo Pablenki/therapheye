@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { UserProvider } from './context/UserContext'
+import { useState, useEffect } from 'react'
+import { UserProvider, useUser } from './context/UserContext'
 import { LanguageProvider } from './i18n'
 import { AccessibilityMenu } from './components/AccessibilityMenu'
 import GlobalTimerWidget from './components/GlobalTimerWidget'
@@ -36,11 +36,21 @@ interface PendingUser {
   codigo: string;
 }
 
-function App() {
+// ─── Inner app (has access to UserContext) ────────────────────────────────────
+
+function AppContent() {
+  const { isAuthenticated, isRestoringSession } = useUser()
   const [currentPage, setCurrentPage] = useState<Page>('login')
   const [currentExerciseId, setCurrentExerciseId] = useState<string>('palming')
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
   const [exerciseQueue, setExerciseQueue] = useState<string[]>([])
+
+  // Cuando se restaura la sesión, ir al dashboard
+  useEffect(() => {
+    if (!isRestoringSession && isAuthenticated && currentPage === 'login') {
+      setCurrentPage('dashboard')
+    }
+  }, [isRestoringSession, isAuthenticated, currentPage])
 
   const handleNavigate = (page: Page) => {
     setCurrentPage(page)
@@ -52,7 +62,6 @@ function App() {
     setCurrentPage('exercise-session')
   }
 
-  // Inicia una rutina secuencial de ejercicios
   const handleStartRoutine = (ids: string[]) => {
     if (ids.length === 0) return
     const [first, ...rest] = ids
@@ -61,7 +70,6 @@ function App() {
     setCurrentPage('exercise-session')
   }
 
-  // Llamado cuando un ejercicio de la cola termina
   const handleExerciseComplete = () => {
     if (exerciseQueue.length === 0) {
       setCurrentPage('dashboard')
@@ -69,7 +77,6 @@ function App() {
       const [next, ...rest] = exerciseQueue
       setExerciseQueue(rest)
       setCurrentExerciseId(next)
-      // Forzar re-mount de ExerciseSession cambiando la key implícita vía el estado
       setCurrentPage('exercise-session')
     }
   }
@@ -77,6 +84,19 @@ function App() {
   const handleVerify = (data: PendingUser) => {
     setPendingUser(data)
     setCurrentPage('verify-email')
+  }
+
+  // Mientras restaura sesión, mostrar loading sencillo
+  if (isRestoringSession) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#eef2ff' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>👁</div>
+          <div style={{ color: '#4f46e5', fontWeight: 600, fontSize: '16px' }}>Therapheye</div>
+          <div style={{ color: '#6b7280', fontSize: '13px', marginTop: '4px' }}>Cargando sesión...</div>
+        </div>
+      </div>
+    )
   }
 
   const renderPage = () => {
@@ -149,12 +169,31 @@ function App() {
   }
 
   return (
+    <div className="flex flex-col min-h-screen">
+      <div className="flex-1">
+        {renderPage()}
+      </div>
+      <footer className="w-full py-4 text-center text-xs text-gray-400 bg-transparent">
+        <span>&copy; {new Date().getFullYear()} Therapheye</span>
+        <span className="mx-2">·</span>
+        <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 underline underline-offset-2 transition-colors">
+          Política de Privacidad
+        </a>
+      </footer>
+      <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
+      <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
+      <AccessibilityMenu />
+    </div>
+  )
+}
+
+// ─── Root App (provides context) ─────────────────────────────────────────────
+
+function App() {
+  return (
     <UserProvider>
       <LanguageProvider>
-        {renderPage()}
-        <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
-        <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
-        <AccessibilityMenu />
+        <AppContent />
       </LanguageProvider>
     </UserProvider>
   )

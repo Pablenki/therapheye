@@ -71,13 +71,17 @@ const calcularRacha = (fechas: string[]): number => {
 };
 
 const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
-  const { user } = useUser();
-  const { t } = useLanguage();
+  const { user, logout } = useUser();
+  const { t, lang } = useLanguage();
   const [stats, setStats]       = useState<Stats>({ evaluaciones: 0, ejercicios: 0, racha: 0, tendencia: null, ultimoPuntaje: null, penultimoPuntaje: null });
   const [loadingStats, setLoadingStats] = useState(true);
   const [screenTimeMs, setScreenTimeMs] = useState<number>(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [extensionDismissed, setExtensionDismissed] = useState(false);
+
+  // URL de la extensión en Chrome Web Store (actualizar cuando se publique)
+  const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye';
 
   // ── Cargar stats reales desde BD ─────────────────────────────────────────────
   useEffect(() => {
@@ -310,7 +314,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 {t('visualHealth', 'confirmNo')}
               </button>
               <button
-                onClick={() => { setShowLogoutConfirm(false); onNavigate('login'); }}
+                onClick={() => { setShowLogoutConfirm(false); logout(); onNavigate('login'); }}
                 className="px-5 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow"
               >
                 {t('common', 'confirmLogoutYes')}
@@ -327,7 +331,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             <div className="p-2 bg-indigo-600 rounded-lg">
               <Eye className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800">Therapeye</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Therapheye</h1>
           </div>
           <button
             onClick={() => setShowLogoutConfirm(true)}
@@ -348,6 +352,38 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           </h2>
           <p className="text-gray-600">{t('dashboard', 'selectModule')}</p>
         </div>
+
+        {/* Extension Banner — hidden on mobile (< md breakpoint = 768px) */}
+        {!extensionDismissed && (
+          <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 hidden md:flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-lg">🧩</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-indigo-900">{lang === 'es' ? 'Extensión de navegador' : 'Browser Extension'}</p>
+                <p className="text-xs text-indigo-600 truncate">
+                  {lang === 'es' ? 'Monitorea tu tiempo en pantalla sin tener la página abierta' : 'Track screen time without keeping the page open'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <a
+                href={extensionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition whitespace-nowrap"
+              >
+                {lang === 'es' ? 'Agregar extensión' : 'Add Extension'}
+              </a>
+              <button
+                onClick={() => setExtensionDismissed(true)}
+                className="text-indigo-400 hover:text-indigo-600 text-lg leading-none"
+                title="Dismiss"
+              >×</button>
+            </div>
+          </div>
+        )}
 
         {/* Modules Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

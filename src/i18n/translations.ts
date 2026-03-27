@@ -1,5 +1,5 @@
 // =========================================
-// SISTEMA DE TRADUCCIONES - Therapeye
+// SISTEMA DE TRADUCCIONES - Therapheye
 // Todas las cadenas de texto en ES y EN
 // =========================================
 
@@ -8,7 +8,7 @@ export type Lang = 'es' | 'en';
 const translations = {
   // ─── Common / Shared ──────────────────────────────────────────────────────
   common: {
-    appName: { es: 'Therapeye', en: 'Therapeye' },
+    appName: { es: 'Therapheye', en: 'Therapheye' },
     appSubtitle: { es: 'Sistema de Evaluación de Fatiga Visual', en: 'Visual Fatigue Assessment System' },
     back: { es: 'Volver', en: 'Back' },
     backToDashboard: { es: 'Volver al Dashboard', en: 'Back to Dashboard' },
@@ -47,7 +47,7 @@ const translations = {
 
   // ─── Login ────────────────────────────────────────────────────────────────
   login: {
-    title: { es: 'Therapeye', en: 'Therapeye' },
+    title: { es: 'Therapheye', en: 'Therapheye' },
     subtitle: { es: 'Sistema de Evaluación de Fatiga Visual', en: 'Visual Fatigue Assessment System' },
     emailLabel: { es: 'Correo electrónico', en: 'Email' },
     emailPlaceholder: { es: 'tu@email.com', en: 'you@email.com' },
@@ -64,7 +64,7 @@ const translations = {
   // ─── Register ─────────────────────────────────────────────────────────────
   register: {
     title: { es: 'Crear Cuenta', en: 'Create Account' },
-    subtitle: { es: 'Únete a Therapeye', en: 'Join Therapeye' },
+    subtitle: { es: 'Únete a Therapheye', en: 'Join Therapheye' },
     nameLabel: { es: 'Nombre completo', en: 'Full name' },
     namePlaceholder: { es: 'Juan Pérez', en: 'John Doe' },
     emailLabel: { es: 'Correo electrónico', en: 'Email' },

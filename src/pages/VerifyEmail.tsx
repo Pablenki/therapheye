@@ -103,12 +103,9 @@ const VerifyEmail = ({ name, email, passwordHash, codigo, onBack, onVerified }: 
         console.warn('[VerifyEmail] Error guardando session token:', err);
       }
 
-      // Iniciar sesión automáticamente
-      login({
-        id: userId,
-        email: result[0].email,
-        nombre: result[0].nombre,
-      });
+      // Iniciar sesión automáticamente (UserContext guarda en localStorage)
+      const userData = { id: userId, email: result[0].email, nombre: result[0].nombre };
+      login(userData);
 
       onVerified();
 
