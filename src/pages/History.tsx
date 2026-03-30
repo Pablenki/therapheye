@@ -6,14 +6,15 @@ import translations from '../i18n/translations';
 // ─── Parsear fecha de BD respetando timezone ─────────────────────────────────
 // Los timestamps ahora se guardan con offset local (ej: "2026-03-24T16:42:00-06:00")
 // Para registros viejos que vengan sin offset, asumimos UTC como fallback seguro.
-const parseDbDate = (dateStr: string): Date => {
+const parseDbDate = (dateStr: any): Date => {
   if (!dateStr) return new Date();
+  // Si ya es un Date válido, lo retornamos directo
+  if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? new Date() : dateStr;
   const s = String(dateStr).trim();
-  // Si ya tiene offset (+/-) o Z → el navegador lo parsea correctamente
-  if (s.includes('Z') || s.includes('+') || /[Tt]\d{2}:\d{2}.*[-+]\d/.test(s)) {
-    return new Date(s);
-  }
-  // Sin offset (registros viejos) → asumir UTC
+  // Intentar parseo directo primero
+  const direct = new Date(s);
+  if (!isNaN(direct.getTime())) return direct;
+  // Fallback para formato legacy "YYYY-MM-DD HH:MM:SS" sin offset → asumir UTC
   return new Date(s.replace(' ', 'T') + 'Z');
 };
 
@@ -165,7 +166,8 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
   const handleChartMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const scaleX = W / rect.width;
+    const x = (e.clientX - rect.left) * scaleX;
 
     // Find closest data point
     let closest = 0;
@@ -387,7 +389,7 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
             <circle
               cx={toX(i)}
               cy={toY(d.puntaje_fatiga)}
-              r="12"
+              r="20"
               fill="transparent"
               style={{ pointerEvents: 'auto' }}
               onMouseEnter={() => {
@@ -397,10 +399,6 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
                   y: toY(d.puntaje_fatiga),
                   data: d,
                 });
-              }}
-              onMouseLeave={() => {
-                setHoveredIndex(null);
-                setTooltip(null);
               }}
             />
           </g>
