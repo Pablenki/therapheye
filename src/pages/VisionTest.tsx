@@ -6,20 +6,21 @@ import { useLanguage } from '../i18n';
 
 // ─── Letras Snellen válidas ──────────────────────────────────────────────────
 // Solo letras con nombre de ≥2 sílabas en español para mejor reconocimiento de voz:
-// efe, hache, jota, ele, eme, ene, erre, ese, zeta + ka, de, te (cortas pero claras)
-const SNELLEN_POOL = ['D', 'F', 'H', 'J', 'K', 'L', 'M', 'N', 'R', 'S', 'T', 'Z'];
+// efe, hache, jota, ele, eme, ene, erre, ese, zeta
+// Excluidas D (de), K (ka), T (te) — monosilábicas, el reconocedor las falla frecuentemente
+const SNELLEN_POOL = ['F', 'H', 'J', 'L', 'M', 'N', 'R', 'S', 'Z'];
 
-// ─── Configuración de niveles — counts más realistas para validación letra a letra
+// ─── Configuración de niveles — 1 letra por nivel, 3 intentos con letra diferente si falla
 const ROWS_CONFIG = [
   { fontSize: 96, acuity: '20/200', level: 1,  count: 1 },
-  { fontSize: 72, acuity: '20/150', level: 2,  count: 2 },
-  { fontSize: 56, acuity: '20/100', level: 3,  count: 2 },
-  { fontSize: 42, acuity: '20/70',  level: 4,  count: 3 },
-  { fontSize: 32, acuity: '20/50',  level: 5,  count: 3 },
-  { fontSize: 24, acuity: '20/40',  level: 6,  count: 3 },
-  { fontSize: 18, acuity: '20/30',  level: 7,  count: 3 },
-  { fontSize: 14, acuity: '20/20',  level: 8,  count: 2 },
-  { fontSize: 11, acuity: '20/15',  level: 9,  count: 2 },
+  { fontSize: 72, acuity: '20/150', level: 2,  count: 1 },
+  { fontSize: 56, acuity: '20/100', level: 3,  count: 1 },
+  { fontSize: 42, acuity: '20/70',  level: 4,  count: 1 },
+  { fontSize: 32, acuity: '20/50',  level: 5,  count: 1 },
+  { fontSize: 24, acuity: '20/40',  level: 6,  count: 1 },
+  { fontSize: 18, acuity: '20/30',  level: 7,  count: 1 },
+  { fontSize: 14, acuity: '20/20',  level: 8,  count: 1 },
+  { fontSize: 11, acuity: '20/15',  level: 9,  count: 1 },
   { fontSize: 9,  acuity: '20/10',  level: 10, count: 1 },
 ];
 
@@ -196,10 +197,10 @@ const UI: Record<Lang, {
     step1: 'Colócate a la distancia indicada y cubre un ojo.',
     step2voice: 'El micrófono se abrirá automáticamente para cada letra.',
     step3voice: 'Di la letra en voz alta. Se valida una letra a la vez.',
-    step4voice: 'Tienes un reintento por letra. Si fallas el reintento, termina el test.',
+    step4voice: 'Si fallas, aparece una letra diferente en el mismo nivel. Tienes hasta 3 intentos por nivel.',
     step2keyboard: 'Escribe la letra que veas y presiona Enter.',
-    step3keyboard: 'Una letra a la vez. Tienes un reintento si fallas.',
-    voiceTip: 'Consejo: di con calma → "efe", "jota", "ele", "eme", "ene", "erre", "ese", "zeta".',
+    step3keyboard: 'Una letra por nivel. Si fallas, ves una letra diferente. Hasta 3 intentos por nivel.',
+    voiceTip: 'Consejo: di con calma → "efe", "hache", "jota", "ele", "eme", "ene", "erre", "ese", "zeta".',
     inputModeLabel: 'Modo de entrada:',
     voiceBtn: 'Voz',
     keyboardBtn: 'Teclado',
@@ -232,7 +233,7 @@ const UI: Record<Lang, {
     operaTitle: 'Reconocimiento de voz no disponible en este navegador',
     operaDetail: 'El reconocimiento de voz solo funciona en Google Chrome, Microsoft Edge o Firefox. Abre esta página en uno de esos navegadores.',
     copyUrl: '📋 Copiar URL',
-    retryOf: (n) => `Intento ${n}/2`,
+    retryOf: (n) => `Intento ${n}/3`,
     failedLevel: 'Nivel fallado — prueba terminada',
   },
   en: {
@@ -242,10 +243,10 @@ const UI: Record<Lang, {
     step1: 'Position yourself at the indicated distance and cover one eye.',
     step2voice: 'The microphone will open automatically for each letter.',
     step3voice: 'Say each letter clearly. One letter is validated at a time.',
-    step4voice: 'You get one retry per letter. If you fail the retry, the test ends.',
+    step4voice: 'If you fail, a different letter appears at the same level. Up to 3 attempts per level.',
     step2keyboard: 'Type the letter you see and press Enter.',
-    step3keyboard: 'One letter at a time. One retry if you fail.',
-    voiceTip: 'Tip: speak clearly → "eff", "jay", "el", "em", "en", "ar", "ess", "zee".',
+    step3keyboard: 'One letter per level. If you fail, a different letter appears. Up to 3 attempts per level.',
+    voiceTip: 'Tip: speak clearly → "eff", "aitch", "jay", "el", "em", "en", "ar", "ess", "zee".',
     inputModeLabel: 'Input mode:',
     voiceBtn: 'Voice',
     keyboardBtn: 'Keyboard',
@@ -278,7 +279,7 @@ const UI: Record<Lang, {
     operaTitle: 'Voice recognition not available in this browser',
     operaDetail: 'Voice recognition only works in Google Chrome, Microsoft Edge, or Firefox. Open this page in one of those browsers.',
     copyUrl: '📋 Copy URL',
-    retryOf: (n) => `Attempt ${n}/2`,
+    retryOf: (n) => `Attempt ${n}/3`,
     failedLevel: 'Level failed — test ended',
   },
 };
@@ -382,6 +383,8 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   const testRowsRef         = useRef(testRows);
   const voiceModeRef        = useRef(voiceMode);
   const phaseRef            = useRef<Phase>('instructions');
+  const levelAttemptsRef    = useRef(0);          // intentos usados en el nivel actual (0, 1, 2)
+  const levelUsedLettersRef = useRef<string[]>([]); // letras ya mostradas en el nivel actual
 
   useEffect(() => { currentRowRef.current       = currentRow;       }, [currentRow]);
   useEffect(() => { currentLetterIdxRef.current = currentLetterIdx; }, [currentLetterIdx]);
@@ -499,6 +502,8 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         setRowLetterResults([]);
         setCurrentLetterIdx(0);
         setLetterAttempts(0);
+        levelAttemptsRef.current = 0;
+        levelUsedLettersRef.current = [];
         setHeardText(''); setHeardLetter(''); setInput('');
         setVS('idle');
         isSubmittingRef.current = false;
@@ -516,15 +521,26 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
       setTimeout(() => {
         setShake(false);
 
-        if (letterAttemptsRef.current < 1) {
-          // Primer error → dar reintento
-          setLetterAttempts(1);
+        // Registrar la letra fallada y avanzar contador de intentos del nivel
+        const usedLetters = [...levelUsedLettersRef.current, expected];
+        levelUsedLettersRef.current = usedLetters;
+        levelAttemptsRef.current++;
+
+        if (levelAttemptsRef.current < 3) {
+          // Mostrar una letra diferente en el mismo nivel
+          const available = SNELLEN_POOL.filter(l => !usedLetters.includes(l));
+          const newLetter = available.length > 0
+            ? available[Math.floor(Math.random() * available.length)]
+            : (SNELLEN_POOL.find(l => l !== expected) ?? SNELLEN_POOL[0]);
+          setTestRows(prev => prev.map((r, i) =>
+            i === rowIdx ? { ...r, label: newLetter } : r
+          ));
+          setLetterAttempts(prev => prev + 1); // trigger useEffect → reinicia mic
           setHeardText(''); setHeardLetter(''); setInput('');
           setVS('idle');
           isSubmittingRef.current = false;
-          // El cambio de letterAttempts dispara el useEffect → reinicia mic
         } else {
-          // Segundo error → terminar test
+          // 3 errores en el nivel → terminar test
           const newResult: RowResult = {
             level: row.level, acuity: row.acuity, canRead: false,
             userInput: detectedLetter,
@@ -737,6 +753,8 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
     setCurrentRow(0);
     setCurrentLetterIdx(0);
     setLetterAttempts(0);
+    levelAttemptsRef.current = 0;
+    levelUsedLettersRef.current = [];
     setRowLetterResults([]);
     setResults([]);
     setInput('');
