@@ -342,6 +342,75 @@ type Phase = 'instructions' | 'test' | 'result';
 type VoiceStatus = 'idle' | 'listening' | 'heard' | 'error';
 interface RowResult { level: number; acuity: string; canRead: boolean; userInput: string; }
 
+// ─── Animación demo: modo voz ─────────────────────────────────────────────────
+const VoiceDemoAnim = () => (
+  <>
+    <style>{`
+      @keyframes vdMicPulse { 0%,100%{transform:scale(1);opacity:.25} 50%{transform:scale(1.5);opacity:.6} }
+      @keyframes vdMicPulse2{ 0%,100%{transform:scale(1);opacity:.15} 50%{transform:scale(1.9);opacity:.35} }
+      @keyframes vdBubble   { 0%,100%{opacity:0;transform:translateX(-50%) translateY(4px)} 30%,70%{opacity:1;transform:translateX(-50%) translateY(0)} }
+      @keyframes vdArrow    { 0%,100%{opacity:.4;transform:translateY(0)} 50%{opacity:1;transform:translateY(4px)} }
+    `}</style>
+    <svg viewBox="0 0 260 130" className="w-full max-w-xs mx-auto" aria-hidden="true">
+      {/* carta Snellen */}
+      <rect x="80" y="8" width="100" height="52" rx="8" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+      <text x="130" y="47" textAnchor="middle" fontFamily="monospace" fontWeight="900" fontSize="36" fill="#1e1b4b">F</text>
+      <text x="130" y="68" textAnchor="middle" fontSize="9" fill="#9ca3af">20/40</text>
+
+      {/* flecha */}
+      <text x="130" y="84" textAnchor="middle" fontSize="14" fill="#6366f1"
+        style={{ animation: 'vdArrow 1.4s ease-in-out infinite' }}>↓</text>
+
+      {/* micrófono — ondas */}
+      <circle cx="130" cy="108" r="18" fill="#6366f1" opacity="0.25"
+        style={{ animation: 'vdMicPulse 1.6s ease-in-out infinite', transformOrigin: '130px 108px' }} />
+      <circle cx="130" cy="108" r="26" fill="#6366f1" opacity="0.12"
+        style={{ animation: 'vdMicPulse2 1.6s ease-in-out infinite 0.3s', transformOrigin: '130px 108px' }} />
+      {/* mic icon */}
+      <rect x="124" y="96" width="12" height="17" rx="6" fill="#6366f1" />
+      <path d="M119 110 Q119 120 130 120 Q141 120 141 110" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" />
+      <line x1="130" y1="120" x2="130" y2="125" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" />
+
+      {/* burbuja de voz */}
+      <g style={{ animation: 'vdBubble 2.4s ease-in-out infinite', position: 'relative' }}>
+        <rect x="157" y="92" width="50" height="22" rx="8" fill="#6366f1" />
+        <polygon points="157,100 150,105 157,110" fill="#6366f1" />
+        <text x="182" y="107" textAnchor="middle" fontSize="11" fill="white" fontWeight="bold">efe…</text>
+      </g>
+    </svg>
+  </>
+);
+
+// ─── Animación demo: modo teclado ─────────────────────────────────────────────
+const KeyboardDemoAnim = () => (
+  <>
+    <style>{`
+      @keyframes kdPress  { 0%,100%{transform:translateY(0);box-shadow:0 4px 0 #4338ca} 40%,60%{transform:translateY(3px);box-shadow:0 1px 0 #4338ca} }
+      @keyframes kdArrowK { 0%,100%{opacity:.4;transform:translateY(0)} 50%{opacity:1;transform:translateY(4px)} }
+    `}</style>
+    <div className="flex flex-col items-center gap-1 py-2">
+      {/* carta */}
+      <div className="bg-white border border-gray-200 rounded-xl px-10 py-3 shadow-sm">
+        <span className="font-mono font-black text-5xl text-indigo-900">F</span>
+        <p className="text-center text-xs text-gray-400 mt-1">20/40</p>
+      </div>
+      {/* flecha */}
+      <div className="text-indigo-500 text-xl" style={{ animation: 'kdArrowK 1.4s ease-in-out infinite' }}>↓</div>
+      {/* tecla */}
+      <div className="flex gap-2">
+        {['F'].map(k => (
+          <div key={k}
+            className="w-12 h-12 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-mono font-black text-xl"
+            style={{ animation: 'kdPress 1.8s ease-in-out infinite', boxShadow: '0 4px 0 #4338ca' }}>
+            {k}
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-gray-400 mt-1">+ Enter</p>
+    </div>
+  </>
+);
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 const VisionTest = ({ onBack }: { onBack: () => void }) => {
   const { lang: ctxLang } = useLanguage();
@@ -800,6 +869,14 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
             ⚠️ {ui.warning}
+          </div>
+
+          {/* Demo animada según modo de entrada */}
+          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 mb-5">
+            <p className="text-xs text-center text-indigo-400 uppercase font-semibold mb-2 tracking-wider">
+              {language === 'es' ? 'Así se realiza la prueba' : 'How to take the test'}
+            </p>
+            {voiceMode ? <VoiceDemoAnim /> : <KeyboardDemoAnim />}
           </div>
 
           {/* Instrucciones de uso */}

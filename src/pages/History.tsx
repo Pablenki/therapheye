@@ -48,6 +48,15 @@ interface Exercise {
   status: 'completed' | 'incomplete' | null;
 }
 
+interface VisionEntry {
+  id: string;
+  raw_date: Date;
+  created_at: string;
+  mejor_nivel: number;
+  agudeza: string;
+  distancia_cm: number;
+}
+
 // ─── Gráfica de tendencia SVG con interactividad ────────────────────────────────
 const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
   const { t, lang } = useLanguage();
@@ -456,6 +465,192 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
   );
 };
 
+// ─── Gráfica de agudeza visual ───────────────────────────────────────────────
+const VISION_ZONES = [
+  { min: 0, max: 3,  fill: '#fef2f2', dot: '#ef4444', label_es: 'Limitada (20/100–)',     label_en: 'Limited (20/100–)'     },
+  { min: 3, max: 5,  fill: '#fefce8', dot: '#eab308', label_es: 'Reducida (20/50–70)',    label_en: 'Reduced (20/50–70)'    },
+  { min: 5, max: 7,  fill: '#eff6ff', dot: '#3b82f6', label_es: 'Buena (20/30–40)',       label_en: 'Good (20/30–40)'       },
+  { min: 7, max: 8,  fill: '#f0fdf4', dot: '#22c55e', label_es: 'Normal (20/20)',         label_en: 'Normal (20/20)'        },
+  { min: 8, max: 10, fill: '#ecfdf5', dot: '#10b981', label_es: 'Excepcional (20/15–10)', label_en: 'Exceptional (20/15–10)'},
+];
+
+const visionDotColor = (nivel: number) => {
+  if (nivel >= 9) return '#10b981';
+  if (nivel >= 8) return '#22c55e';
+  if (nivel >= 6) return '#3b82f6';
+  if (nivel >= 4) return '#eab308';
+  return '#ef4444';
+};
+
+const VisionChart = ({ entries, lang }: { entries: VisionEntry[]; lang: string }) => {
+  const [timeRange, setTimeRange] = useState<'all' | 'last7' | 'last30'>('all');
+  const [tooltip, setTooltip]     = useState<{ x: number; y: number; entry: VisionEntry } | null>(null);
+
+  const filterBtns = [
+    { key: 'all',    label_es: 'Todos',       label_en: 'All'     },
+    { key: 'last7',  label_es: 'Últimos 7',   label_en: 'Last 7'  },
+    { key: 'last30', label_es: 'Últimos 30',  label_en: 'Last 30' },
+  ] as const;
+
+  const Filters = () => (
+    <div className="flex gap-2 mb-4">
+      {filterBtns.map(b => (
+        <button key={b.key} onClick={() => setTimeRange(b.key)}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition
+            ${timeRange === b.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+          {lang === 'en' ? b.label_en : b.label_es}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (entries.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+        <Eye className="w-10 h-10 mb-2 opacity-30" />
+        <p className="text-sm">{lang === 'es' ? 'Aún no hay pruebas de visión registradas' : 'No vision tests recorded yet'}</p>
+      </div>
+    );
+  }
+
+  const now = new Date();
+  let filtered = entries;
+  if (timeRange === 'last7')  filtered = entries.filter(e => e.raw_date >= new Date(now.getTime() - 7  * 86400000));
+  if (timeRange === 'last30') filtered = entries.filter(e => e.raw_date >= new Date(now.getTime() - 30 * 86400000));
+
+  const data = [...filtered].reverse(); // cronológico
+
+  if (data.length === 0) {
+    return (<><Filters /><div className="flex flex-col items-center justify-center h-40 text-gray-400"><Eye className="w-10 h-10 mb-2 opacity-30" /><p className="text-sm">{lang === 'es' ? 'Sin datos en este rango' : 'No data in this range'}</p></div></>);
+  }
+
+  if (data.length === 1) {
+    return (
+      <>
+        <Filters />
+        <div className="flex flex-col items-center justify-center h-40">
+          <div className="text-6xl font-black" style={{ color: visionDotColor(data[0].mejor_nivel) }}>
+            {data[0].mejor_nivel}<span className="text-3xl text-gray-400">/10</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">{data[0].agudeza} · {data[0].created_at}</p>
+        </div>
+      </>
+    );
+  }
+
+  const W = 560, H = 160;
+  const PAD = { top: 18, right: 20, bottom: 36, left: 44 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+  const toX = (i: number) => PAD.left + (i / (data.length - 1)) * chartW;
+  const toY = (v: number) => PAD.top + (1 - v / 10) * chartH;
+
+  const linePath  = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.mejor_nivel)}`).join(' ');
+  const areaPath  = `${linePath} L ${toX(data.length - 1)} ${toY(0)} L ${toX(0)} ${toY(0)} Z`;
+
+  return (
+    <>
+      <Filters />
+      <div className="relative overflow-visible">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
+          <defs>
+            <linearGradient id="visionAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02" />
+            </linearGradient>
+            <clipPath id="visionClip">
+              <rect x={PAD.left} y={PAD.top} width={chartW} height={chartH} />
+            </clipPath>
+          </defs>
+
+          {/* Zonas de color */}
+          {VISION_ZONES.map((z, i) => (
+            <rect key={i} x={PAD.left} y={toY(z.max)} width={chartW}
+              height={toY(z.min) - toY(z.max)} fill={z.fill} clipPath="url(#visionClip)" />
+          ))}
+
+          {/* Grid horizontal */}
+          {[2, 4, 6, 8, 10].map(v => (
+            <g key={v}>
+              <line x1={PAD.left} y1={toY(v)} x2={PAD.left + chartW} y2={toY(v)}
+                stroke="#e5e7eb" strokeWidth="1" strokeDasharray="4 3" />
+              <text x={PAD.left - 6} y={toY(v) + 4} textAnchor="end" fontSize="9" fill="#9ca3af">{v}</text>
+            </g>
+          ))}
+
+          {/* Área + línea */}
+          <path d={areaPath} fill="url(#visionAreaGrad)" clipPath="url(#visionClip)" />
+          <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round" clipPath="url(#visionClip)" />
+
+          {/* Ejes */}
+          <line x1={PAD.left} y1={PAD.top + chartH} x2={PAD.left + chartW} y2={PAD.top + chartH} stroke="#d1d5db" strokeWidth="1" />
+          <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + chartH} stroke="#d1d5db" strokeWidth="1" />
+
+          {/* Puntos */}
+          {data.map((d, i) => {
+            const cx = toX(i), cy = toY(d.mejor_nivel);
+            const isHovered = tooltip?.entry.id === d.id;
+            return (
+              <g key={d.id}>
+                {isHovered && <circle cx={cx} cy={cy} r={10} fill={visionDotColor(d.mejor_nivel)} opacity="0.2" />}
+                <text x={cx} y={cy - 9} textAnchor="middle" fontSize="9" fontWeight="bold"
+                  fill={visionDotColor(d.mejor_nivel)}>{d.mejor_nivel}</text>
+                <circle cx={cx} cy={cy} r={isHovered ? 6 : 4.5} fill={visionDotColor(d.mejor_nivel)}
+                  stroke="white" strokeWidth="1.5" />
+                <circle cx={cx} cy={cy} r={14} fill="transparent"
+                  onMouseEnter={() => setTooltip({ x: cx, y: cy, entry: d })}
+                  onMouseLeave={() => setTooltip(null)} />
+                {/* Fecha eje X (solo primera, última y cada N) */}
+                {(i === 0 || i === data.length - 1 || (data.length <= 6) || i % Math.ceil(data.length / 4) === 0) && (
+                  <text x={cx} y={PAD.top + chartH + 14} textAnchor="middle" fontSize="8" fill="#6b7280"
+                    transform={data.length > 5 ? `rotate(-25, ${cx}, ${PAD.top + chartH + 14})` : undefined}>
+                    {d.created_at.split(',')[0]}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Tooltip */}
+        {tooltip && (
+          <div className="absolute bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-xs pointer-events-none z-10"
+            style={{ left: `${(tooltip.x / W) * 100}%`, top: `${(tooltip.y / H) * 100}%`, transform: 'translate(-50%, -115%)' }}>
+            <p className="font-bold text-gray-700 mb-1.5">{tooltip.entry.created_at}</p>
+            <div className="flex gap-4">
+              <div>
+                <p className="text-gray-400 uppercase font-semibold">{lang === 'es' ? 'Nivel' : 'Level'}</p>
+                <p className="font-black text-lg" style={{ color: visionDotColor(tooltip.entry.mejor_nivel) }}>
+                  {tooltip.entry.mejor_nivel}/10
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 uppercase font-semibold">{lang === 'es' ? 'Agudeza' : 'Acuity'}</p>
+                <p className="font-bold text-gray-800">{tooltip.entry.agudeza}</p>
+              </div>
+              <div>
+                <p className="text-gray-400 uppercase font-semibold">{lang === 'es' ? 'Dist.' : 'Dist.'}</p>
+                <p className="font-bold text-gray-800">{tooltip.entry.distancia_cm} cm</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Leyenda de zonas */}
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-4">
+        {[...VISION_ZONES].reverse().map((z, i) => (
+          <span key={i} className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: z.dot }} />
+            {lang === 'es' ? z.label_es : z.label_en}
+          </span>
+        ))}
+      </div>
+    </>
+  );
+};
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 interface HistoryProps {
   onBack: () => void;
@@ -466,6 +661,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
   const { t, lang } = useLanguage();
   const [evaluations, setEvaluations]         = useState<Evaluation[]>([]);
   const [exercises, setExercises]             = useState<Exercise[]>([]);
+  const [visionTests, setVisionTests]         = useState<VisionEntry[]>([]);
   const [loading, setLoading]                 = useState(true);
   const [expandedEvalId, setExpandedEvalId]   = useState<string | null>(null);
 
@@ -532,8 +728,30 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
         };
       });
 
+      const visionResult = await sql`
+        SELECT id, created_at, mejor_nivel, agudeza, distancia_cm
+        FROM historial_vision_test
+        WHERE user_id = ${user?.id}
+        ORDER BY created_at DESC
+        LIMIT 30
+      `;
+
+      const localeStr = lang === 'en' ? 'en-US' : 'es-MX';
+      const formattedVision: VisionEntry[] = visionResult.map((v: any) => {
+        const d = parseDbDate(v.created_at);
+        return {
+          id:           String(v.id),
+          raw_date:     d,
+          created_at:   d.toLocaleString(localeStr, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
+          mejor_nivel:  Number(v.mejor_nivel),
+          agudeza:      v.agudeza ?? 'N/A',
+          distancia_cm: Number(v.distancia_cm),
+        };
+      });
+
       setEvaluations(formattedEvaluations);
       setExercises(formattedExercises);
+      setVisionTests(formattedVision);
     } catch (error) {
       console.error('Error al cargar historial:', error);
     } finally {
@@ -656,6 +874,26 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           </div>
           <TrendChart evaluations={evaluations} />
+        </div>
+
+        {/* ── Agudeza Visual ── */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">{lang === 'es' ? 'Agudeza Visual' : 'Visual Acuity'}</h2>
+              <p className="text-sm text-gray-400">{lang === 'es' ? 'Prueba Snellen · nivel 1–10 · mayor es mejor' : 'Snellen test · level 1–10 · higher is better'}</p>
+            </div>
+            {visionTests.length > 0 && (
+              <div className="text-right ml-4 flex-shrink-0">
+                <p className="text-xs text-gray-400 mb-0.5">{lang === 'es' ? 'Último resultado' : 'Last result'}</p>
+                <p className="text-3xl font-black leading-none" style={{ color: visionDotColor(visionTests[0].mejor_nivel) }}>
+                  {visionTests[0].mejor_nivel}<span className="text-lg text-gray-400">/10</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">{visionTests[0].agudeza}</p>
+              </div>
+            )}
+          </div>
+          <VisionChart entries={visionTests} lang={lang} />
         </div>
 
         {/* Evaluaciones en lista — clickables */}
