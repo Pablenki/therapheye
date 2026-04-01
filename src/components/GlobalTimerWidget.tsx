@@ -222,6 +222,8 @@ const saveTimerToDB = async (userId: string, state: PersistedTimerState) => {
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
+const isMobileDevice = () => window.innerWidth < 768;
+
 const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const [elapsedSeconds, setElapsedSeconds]         = useState(0);
   const [isRunning, setIsRunning]                   = useState(false);
@@ -230,6 +232,13 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const [breakAlert, setBreakAlert]                 = useState(false);
   /** Modal "¿Deseas iniciar tu temporizador de hoy?" */
   const [showStartPrompt, setShowStartPrompt]       = useState(false);
+  const [isMobile, setIsMobile]                     = useState(isMobileDevice);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   const { t, lang } = useLanguage();
   const { user, wasManualLogin, clearManualLogin } = useUser();
 
@@ -292,6 +301,20 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       dbLoadedRef.current = true;
       loadTimerFromDB(user.id).then(dbState => {
         if (!dbState) return;
+        // En móvil: si el timer estaba corriendo, pausarlo automáticamente
+        // El timer es exclusivo de tiempo de trabajo en computadora.
+        if (isMobileDevice() && dbState.isRunning) {
+          const pausedMs = dbState.accumulatedMs;
+          const mobilePaused: PersistedTimerState = {
+            ...dbState, isRunning: false, startTimestamp: null, accumulatedMs: pausedMs,
+          };
+          persistState(mobilePaused);
+          setElapsedSeconds(Math.floor(pausedMs / 1000));
+          setIsRunning(false);
+          lastDbSyncRef.current = 0;
+          saveTimerToDB(user.id, mobilePaused);
+          return;
+        }
         // Al hacer login, BD es la fuente de verdad SIEMPRE — localStorage puede
         // tener datos viejos de otra sesión en este navegador.
         if (cameFromAuth) {
@@ -376,9 +399,9 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         // Si ya finalizó hoy → no preguntar nada
         if (baseState.finalized) return;
 
-        // Si activó "notificar al iniciar sesión" → mostrar prompt
+        // Si activó "notificar al iniciar sesión" → mostrar prompt (solo tablet/desktop)
         const prefs = loadTimerPrefs();
-        if (prefs.notifyOnLogin) {
+        if (prefs.notifyOnLogin && !isMobileDevice()) {
           setShowStartPrompt(true);
         }
         // Si NO activó → no preguntar, no arrancar. El usuario lo inicia manualmente.
@@ -597,7 +620,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (HIDDEN_PAGES.includes(currentPage) || dismissed) return null;
+  if (HIDDEN_PAGES.includes(currentPage) || dismissed || isMobile) return null;
 
   const pillBg = isRunning
     ? 'bg-indigo-600 hover:bg-indigo-700'
