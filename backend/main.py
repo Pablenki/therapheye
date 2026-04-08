@@ -1,5 +1,5 @@
 """
-Backend FastAPI para diagnóstico por imagen con modelo multi-etiqueta de fatiga.
+Backend FastAPI para diagnóstico por imagen con modelo multi-etiqueta (6 clases).
 Carga el modelo una sola vez al iniciar el servidor.
 """
 import base64
@@ -18,13 +18,17 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "modelo_fatiga.keras")
 # Cargar el modelo una sola vez al iniciar el servidor
 model = tf.keras.models.load_model(MODEL_PATH)
 
-# Mapeo índice → síntoma
+# Clases del modelo (multi-label)
 SINTOMAS = [
-    "enroj_ojo",   # prediction[0]
-    "enroj_piel",  # prediction[1]  
-    "parpado",           # prediction[2]
+    "enro_leve",
+    "enro_moderado",
+    "enro_grave",
+    "piel_enro",
+    "parpado_caido",
+    "ojo_sano"
 ]
-UMBRAL = 0.5
+
+UMBRAL = 0.6
 
 app = FastAPI(title="Therapeye Diagnóstico", version="1.0.0")
 
@@ -43,21 +47,15 @@ app.add_middleware(
 
 
 class DiagnosticoBase64Request(BaseModel):
-    """Body alternativo: imagen en base64 (data URL o base64 puro)."""
     imagen_base64: str
 
 
 class DiagnosticoResponse(BaseModel):
-    """Respuesta JSON para que el frontend muestre como Questionnaire."""
     sintomas: list[str]
     mensaje: str
 
 
 def _preprocesar_y_predecir(imagen_path: str) -> list[str]:
-    """
-    Lee la imagen desde ruta, la procesa (resize 224x224, normalización /255.0, expand_dims),
-    ejecuta model.predict() y devuelve la lista de síntomas con umbral 0.5.
-    """
     img = cv2.imread(imagen_path)
     if img is None:
         raise ValueError("No se pudo leer la imagen")
@@ -66,13 +64,17 @@ def _preprocesar_y_predecir(imagen_path: str) -> list[str]:
     img = img.astype(np.float32) / 255.0
     img = np.expand_dims(img, axis=0)
 
-    # El modelo recibe **un solo** tensor de entrada, igual que en tu función original
     prediction = model.predict(img, verbose=0)[0]
 
     sintomas = []
     for i, nombre in enumerate(SINTOMAS):
         if i < len(prediction) and prediction[i] > UMBRAL:
             sintomas.append(nombre)
+
+    # Evitar contradicción con "ojo_sano"
+    if "ojo_sano" in sintomas and len(sintomas) > 1:
+        sintomas.remove("ojo_sano")
+
     return sintomas
 
 
@@ -89,14 +91,10 @@ def health():
 
 @app.post("/diagnostico", response_model=DiagnosticoResponse)
 async def diagnostico(body: DiagnosticoBase64Request):
-    """
-    Recibe la imagen desde el frontend (base64, p. ej. data URL del canvas).
-    La guarda temporalmente, la procesa (resize 224x224, /255, expand_dims),
-    ejecuta model.predict(), evalúa con umbral 0.5 y devuelve JSON con síntomas.
-    """
     base64_str = body.imagen_base64.strip()
     if "," in base64_str:
         base64_str = base64_str.split(",", 1)[1]
+
     try:
         img_bytes = base64.b64decode(base64_str)
     except Exception as e:
@@ -104,12 +102,14 @@ async def diagnostico(body: DiagnosticoBase64Request):
 
     img_array = np.frombuffer(img_bytes, dtype=np.uint8)
     img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
     if img is None:
         raise HTTPException(status_code=400, detail="No se pudo decodificar la imagen")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
         cv2.imwrite(tmp.name, img)
         tmp_path = tmp.name
+
     try:
         sintomas = _preprocesar_y_predecir(tmp_path)
     finally:
