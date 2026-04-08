@@ -48,6 +48,7 @@ interface Exercise {
   status: 'completed' | 'incomplete' | null;
 }
 
+interface VisionRowResult { level: number; acuity: string; canRead: boolean; userInput: string; }
 interface VisionEntry {
   id: string;
   raw_date: Date;
@@ -55,6 +56,7 @@ interface VisionEntry {
   mejor_nivel: number;
   agudeza: string;
   distancia_cm: number;
+  resultados_json: VisionRowResult[];
 }
 
 // ─── Gráfica de tendencia SVG con interactividad ────────────────────────────────
@@ -664,6 +666,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
   const [visionTests, setVisionTests]         = useState<VisionEntry[]>([]);
   const [loading, setLoading]                 = useState(true);
   const [expandedEvalId, setExpandedEvalId]   = useState<string | null>(null);
+  const [expandedVisionId, setExpandedVisionId] = useState<string | null>(null);
 
   const { user } = useUser();
 
@@ -729,7 +732,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
       });
 
       const visionResult = await sql`
-        SELECT id, created_at, mejor_nivel, agudeza, distancia_cm
+        SELECT id, created_at, mejor_nivel, agudeza, distancia_cm, resultados_json
         FROM historial_vision_test
         WHERE user_id = ${user?.id}
         ORDER BY created_at DESC
@@ -740,12 +743,15 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
       const formattedVision: VisionEntry[] = visionResult.map((v: any) => {
         const d = parseDbDate(v.created_at);
         return {
-          id:           String(v.id),
-          raw_date:     d,
-          created_at:   d.toLocaleString(localeStr, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
-          mejor_nivel:  Number(v.mejor_nivel),
-          agudeza:      v.agudeza ?? 'N/A',
-          distancia_cm: Number(v.distancia_cm),
+          id:              String(v.id),
+          raw_date:        d,
+          created_at:      d.toLocaleString(localeStr, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
+          mejor_nivel:     Number(v.mejor_nivel),
+          agudeza:         v.agudeza ?? 'N/A',
+          distancia_cm:    Number(v.distancia_cm),
+          resultados_json: typeof v.resultados_json === 'string'
+            ? JSON.parse(v.resultados_json)
+            : (v.resultados_json ?? []),
         };
       });
 
@@ -894,6 +900,77 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             )}
           </div>
           <VisionChart entries={visionTests} lang={lang} />
+
+          {/* Lista de pruebas individuales */}
+          {visionTests.length > 0 && (
+            <div className="mt-6">
+              <p className="text-sm font-semibold text-gray-700 mb-3">
+                {lang === 'es' ? 'Historial de pruebas' : 'Test history'}
+              </p>
+              <div className="space-y-2">
+                {visionTests.map(v => {
+                  const isExp = expandedVisionId === v.id;
+                  const dot   = visionDotColor(v.mejor_nivel);
+                  const zoneLbl = VISION_ZONES.slice().reverse().find(z => v.mejor_nivel > z.min)
+                    ?? VISION_ZONES[0];
+                  const zoneLabel = lang === 'es' ? zoneLbl.label_es : zoneLbl.label_en;
+
+                  return (
+                    <div key={v.id}
+                      className={`border-2 rounded-xl transition-all duration-200 overflow-hidden
+                        ${isExp ? 'border-indigo-300 shadow-md' : 'border-gray-100 hover:border-indigo-200'}`}>
+                      <button className="w-full flex items-center gap-4 p-4 text-left"
+                        onClick={() => setExpandedVisionId(isExp ? null : v.id)}>
+                        {/* Badge nivel */}
+                        <div className="w-14 h-14 rounded-lg flex flex-col items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: `${dot}18` }}>
+                          <span className="text-lg font-extrabold leading-none" style={{ color: dot }}>
+                            {v.mejor_nivel}
+                          </span>
+                          <span className="text-xs font-semibold text-gray-400">/10</span>
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-800 text-sm">{zoneLabel}</p>
+                          <p className="text-xs text-indigo-600 font-medium">{v.agudeza}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{v.created_at} · {v.distancia_cm} cm</p>
+                        </div>
+                        {isExp
+                          ? <ChevronUp   className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+                          : <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />}
+                      </button>
+
+                      {/* Panel expandido — niveles del test */}
+                      {isExp && (
+                        <div className="px-4 pb-4 border-t border-indigo-100 bg-indigo-50/40">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-3 mb-2">
+                            {lang === 'es' ? 'Detalle por nivel' : 'Detail by level'}
+                          </p>
+                          <div className="space-y-1.5">
+                            {v.resultados_json.map((r, idx) => (
+                              <div key={idx} className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 shadow-sm">
+                                <span className="text-xs font-bold text-indigo-400 w-16 flex-shrink-0">
+                                  {lang === 'es' ? 'Nivel' : 'Level'} {r.level}
+                                </span>
+                                <span className="text-xs text-gray-500 flex-1">{r.acuity}</span>
+                                {r.canRead
+                                  ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                      {lang === 'es' ? 'Leyó' : 'Read'} · {r.userInput}
+                                    </span>
+                                  : <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                                      {lang === 'es' ? 'No leyó' : 'Failed'}
+                                    </span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Evaluaciones en lista — clickables */}
