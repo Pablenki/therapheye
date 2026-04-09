@@ -1,12 +1,11 @@
 """
 Backend FastAPI para diagnóstico por imagen con modelo multi-etiqueta (6 clases).
-- Descarga el modelo desde Google Drive si no existe localmente.
+- Descarga el modelo desde GitHub Releases si no existe localmente.
 - Carga el modelo UNA SOLA VEZ al iniciar con @app.on_event("startup").
 - Compatible con: uvicorn main:app --host 0.0.0.0 --port $PORT
 """
 import base64
 import os
-import re
 import tempfile
 
 import cv2
@@ -22,7 +21,7 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "modelo_fatiga.keras")
-FILE_ID = "111FFHJShAQEM6ZWCP8ND22i_nyPwJjIA"
+MODEL_URL = "https://github.com/Pablenki/therapheye/releases/download/Model/modelo_fatiga.keras"
 
 SINTOMAS = [
     "enro_leve",
@@ -66,57 +65,18 @@ def _descargar_modelo() -> None:
         print(f"[startup] Modelo ya existe en {MODEL_PATH}, omitiendo descarga.")
         return
 
-    print(f"[startup] Descargando modelo desde Google Drive → {MODEL_PATH} …")
+    print(f"[startup] Descargando modelo desde GitHub → {MODEL_PATH} …")
 
-    session = requests.Session()
-
-    # Paso 1: petición inicial
-    r1 = session.get(
-        "https://drive.google.com/uc",
-        params={"export": "download", "id": FILE_ID},
-        stream=True,
-        timeout=120,
-    )
-
-    # Paso 2: buscar token en cookies
-    token = None
-    for key, value in r1.cookies.items():
-        if key.startswith("download_warning"):
-            token = value
-            break
-
-    # Paso 3: si no está en cookies, buscarlo en el HTML
-    if not token:
-        content = r1.content.decode("utf-8", errors="ignore")
-        match = re.search(r'confirm=([0-9A-Za-z_\-]+)', content)
-        if match:
-            token = match.group(1)
-
-    # Paso 4: descarga real con confirm=t (funciona cuando no hay token explícito)
-    r2 = session.get(
-        "https://drive.google.com/uc",
-        params={"export": "download", "id": FILE_ID, "confirm": token or "t"},
-        stream=True,
-        timeout=300,
-    )
-    r2.raise_for_status()
-
-    os.makedirs(os.path.dirname(MODEL_PATH) or ".", exist_ok=True)
-
-    with open(MODEL_PATH, "wb") as f:
-        for chunk in r2.iter_content(chunk_size=65536):
-            if chunk:
-                f.write(chunk)
+    with requests.get(MODEL_URL, stream=True, timeout=300) as r:
+        r.raise_for_status()
+        os.makedirs(os.path.dirname(MODEL_PATH) or ".", exist_ok=True)
+        with open(MODEL_PATH, "wb") as f:
+            for chunk in r.iter_content(chunk_size=65536):
+                if chunk:
+                    f.write(chunk)
 
     size = os.path.getsize(MODEL_PATH)
-    print(f"[startup] Descarga completada ({size:,} bytes).")
-
-    if size < 1_000_000:
-        os.unlink(MODEL_PATH)
-        raise RuntimeError(
-            f"Descarga inválida: solo {size:,} bytes. "
-            "Google Drive bloqueó el archivo. Verifica que sea público."
-        )
+    print(f"[startup] Modelo descargado correctamente ({size:,} bytes).")
 
 
 # ---------------------------------------------------------------------------
