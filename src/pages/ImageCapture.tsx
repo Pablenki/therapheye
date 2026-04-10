@@ -24,6 +24,8 @@ const ImageCapture = ({ onBack }: Props) => {
   const [resultado, setResultado] = useState<DiagnosticoResult | null>(null)
   const [isDiagnosing, setIsDiagnosing] = useState(false)
   const [errorDiagnostico, setErrorDiagnostico] = useState<string | null>(null)
+  const [errorCamara, setErrorCamara] = useState<string | null>(null)
+  const [cargandoCamara, setCargandoCamara] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -42,23 +44,47 @@ const ImageCapture = ({ onBack }: Props) => {
   }, [mostrarCamara])
 
   const iniciarCamara = async () => {
+    setErrorCamara(null)
+    setCargandoCamara(true)
     try {
+      // Verificar estado del permiso primero
+      if (navigator.permissions) {
+        const perm = await navigator.permissions.query({ name: 'camera' as PermissionName })
+        if (perm.state === 'denied') {
+          setErrorCamara('El permiso de cámara está bloqueado. Ve a configuración del sitio en tu navegador y actívalo.')
+          setMostrarCamara(false)
+          setCargandoCamara(false)
+          return
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
+        video: {
           facingMode: 'user',
           width: { ideal: 640 },
           height: { ideal: 480 }
         }
       })
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
       }
     } catch (error) {
       console.error('Error al acceder a la cámara:', error)
-      alert('No se pudo acceder a la cámara. Por favor, verifica los permisos.')
+      const err = error as DOMException
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setErrorCamara('Permiso de cámara denegado. Haz clic en el candado de la barra de URL y activa la cámara.')
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setErrorCamara('La cámara está siendo usada por otra aplicación. Ciérrala e intenta de nuevo.')
+      } else if (err.name === 'NotFoundError') {
+        setErrorCamara('No se encontró ninguna cámara en este dispositivo.')
+      } else {
+        setErrorCamara(`No se pudo acceder a la cámara (${err.name}). Intenta recargar la página.`)
+      }
       setMostrarCamara(false)
+    } finally {
+      setCargandoCamara(false)
     }
   }
 
@@ -251,12 +277,18 @@ const ImageCapture = ({ onBack }: Props) => {
                 <p className="text-gray-500 mb-4">
                   {t('imageCapture', 'subtitle')}
                 </p>
+                {errorCamara && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    {errorCamara}
+                  </div>
+                )}
                 <button
-                  onClick={() => setMostrarCamara(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                  onClick={() => { setErrorCamara(null); setMostrarCamara(true) }}
+                  disabled={cargandoCamara}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Camera className="w-5 h-5" />
-                  <span>{t('imageCapture', 'capture')}</span>
+                  <span>{cargandoCamara ? 'Iniciando...' : t('imageCapture', 'capture')}</span>
                 </button>
               </>
             )}
