@@ -4,7 +4,7 @@ import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '../i18n'
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+const API_BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
 type Props = {
   onBack: () => void
