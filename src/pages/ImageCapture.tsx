@@ -1,4 +1,4 @@
-import { ArrowLeft, Camera, X, CheckCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Camera, X, CheckCircle, Loader2, Upload, AlertCircle } from 'lucide-react'
 import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect } from 'react'
@@ -18,6 +18,7 @@ interface DiagnosticoResult {
 const ImageCapture = ({ onBack }: Props) => {
   const { user } = useUser()
   const { t } = useLanguage()
+  const [mostrarCheckCamara, setMostrarCheckCamara] = useState(false)
   const [mostrarCamara, setMostrarCamara] = useState(false)
   const [imagenCapturada, setImagenCapturada] = useState<string | null>(null)
   const [diagnosticoCompletado, setDiagnosticoCompletado] = useState(false)
@@ -29,6 +30,7 @@ const ImageCapture = ({ onBack }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Iniciar cámara cuando se abre el modal
   useEffect(() => {
@@ -37,17 +39,23 @@ const ImageCapture = ({ onBack }: Props) => {
     } else {
       detenerCamara()
     }
+    return () => { detenerCamara() }
+  }, [mostrarCamara])
 
-    return () => {
-      detenerCamara()
+  // Enter para capturar foto
+  useEffect(() => {
+    if (!mostrarCamara) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') capturarImagen()
     }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
   }, [mostrarCamara])
 
   const iniciarCamara = async () => {
     setErrorCamara(null)
     setCargandoCamara(true)
     try {
-      // Verificar estado del permiso primero
       if (navigator.permissions) {
         const perm = await navigator.permissions.query({ name: 'camera' as PermissionName })
         if (perm.state === 'denied') {
@@ -59,11 +67,7 @@ const ImageCapture = ({ onBack }: Props) => {
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
       })
 
       if (videoRef.current) {
@@ -93,9 +97,7 @@ const ImageCapture = ({ onBack }: Props) => {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
+    if (videoRef.current) videoRef.current.srcObject = null
   }
 
   const capturarImagen = () => {
@@ -103,14 +105,11 @@ const ImageCapture = ({ onBack }: Props) => {
       const video = videoRef.current
       const canvas = canvasRef.current
       const contexto = canvas.getContext('2d')
-
       if (contexto) {
         canvas.width = video.videoWidth
         canvas.height = video.videoHeight
         contexto.drawImage(video, 0, 0)
-
-        const imagenData = canvas.toDataURL('image/png')
-        setImagenCapturada(imagenData)
+        setImagenCapturada(canvas.toDataURL('image/png'))
         detenerCamara()
         setMostrarCamara(false)
       }
@@ -120,6 +119,18 @@ const ImageCapture = ({ onBack }: Props) => {
   const cerrarCamara = () => {
     detenerCamara()
     setMostrarCamara(false)
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setImagenCapturada(ev.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+    // reset input so same file can be re-selected
+    e.target.value = ''
   }
 
   const realizarDiagnostico = async () => {
@@ -153,13 +164,8 @@ const ImageCapture = ({ onBack }: Props) => {
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
           <div className="text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              {t('imageCapture', 'title')}
-            </h2>
-            <p className="text-gray-600 mb-6">
-              {resultado.mensaje}
-            </p>
-
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">{t('imageCapture', 'title')}</h2>
+            <p className="text-gray-600 mb-6">{resultado.mensaje}</p>
             <div className={`rounded-xl p-6 mb-6 ${tieneSintomas ? 'bg-amber-50' : 'bg-green-50'}`}>
               <p className="text-sm text-gray-600 mb-2">Signos detectados en la imagen:</p>
               {tieneSintomas ? (
@@ -172,7 +178,6 @@ const ImageCapture = ({ onBack }: Props) => {
                 <p className="text-lg font-semibold text-green-700">Ningún signo de fatiga visual detectado.</p>
               )}
             </div>
-
             <div className="bg-blue-50 rounded-xl p-6 mb-6 text-left">
               <h3 className="font-semibold text-gray-800 mb-3">Recomendaciones:</h3>
               <ul className="space-y-2 text-gray-700">
@@ -182,11 +187,7 @@ const ImageCapture = ({ onBack }: Props) => {
                 <li>✓ Mantén una distancia adecuada del monitor</li>
               </ul>
             </div>
-
-            <button
-              onClick={onBack}
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
-            >
+            <button onClick={onBack} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
               {t('common', 'backToDashboard')}
             </button>
           </div>
@@ -206,10 +207,7 @@ const ImageCapture = ({ onBack }: Props) => {
             </div>
             <h1 className="text-2xl font-bold text-gray-800">Therapheye</h1>
           </div>
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-          >
+          <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
             <ArrowLeft className="w-5 h-5" />
             <span>{t('common', 'backToDashboard')}</span>
           </button>
@@ -233,8 +231,53 @@ const ImageCapture = ({ onBack }: Props) => {
             </div>
           </div>
 
-          {/* Componente de cámara */}
-          <div className="mt-6 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+          {/* Ejemplo de posición */}
+          {!imagenCapturada && (
+            <div className="mb-6 bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+              <p className="text-sm font-semibold text-indigo-700 mb-3 text-center">¿Cómo tomar la foto?</p>
+              <div className="flex items-center gap-4 justify-center">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-28 h-28 rounded-lg overflow-hidden border-2 border-red-400 relative bg-gray-900 flex items-center justify-center">
+                    {/* SVG simulando un ojo de cerca */}
+                    <svg viewBox="0 0 100 60" className="w-full h-full">
+                      <rect width="100" height="60" fill="#1a1a2e"/>
+                      <ellipse cx="50" cy="30" rx="40" ry="22" fill="#c8a97a"/>
+                      <ellipse cx="50" cy="30" rx="22" ry="20" fill="#7bb3d0"/>
+                      <ellipse cx="50" cy="30" rx="14" ry="14" fill="#2e4a7a"/>
+                      <ellipse cx="50" cy="30" rx="8" ry="8" fill="#0a0a0a"/>
+                      <ellipse cx="46" cy="26" rx="3" ry="3" fill="white" opacity="0.8"/>
+                      <ellipse cx="40" cy="10" rx="38" ry="8" fill="#1a1a1a" opacity="0.6"/>
+                      <ellipse cx="40" cy="50" rx="38" ry="8" fill="#1a1a1a" opacity="0.4"/>
+                    </svg>
+                    <div className="absolute inset-0 border-2 border-dashed border-yellow-400 rounded-lg opacity-70" />
+                  </div>
+                  <span className="text-xs text-green-600 font-medium">✓ Correcto</span>
+                  <span className="text-xs text-gray-500">Ojo centrado y cerca</span>
+                </div>
+                <div className="text-gray-400 text-2xl">vs</div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-28 h-28 rounded-lg overflow-hidden border-2 border-gray-300 bg-gray-100 flex items-center justify-center">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      <rect width="100" height="100" fill="#f0f0f0"/>
+                      <ellipse cx="50" cy="45" rx="12" ry="7" fill="#c8a97a"/>
+                      <ellipse cx="50" cy="45" rx="6" ry="5" fill="#7bb3d0"/>
+                      <ellipse cx="50" cy="45" rx="3" ry="3" fill="#0a0a0a"/>
+                      <rect x="0" y="0" width="100" height="30" fill="#3a3a3a" opacity="0.5"/>
+                      <rect x="0" y="75" width="100" height="25" fill="#4a4a4a" opacity="0.3"/>
+                    </svg>
+                  </div>
+                  <span className="text-xs text-red-500 font-medium">✗ Incorrecto</span>
+                  <span className="text-xs text-gray-500">Muy lejos o tapado</span>
+                </div>
+              </div>
+              <p className="text-xs text-indigo-600 text-center mt-3">
+                Acerca tu ojo a la cámara · Buena iluminación · Sin lentes
+              </p>
+            </div>
+          )}
+
+          {/* Zona de imagen / botones */}
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
             {imagenCapturada ? (
               <div className="space-y-4">
                 <img
@@ -242,12 +285,9 @@ const ImageCapture = ({ onBack }: Props) => {
                   alt={t('imageCapture', 'title')}
                   className="mx-auto max-w-full h-auto rounded-lg shadow-md"
                 />
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex items-center justify-center gap-4 flex-wrap">
                   <button
-                    onClick={() => {
-                      setImagenCapturada(null)
-                      setMostrarCamara(true)
-                    }}
+                    onClick={() => { setImagenCapturada(null); setMostrarCheckCamara(true) }}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
                   >
                     <Camera className="w-5 h-5" />
@@ -259,10 +299,7 @@ const ImageCapture = ({ onBack }: Props) => {
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isDiagnosing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>{t('imageCapture', 'analyzing')}</span>
-                      </>
+                      <><Loader2 className="w-5 h-5 animate-spin" /><span>{t('imageCapture', 'analyzing')}</span></>
                     ) : (
                       <span>{t('imageCapture', 'analyze')}</span>
                     )}
@@ -274,22 +311,36 @@ const ImageCapture = ({ onBack }: Props) => {
               </div>
             ) : (
               <>
-                <p className="text-gray-500 mb-4">
-                  {t('imageCapture', 'subtitle')}
-                </p>
+                <p className="text-gray-500 mb-4">{t('imageCapture', 'subtitle')}</p>
                 {errorCamara && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                     {errorCamara}
                   </div>
                 )}
-                <button
-                  onClick={() => { setErrorCamara(null); setMostrarCamara(true) }}
-                  disabled={cargandoCamara}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Camera className="w-5 h-5" />
-                  <span>{cargandoCamara ? 'Iniciando...' : t('imageCapture', 'capture')}</span>
-                </button>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => { setErrorCamara(null); setMostrarCheckCamara(true) }}
+                    disabled={cargandoCamara}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Camera className="w-5 h-5" />
+                    <span>{cargandoCamara ? 'Iniciando...' : t('imageCapture', 'capture')}</span>
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 transition"
+                  >
+                    <Upload className="w-5 h-5" />
+                    <span>Subir imagen</span>
+                  </button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
               </>
             )}
           </div>
@@ -300,27 +351,29 @@ const ImageCapture = ({ onBack }: Props) => {
               <div className="bg-white rounded-xl p-6 shadow-2xl max-w-2xl w-full mx-4">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-bold text-gray-800">{t('imageCapture', 'title')}</h3>
-                  <button
-                    onClick={cerrarCamara}
-                    className="text-gray-500 hover:text-gray-700 transition"
-                  >
+                  <button onClick={cerrarCamara} className="text-gray-500 hover:text-gray-700 transition">
                     <X className="w-6 h-6" />
                   </button>
                 </div>
-                
-                <div className="flex justify-center mb-4">
+
+                <div className="flex justify-center mb-2">
                   <div className="relative bg-gray-900 rounded-lg overflow-hidden" style={{ width: '500px', height: '400px' }}>
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
+                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                     <canvas ref={canvasRef} className="hidden" />
+                    {/* Guía de posición: óvalo central */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div
+                        className="border-4 border-yellow-400 border-dashed rounded-full opacity-70"
+                        style={{ width: '220px', height: '160px' }}
+                      />
+                    </div>
+                    <p className="absolute bottom-3 left-0 right-0 text-center text-yellow-300 text-xs font-medium">
+                      Centra tu ojo dentro del óvalo · Presiona Enter o el botón para capturar
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex gap-4 justify-center">
+                <div className="flex gap-4 justify-center mt-4">
                   <button
                     onClick={cerrarCamara}
                     className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-500 text-white hover:bg-gray-600 transition"
@@ -333,7 +386,49 @@ const ImageCapture = ({ onBack }: Props) => {
                     className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
                   >
                     <Camera className="w-5 h-5" />
-                    <span>{t('imageCapture', 'capture')}</span>
+                    <span>{t('imageCapture', 'capture')} (Enter)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de verificación de cámara */}
+          {mostrarCheckCamara && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl p-6 shadow-2xl max-w-md w-full mx-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <AlertCircle className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800">Antes de continuar</h3>
+                </div>
+                <p className="text-gray-600 text-sm mb-4">Verifica lo siguiente para que la cámara funcione correctamente:</p>
+                <ul className="space-y-3 mb-6">
+                  {[
+                    'Mi cámara está físicamente encendida',
+                    'Ninguna otra app está usando la cámara (Zoom, Teams, etc.)',
+                    'El permiso de cámara está habilitado en el navegador',
+                    'No tengo lentes puestos para la captura',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                      <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setMostrarCheckCamara(false)}
+                    className="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => { setMostrarCheckCamara(false); setMostrarCamara(true) }}
+                    className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition text-sm font-medium"
+                  >
+                    Sí, continuar
                   </button>
                 </div>
               </div>
@@ -346,4 +441,3 @@ const ImageCapture = ({ onBack }: Props) => {
 }
 
 export default ImageCapture
-
