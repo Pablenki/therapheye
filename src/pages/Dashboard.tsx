@@ -85,10 +85,21 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
 
   // ── Detectar si la extensión ya está instalada ───────────────────────────────
   useEffect(() => {
+    const EXT_ID = 'lephmmimjeeeknpgdmnhpjkbbnmplcal';
+
+    // Método 1: atributo DOM inyectado por content.js (instantáneo)
     if (document.documentElement.hasAttribute('data-therapheye-ext')) {
       setExtensionInstalled(true);
       return;
     }
+
+    // Método 2: intentar cargar un recurso de la extensión
+    // Funciona si web_accessible_resources está configurado en el manifest
+    const img = new Image();
+    img.onload = () => setExtensionInstalled(true);
+    img.src = `chrome-extension://${EXT_ID}/icons/icon16.png`;
+
+    // Método 3: MutationObserver por si content.js carga después del componente
     const observer = new MutationObserver(() => {
       if (document.documentElement.hasAttribute('data-therapheye-ext')) {
         setExtensionInstalled(true);
@@ -96,7 +107,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
       }
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-therapheye-ext'] });
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); img.onload = null; };
   }, []);
 
   // ── Cargar stats reales desde BD ─────────────────────────────────────────────
