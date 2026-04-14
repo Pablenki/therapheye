@@ -78,7 +78,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [screenTimeMs, setScreenTimeMs] = useState<number>(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [extensionDismissed, setExtensionDismissed] = useState(false);
+  const [extensionDismissed, setExtensionDismissed] = useState(
+    () => localStorage.getItem('therapheye_ext_banner_dismissed') === 'true'
+  );
   const [extensionInstalled, setExtensionInstalled] = useState(false);
 
   const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye-%E2%80%93-screen-time/lephmmimjeeeknpgdmnhpjkbbnmplcal';
@@ -404,7 +406,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 {lang === 'es' ? 'Agregar extensión' : 'Add Extension'}
               </a>
               <button
-                onClick={() => setExtensionDismissed(true)}
+                onClick={() => { localStorage.setItem('therapheye_ext_banner_dismissed', 'true'); setExtensionDismissed(true); }}
                 className="text-indigo-400 hover:text-indigo-600 text-lg leading-none"
                 title="Dismiss"
               >×</button>
