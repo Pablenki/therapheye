@@ -79,9 +79,25 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [extensionDismissed, setExtensionDismissed] = useState(false);
+  const [extensionInstalled, setExtensionInstalled] = useState(false);
 
-  // URL de la extensión en Chrome Web Store (actualizar cuando se publique)
-  const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye';
+  const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye-%E2%80%93-screen-time/lephmmimjeeeknpgdmnhpjkbbnmplcal';
+
+  // ── Detectar si la extensión ya está instalada ───────────────────────────────
+  useEffect(() => {
+    if (document.documentElement.hasAttribute('data-therapheye-ext')) {
+      setExtensionInstalled(true);
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      if (document.documentElement.hasAttribute('data-therapheye-ext')) {
+        setExtensionInstalled(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-therapheye-ext'] });
+    return () => observer.disconnect();
+  }, []);
 
   // ── Cargar stats reales desde BD ─────────────────────────────────────────────
   useEffect(() => {
@@ -354,7 +370,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
         </div>
 
         {/* Extension Banner — hidden on mobile (< md breakpoint = 768px) */}
-        {!extensionDismissed && (
+        {!extensionDismissed && !extensionInstalled && (
           <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 hidden md:flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
