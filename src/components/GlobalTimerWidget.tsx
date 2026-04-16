@@ -34,6 +34,8 @@ type PersistedTimerState = {
   finalized: boolean;
   /** YYYY-MM-DD of the day this state belongs to — used to detect day change */
   stateDate: string | null;
+  /** user_id that owns this timer state — used to detect account switches */
+  userId: string | null;
 };
 
 // ─── Constantes (deben coincidir con VisualHealth.tsx) ────────────────────────
@@ -80,6 +82,27 @@ export const saveTimerPrefs = (prefs: TimerPrefs, userId?: string) => {
   }
 };
 
+/** Carga preferencias desde BD y las escribe en localStorage.
+ *  Si el usuario no tiene registro (cuenta nueva) → defaults (notifyOnLogin=false).
+ *  Retorna las prefs cargadas. */
+const syncPrefsFromDB = async (userId: string): Promise<TimerPrefs> => {
+  try {
+    const rows = await sql`
+      SELECT notify_on_login, onboarding_completed
+      FROM user_preferences
+      WHERE user_id = ${userId}
+      LIMIT 1
+    `;
+    const prefs: TimerPrefs = rows.length > 0
+      ? { notifyOnLogin: Boolean(rows[0].notify_on_login), onboardingCompleted: Boolean(rows[0].onboarding_completed) }
+      : { ...DEFAULT_PREFS };
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* noop */ }
+    return prefs;
+  } catch {
+    return loadTimerPrefs(); // si falla la BD, usar lo que haya en localStorage
+  }
+};
+
 // Páginas donde el widget NO se muestra visualmente
 const HIDDEN_PAGES: Page[] = ['login', 'register', 'verify-email', 'visual-health'];
 // Páginas de auth donde el timer SÍ se pausa/resetea (no incluye visual-health)
@@ -98,6 +121,7 @@ const DEFAULT_STATE: PersistedTimerState = {
   sessionStartTimestamp: null,
   finalized: false,
   stateDate: todayLocalDate(),
+  userId: null,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -232,6 +256,8 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const [breakAlert, setBreakAlert]                 = useState(false);
   /** Modal "¿Deseas iniciar tu temporizador de hoy?" */
   const [showStartPrompt, setShowStartPrompt]       = useState(false);
+  /** Banner "cambiaste de cuenta" */
+  const [showAccountChanged, setShowAccountChanged] = useState(false);
   const [isMobile, setIsMobile]                     = useState(isMobileDevice);
 
   useEffect(() => {
@@ -380,6 +406,20 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       clearManualLogin();
       loginHandledRef.current = true;
 
+      // ═══ Detección de cambio de cuenta ═══
+      // Si hay datos en localStorage de OTRA cuenta, avisamos y los descartamos.
+      // Los datos de la cuenta anterior ya están en su BD (la extensión y el widget los sincronizaron).
+      const prevLocal = loadState();
+      const accountSwitched = prevLocal.userId && user?.id && prevLocal.userId !== user.id;
+      if (accountSwitched) {
+        const fresh: PersistedTimerState = { ...DEFAULT_STATE, stateDate: todayLocalDate(), userId: user.id };
+        persistState(fresh);
+        setElapsedSeconds(0);
+        setIsRunning(false);
+        setShowAccountChanged(true);
+        setTimeout(() => setShowAccountChanged(false), 5000);
+      }
+
       const handleLoginTimer = (baseState: PersistedTimerState) => {
         // ═══ SIEMPRE pausar al llegar del login ═══
         // Usar accumulatedMs directamente — NO calcElapsedMs(), porque si la BD tiene
@@ -390,6 +430,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           isRunning: false,
           startTimestamp: null,
           accumulatedMs: accMs,
+          userId: user?.id ?? null,
         };
         persistState(paused);
         setIsRunning(false);
@@ -399,10 +440,12 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         // Si ya finalizó hoy → no preguntar nada
         if (baseState.finalized) return;
 
-        // Si activó "notificar al iniciar sesión" → mostrar prompt (solo tablet/desktop)
-        const prefs = loadTimerPrefs();
-        if (prefs.notifyOnLogin && !isMobileDevice()) {
-          setShowStartPrompt(true);
+        // Cargar prefs desde BD (fuente de verdad por usuario).
+        // Esto evita que un usuario nuevo herede prefs de otra cuenta guardadas en localStorage.
+        if (user?.id) {
+          syncPrefsFromDB(user.id).then(prefs => {
+            if (prefs.notifyOnLogin && !isMobileDevice()) setShowStartPrompt(true);
+          });
         }
         // Si NO activó → no preguntar, no arrancar. El usuario lo inicia manualmente.
       };
@@ -414,14 +457,14 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         loadTimerFromDB(user.id).then(dbState => {
           if (dbState) {
             // BD tiene datos para hoy → SIEMPRE usar BD (no comparar con localStorage)
-            persistState(dbState);
+            persistState({ ...dbState, userId: user.id });
             handleLoginTimer(dbState);
           } else {
-            // No hay datos en BD para hoy → usar localStorage pero con accumulatedMs=0
-            // (nueva sesión del día)
+            // No hay datos en BD para hoy → nueva sesión del día
             const fresh: PersistedTimerState = {
               ...DEFAULT_STATE,
               stateDate: todayLocalDate(),
+              userId: user.id,
             };
             persistState(fresh);
             handleLoginTimer(fresh);
@@ -498,20 +541,23 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         loadTimerFromDB(user.id).then(dbState => {
           if (!dbState) return;
           const localNow = loadState();
-          const localMs = calcElapsedMs(localNow);
-          const dbMs = dbState.accumulatedMs;
-          // Si la BD cambió significativamente (>2s diff) o el running state es diferente
-          const msDiff = Math.abs(dbMs - localMs);
-          const runDiff = dbState.isRunning !== localNow.isRunning;
-          if (msDiff > 2000 || runDiff) {
+          const localMs  = calcElapsedMs(localNow);
+          const dbFullMs = calcElapsedMs(dbState); // elapsed real de la BD (incluye delta vivo)
+          // Adoptar estado de BD solo si tiene MÁS tiempo que local (extensión adelantada)
+          // o si la extensión pausó (respetar pausa explícita).
+          // Nunca sumar: el mayor gana, punto.
+          const dbAhead   = dbFullMs > localMs + 2000;
+          const dbPaused  = !dbState.isRunning && localNow.isRunning;
+          if (dbAhead || dbPaused) {
             persistState(dbState);
-            setElapsedSeconds(Math.floor(calcElapsedMs(dbState) / 1000));
+            setElapsedSeconds(Math.floor(dbFullMs / 1000));
             setIsRunning(dbState.isRunning);
             if (dbState.nextBreakAtMs != null) {
-              const rem = dbState.nextBreakAtMs - calcElapsedMs(dbState);
+              const rem = dbState.nextBreakAtMs - dbFullMs;
               setNextBreakInMinutes(rem > 0 ? Math.round(rem / 60000) : 0);
             }
           }
+          // Si local tiene más tiempo → local gana, no hacer nada.
         }).catch(() => { /* ignore poll errors */ });
       }
 
@@ -596,6 +642,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         isRunning: false,
         startTimestamp: null,
         accumulatedMs: ms,
+        userId: user?.id ?? st.userId ?? null,
       };
       persistState(paused);
       setIsRunning(false);
@@ -611,6 +658,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         sessionStartTimestamp: st.sessionStartTimestamp ?? now,
         finalized: false, // User is explicitly starting → clear finalized flag
         stateDate: todayLocalDate(),
+        userId: user?.id ?? st.userId ?? null,
       };
       persistState(started);
       setIsRunning(true);
@@ -654,6 +702,21 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Banner cambio de cuenta ── */}
+      {showAccountChanged && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 bg-blue-600 text-white rounded-2xl shadow-2xl border border-blue-500 font-semibold text-sm">
+          <Monitor className="w-5 h-5 flex-shrink-0" />
+          <span>{t('visualHealth', 'accountChangedMsg')}</span>
+          <button
+            onClick={() => setShowAccountChanged(false)}
+            className="ml-2 p-1 rounded-lg hover:bg-blue-500 transition"
+            title={t('common', 'close')}
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

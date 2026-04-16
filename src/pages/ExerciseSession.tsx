@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, type ReactElement } from 'react';
-import { ArrowLeft, Play, Pause, RotateCcw, Volume2, VolumeX, SkipForward } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, Volume2, VolumeX, SkipForward, Music2, X } from 'lucide-react';
 import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -62,7 +62,18 @@ const speakText = (text: string, lang: 'es' | 'en' = 'es', onEnd?: () => void) =
   window.speechSynthesis.speak(utt);
 };
 
-// ─── Música ambiental relajante (generada con Web Audio API) ─────────────────
+// ─── Estilos de música ────────────────────────────────────────────────────────
+export type MusicStyle = 'zen' | 'bosque' | 'oceano' | 'espacial' | 'clasico';
+
+export const MUSIC_STYLES: { id: MusicStyle; emoji: string; nameEs: string; nameEn: string; descEs: string; descEn: string }[] = [
+  { id: 'zen',      emoji: '🧘', nameEs: 'Zen',      nameEn: 'Zen',      descEs: 'Pad suave y pentatónica',   descEn: 'Soft pad & pentatonic' },
+  { id: 'bosque',   emoji: '🌿', nameEs: 'Bosque',   nameEn: 'Forest',   descEs: 'Tonos graves y naturales',  descEn: 'Deep natural tones' },
+  { id: 'oceano',   emoji: '🌊', nameEs: 'Océano',   nameEn: 'Ocean',    descEs: 'Pulsos suaves en oleadas',  descEn: 'Gentle wave pulses' },
+  { id: 'espacial', emoji: '✨', nameEs: 'Espacial', nameEn: 'Space',    descEs: 'Tonos etéreos y cristalinos', descEn: 'Ethereal crystal tones' },
+  { id: 'clasico',  emoji: '🎵', nameEs: 'Clásico',  nameEn: 'Classic',  descEs: 'Arpegio melódico ordenado', descEn: 'Ordered melodic arpeggio' },
+];
+
+// ─── Música ambiental (generada con Web Audio API, 5 estilos) ────────────────
 class AmbientMusic {
   private ctx: AudioContext | null = null;
   private gainNode: GainNode | null = null;
@@ -70,45 +81,95 @@ class AmbientMusic {
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isPlaying = false;
 
-  start(volume = 0.06) {
+  private makeCtx(volume: number) {
+    this.ctx = new AudioContext();
+    const compressor = this.ctx.createDynamicsCompressor();
+    compressor.threshold.value = -18; compressor.knee.value = 10;
+    compressor.ratio.value = 4; compressor.attack.value = 0.05; compressor.release.value = 0.3;
+    compressor.connect(this.ctx.destination);
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
+    this.gainNode.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 2.5);
+    this.gainNode.connect(compressor);
+  }
+
+  private addPad(freqs: number[], type: OscillatorType, gain: number) {
+    freqs.forEach(freq => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = type; osc.frequency.value = freq;
+      const g = this.ctx!.createGain(); g.gain.value = gain;
+      osc.connect(g); g.connect(this.gainNode!); osc.start();
+      this.oscillators.push(osc);
+    });
+  }
+
+  private addMelody(notes: number[], intervalMs: number, type: OscillatorType, noteGain: number, noteDur: number) {
+    this.intervalId = setInterval(() => {
+      if (!this.ctx || !this.gainNode) return;
+      const freq = notes[Math.floor(Math.random() * notes.length)];
+      const osc = this.ctx.createOscillator();
+      osc.type = type; osc.frequency.value = freq;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(noteGain, this.ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + noteDur);
+      osc.connect(g); g.connect(this.gainNode);
+      osc.start(); osc.stop(this.ctx.currentTime + noteDur + 0.1);
+    }, intervalMs);
+  }
+
+  start(volume = 0.55, style: MusicStyle = 'zen') {
     if (this.isPlaying) return;
     try {
-      this.ctx = new AudioContext();
-      this.gainNode = this.ctx.createGain();
-      this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(volume, this.ctx.currentTime + 2);
-      this.gainNode.connect(this.ctx.destination);
+      this.makeCtx(volume);
 
-      // Pad base: acordes suaves que cambian lentamente
-      const baseFreqs = [174.61, 220, 261.63]; // F3, A3, C4 (F major)
-      baseFreqs.forEach(freq => {
-        const osc = this.ctx!.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        const oscGain = this.ctx!.createGain();
-        oscGain.gain.value = 0.3;
-        osc.connect(oscGain);
-        oscGain.connect(this.gainNode!);
-        osc.start();
-        this.oscillators.push(osc);
-      });
+      if (style === 'zen') {
+        // Pad F mayor suave + melodía pentatónica
+        this.addPad([174.61, 220, 261.63], 'triangle', 0.25);
+        this.addMelody([261.63, 293.66, 329.63, 392, 440, 523.25], 3500, 'sine', 0.55, 3);
 
-      // Melodía suave: notas aleatorias pentatónicas cada 4 segundos
-      const pentatonic = [261.63, 293.66, 329.63, 392, 440, 523.25]; // C D E G A C5
-      this.intervalId = setInterval(() => {
-        if (!this.ctx || !this.gainNode) return;
-        const freq = pentatonic[Math.floor(Math.random() * pentatonic.length)];
-        const osc = this.ctx.createOscillator();
-        osc.type = 'triangle';
-        osc.frequency.value = freq;
-        const noteGain = this.ctx.createGain();
-        noteGain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-        noteGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 3.5);
-        osc.connect(noteGain);
-        noteGain.connect(this.gainNode);
-        osc.start();
-        osc.stop(this.ctx.currentTime + 4);
-      }, 4000);
+      } else if (style === 'bosque') {
+        // Pad A menor grave + melodía lenta y profunda
+        this.addPad([110, 130.81, 164.81], 'sine', 0.3);
+        this.addMelody([196, 220, 246.94, 261.63, 293.66], 5000, 'triangle', 0.5, 4.5);
+
+      } else if (style === 'oceano') {
+        // Solo pulsos rítmicos tipo oleada (sin pad sostenido)
+        const waveNotes = [261.63, 311.13, 349.23, 392];
+        let idx = 0;
+        this.intervalId = setInterval(() => {
+          if (!this.ctx || !this.gainNode) return;
+          const freq = waveNotes[idx % waveNotes.length]; idx++;
+          const osc = this.ctx.createOscillator();
+          osc.type = 'sine'; osc.frequency.value = freq;
+          const g = this.ctx.createGain();
+          g.gain.setValueAtTime(0.001, this.ctx.currentTime);
+          g.gain.linearRampToValueAtTime(0.6, this.ctx.currentTime + 1.2);
+          g.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 2.8);
+          osc.connect(g); g.connect(this.gainNode);
+          osc.start(); osc.stop(this.ctx.currentTime + 3);
+        }, 2800);
+
+      } else if (style === 'espacial') {
+        // Pad alto etéreo C5/E5/G5 + notas cristalinas agudas
+        this.addPad([523.25, 659.25, 783.99], 'sine', 0.15);
+        this.addMelody([783.99, 880, 1046.5, 1174.66, 1318.51], 4500, 'sine', 0.45, 5);
+
+      } else if (style === 'clasico') {
+        // Arpegio C mayor ordenado (C E G C5) cada 0.9 s
+        const arpNotes = [261.63, 329.63, 392, 523.25, 392, 329.63];
+        let arpIdx = 0;
+        this.intervalId = setInterval(() => {
+          if (!this.ctx || !this.gainNode) return;
+          const freq = arpNotes[arpIdx % arpNotes.length]; arpIdx++;
+          const osc = this.ctx.createOscillator();
+          osc.type = 'triangle'; osc.frequency.value = freq;
+          const g = this.ctx.createGain();
+          g.gain.setValueAtTime(0.5, this.ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.85);
+          osc.connect(g); g.connect(this.gainNode);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.9);
+        }, 900);
+      }
 
       this.isPlaying = true;
     } catch { /* noop */ }
@@ -124,8 +185,7 @@ class AmbientMusic {
       this.oscillators.forEach(o => { try { o.stop(); } catch {/**/} });
       this.oscillators = [];
       if (this.ctx) { try { this.ctx.close(); } catch {/**/} }
-      this.ctx = null;
-      this.gainNode = null;
+      this.ctx = null; this.gainNode = null;
     }, 1200);
     this.isPlaying = false;
   }
@@ -441,6 +501,11 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const [isSaving, setIsSaving]     = useState(false);
   const [muted, setMuted]           = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+  const [musicStyle, setMusicStyle] = useState<MusicStyle>('zen');
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
+
+  const musicStyleRef = useRef<MusicStyle>('zen');
+  musicStyleRef.current = musicStyle;
 
   // Ref para silencio — disponible dentro del intervalo sin stale closure
   const mutedRef     = useRef(muted);
@@ -497,7 +562,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
 
     if (isRunning && timeLeft > 0) {
       // Start ambient music
-      if (!mutedRef.current) ambientMusic.start(0.06);
+      if (!mutedRef.current) ambientMusic.start(0.55, musicStyleRef.current);
 
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
@@ -746,6 +811,19 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             <ArrowLeft className="w-5 h-5" /> {t('common', 'back')}
           </button>
           <div className="flex items-center gap-2">
+            {/* Botón selector de música */}
+            {!muted && (
+              <button
+                onClick={() => setShowMusicPicker(true)}
+                title={lang === 'es' ? 'Cambiar música' : 'Change music'}
+                className="p-2 rounded-lg transition bg-purple-100 text-purple-600 hover:bg-purple-200 relative"
+              >
+                <Music2 className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 text-[10px] leading-none">
+                  {MUSIC_STYLES.find(s => s.id === musicStyle)?.emoji}
+                </span>
+              </button>
+            )}
             {/* Botón silencio */}
             <button
               onClick={() => setMuted(m => !m)}
@@ -766,6 +844,69 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             )}
           </div>
         </div>
+
+        {/* ── Modal selector de música ── */}
+        {showMusicPicker && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Music2 className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <h3 className="text-base font-bold text-gray-800">
+                    {lang === 'es' ? 'Elige tu música' : 'Choose your music'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowMusicPicker(false)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-400"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {MUSIC_STYLES.map(style => (
+                  <button
+                    key={style.id}
+                    onClick={() => {
+                      const wasRunning = isRunning && !muted;
+                      if (wasRunning) { ambientMusic.stop(); }
+                      setMusicStyle(style.id);
+                      musicStyleRef.current = style.id;
+                      if (wasRunning) {
+                        setTimeout(() => ambientMusic.start(0.55, style.id), 1300);
+                      }
+                      setShowMusicPicker(false);
+                    }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition text-left ${
+                      musicStyle === style.id
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-100 hover:border-purple-200 hover:bg-purple-50/50'
+                    }`}
+                  >
+                    <span className="text-2xl leading-none">{style.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {lang === 'es' ? style.nameEs : style.nameEn}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {lang === 'es' ? style.descEs : style.descEn}
+                      </p>
+                    </div>
+                    {musicStyle === style.id && (
+                      <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 text-center mt-3">
+                {lang === 'es' ? 'El cambio aplica en el siguiente inicio' : 'Change applies on next start'}
+                {isRunning && !muted ? (lang === 'es' ? ' o al instante si está corriendo' : ' · instant if running') : ''}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Modal de confirmación de skip */}
         {showSkipConfirm && (

@@ -429,6 +429,9 @@ const translations = {
     timerPromptStart: { es: 'Sí, iniciar', en: 'Yes, start' },
     timerPromptSkip: { es: 'Ahora no', en: 'Not now' },
 
+    // ── Aviso de cambio de cuenta ─────────────────────────────────────────────
+    accountChangedMsg: { es: 'Cambiaste de cuenta — el temporizador inicia desde cero para esta sesión.', en: 'You switched accounts — timer starts fresh for this session.' },
+
     // ── Onboarding primera vez ────────────────────────────────────────────────
     onboardingTitle: { es: '¿Qué hace Salud Visual?', en: 'What does Visual Health do?' },
     onboardingDesc: { es: 'Salud Visual cuida tus ojos mientras trabajas frente a la pantalla. Mide tu tiempo activo, te recuerda tomar descansos cada 20 minutos (regla 20-20-20) y guarda tu historial de uso diario.', en: 'Visual Health takes care of your eyes while you work on screen. It tracks your active time, reminds you to take breaks every 20 minutes (20-20-20 rule), and saves your daily usage history.' },
