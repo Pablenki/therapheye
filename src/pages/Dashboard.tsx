@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse, Flame, TrendingUp, TrendingDown, Minus, Play, Pause } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse, Flame, TrendingUp, TrendingDown, Minus, Play, Pause, ChevronDown, KeyRound, Trash2, User } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
@@ -14,7 +14,8 @@ type Page =
   | 'history'
   | 'image-capture'
   | 'vision-test'
-  | 'visual-health';
+  | 'visual-health'
+  | 'profile';
 
 interface Stats {
   evaluaciones: number;
@@ -78,6 +79,19 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [screenTimeMs, setScreenTimeMs] = useState<number>(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showUserMenu, setShowUserMenu]           = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar dropdown al click fuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
   const [extensionDismissed, setExtensionDismissed] = useState(
     () => localStorage.getItem('therapheye_ext_banner_dismissed') === 'true'
   );
@@ -362,13 +376,53 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
             <h1 className="text-2xl font-bold text-gray-800">Therapheye</h1>
           </div>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>{t('common', 'logout')}</span>
-          </button>
+
+          {/* User dropdown */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setShowUserMenu(v => !v)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition"
+            >
+              {/* Avatar */}
+              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
+                {user?.foto_perfil
+                  ? <img src={user.foto_perfil} alt="avatar" className="w-full h-full object-cover" />
+                  : <span>{user?.nombre?.charAt(0).toUpperCase() ?? '?'}</span>
+                }
+              </div>
+              <span className="hidden sm:block text-sm font-medium text-gray-700 max-w-[140px] truncate">
+                {user?.nombre?.split(' ').slice(0, 2).join(' ')}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown panel */}
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                {/* Info usuario */}
+                <div className="px-4 py-2 border-b border-gray-100 mb-1">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{user?.nombre}</p>
+                  <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                </div>
+                {/* Cambiar contraseña */}
+                <button
+                  onClick={() => { setShowUserMenu(false); onNavigate('profile'); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <KeyRound className="w-4 h-4 text-gray-500" />
+                  {lang === 'es' ? 'Mi cuenta' : 'My account'}
+                </button>
+                {/* Cerrar sesión */}
+                <button
+                  onClick={() => { setShowUserMenu(false); setShowLogoutConfirm(true); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {t('common', 'logout')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

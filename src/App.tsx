@@ -15,6 +15,7 @@ import History from './pages/History'
 import ImageCapture from './pages/ImageCapture'
 import VisionTest from './pages/VisionTest'
 import VisualHealth from './pages/VisualHealth'
+import Profile from './pages/Profile'
 
 type Page =
   | 'login'
@@ -27,7 +28,8 @@ type Page =
   | 'history'
   | 'image-capture'
   | 'vision-test'
-  | 'visual-health';
+  | 'visual-health'
+  | 'profile';
 
 interface PendingUser {
   name: string;
@@ -158,6 +160,8 @@ function AppContent() {
         return <VisionTest onBack={() => handleNavigate('dashboard')} />
       case 'visual-health':
         return <VisualHealth onBack={() => handleNavigate('dashboard')} />
+      case 'profile':
+        return <Profile onBack={() => handleNavigate('dashboard')} onLogout={() => { handleNavigate('login') }} />
       default:
         return (
           <Login

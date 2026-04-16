@@ -6,16 +6,19 @@ interface User {
   id: string;
   email: string;
   nombre: string;
+  foto_perfil?: string | null;
+  fecha_nacimiento?: string | null; // YYYY-MM-DD
 }
 
 interface UserContextType {
   user: User | null;
   login: (userData: User) => void;
   logout: () => void;
+  updateUser: (partial: Partial<User>) => void;
   isAuthenticated: boolean;
-  isRestoringSession: boolean;  // true mientras valida sesión guardada
-  wasManualLogin: boolean;      // true solo cuando el usuario hizo click en "Iniciar sesión"
-  clearManualLogin: () => void; // limpiar la flag después de consumirla
+  isRestoringSession: boolean;
+  wasManualLogin: boolean;
+  clearManualLogin: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -83,11 +86,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const login = (userData: User) => {
     setUser(userData);
-    setWasManualLogin(true); // login activo por click del usuario
-    // Guardar en localStorage para persistir y para la extensión
-    try {
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
-    } catch {}
+    setWasManualLogin(true);
+    try { localStorage.setItem(USER_KEY, JSON.stringify(userData)); } catch {}
+  };
+
+  const updateUser = (partial: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...partial };
+      try { localStorage.setItem(USER_KEY, JSON.stringify(updated)); } catch {}
+      return updated;
+    });
   };
 
   const clearManualLogin = () => setWasManualLogin(false);
@@ -104,7 +113,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = user !== null;
 
   return (
-    <UserContext.Provider value={{ user, login, logout, isAuthenticated, isRestoringSession, wasManualLogin, clearManualLogin }}>
+    <UserContext.Provider value={{ user, login, logout, updateUser, isAuthenticated, isRestoringSession, wasManualLogin, clearManualLogin }}>
       {children}
     </UserContext.Provider>
   );

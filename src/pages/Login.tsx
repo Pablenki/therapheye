@@ -89,8 +89,14 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
           console.warn('[Login] Error cargando preferencias:', err);
         }
 
-        const userData = { id: user.id, email: user.email, nombre: user.nombre };
-        login(userData); // UserContext guarda en localStorage automáticamente
+        const userData = {
+          id: user.id,
+          email: user.email,
+          nombre: user.nombre,
+          foto_perfil: user.foto_perfil ?? null,
+          fecha_nacimiento: user.fecha_nacimiento ?? null,
+        };
+        login(userData);
         onLogin();
       } else {
         setError(t('login', 'error'));
