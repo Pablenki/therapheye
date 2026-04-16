@@ -17,7 +17,8 @@ type Page =
   | 'history'
   | 'image-capture'
   | 'vision-test'
-  | 'visual-health';
+  | 'visual-health'
+  | 'profile';
 
 type Props = {
   currentPage: Page;
@@ -216,6 +217,7 @@ const loadTimerFromDB = async (userId: string): Promise<PersistedTimerState | nu
       nextBreakAtMs: r.next_break_at_ms ? Number(r.next_break_at_ms) : null,
       finalized: r.finalized !== undefined ? Boolean(r.finalized) : false,
       stateDate: todayLocalDate(),
+      userId: null,
     };
   } catch (err) {
     console.warn('[TimerWidget] Error cargando timer de BD:', err);
