@@ -18,13 +18,57 @@ const parseDbDate = (dateStr: any): Date => {
   return new Date(s.replace(' ', 'T') + 'Z');
 };
 
-// Mapa de nombre de ejercicio (guardado en DB) → ID de ejercicio en ExerciseSession
+// Mapa de clave interna (guardada en DB desde ExerciseSession como titleKey.split('.')[1])
+// → ID de ejercicio usado en App.tsx / exerciseData.
+// Nota: la DB guarda 'palming', 'focus', 'rule202020', 'circles', 'nearFar' (por `titleKey`).
+// Se incluyen también variantes legacy y los propios IDs por si se guardó directamente el id.
 const EXERCISE_NAME_TO_ID: Record<string, string> = {
-  'Palming':                  'palming',
-  'Enfoque cercano-lejano':   'focus',
-  'Regla 20-20-20':           '20-20-20',
-  'Círculos oculares':        'circles',
-  'Simulación cerca/lejos':   'near-far',
+  // Claves canónicas actuales (tipo_ejercicio = titleKey.split('.')[1])
+  'palming':    'palming',
+  'focus':      'focus',
+  'rule202020': '20-20-20',
+  'circles':    'circles',
+  'nearFar':    'near-far',
+  // IDs también válidos (por si se almacenó el id directamente)
+  '20-20-20':   '20-20-20',
+  'near-far':   'near-far',
+  // Variantes legacy / display names viejos que pudieran existir en BD
+  'Palming':                'palming',
+  'Enfoque cercano-lejano': 'focus',
+  'Regla 20-20-20':         '20-20-20',
+  'Círculos oculares':      'circles',
+  'Simulación cerca/lejos': 'near-far',
+  '20s':                    '20-20-20',
+  'cercano-lejos':          'focus',
+  'simulación':             'near-far',
+};
+
+// Mapa clave-interna-o-legacy → (es, en) para mostrar al usuario.
+// Se usa para reemplazar `tipo_ejercicio` bruto por un nombre amigable.
+const EXERCISE_DISPLAY_NAME: Record<string, { es: string; en: string }> = {
+  palming:    { es: 'Palming',                  en: 'Palming'              },
+  focus:      { es: 'Enfoque cercano-lejano',   en: 'Near-Far Focus'       },
+  rule202020: { es: 'Regla 20-20-20',           en: '20-20-20 Rule'        },
+  circles:    { es: 'Círculos oculares',        en: 'Eye Circles'          },
+  nearFar:    { es: 'Simulación cerca/lejos',   en: 'Near/Far Simulation'  },
+  '20-20-20': { es: 'Regla 20-20-20',           en: '20-20-20 Rule'        },
+  'near-far': { es: 'Simulación cerca/lejos',   en: 'Near/Far Simulation'  },
+  '20s':      { es: 'Regla 20-20-20',           en: '20-20-20 Rule'        },
+  'cercano-lejos': { es: 'Enfoque cercano-lejano', en: 'Near-Far Focus'    },
+  'simulación':    { es: 'Simulación cerca/lejos', en: 'Near/Far Simulation' },
+};
+
+const getExerciseDisplayName = (raw: string, lang: 'es' | 'en'): string => {
+  if (!raw) return '';
+  // Buscar match exacto
+  if (EXERCISE_DISPLAY_NAME[raw]) return EXERCISE_DISPLAY_NAME[raw][lang];
+  // Match case-insensitive
+  const lower = raw.toLowerCase();
+  for (const k of Object.keys(EXERCISE_DISPLAY_NAME)) {
+    if (k.toLowerCase() === lower) return EXERCISE_DISPLAY_NAME[k][lang];
+  }
+  // Fallback: capitalizar primera letra del valor crudo
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 };
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
@@ -776,9 +820,16 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
     return             { level: getLevelName('levelSevere'),            color: 'text-red-600',    bg: 'bg-red-50'    };
   };
 
+  // Formato preciso de duración:
+  //  · < 60s  → "Ns"             (p.ej. 30 → "30 seg")
+  //  · ≥ 60s  → "m:ss"           (p.ej. 60 → "1:00", 90 → "1:30")
+  // Evita perder precisión al mostrar (antes 90s se mostraba como "1 min").
   const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds} ${t('common', 'sec')}`;
-    return `${Math.floor(seconds / 60)} ${t('common', 'min')}`;
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    if (total < 60) return `${total} ${t('common', 'sec')}`;
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${s.toString().padStart(2, '0')} ${t('common', 'min')}`;
   };
 
   const getTrend = () => {
@@ -1114,7 +1165,10 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
                         ? <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
                         : <XCircle      className="w-5 h-5 text-red-400   flex-shrink-0" />}
                       <div>
-                        <p className="font-semibold text-gray-800">{exercise.tipo_ejercicio}</p>
+                        {/* Nombre amigable: mapeamos clave interna de BD → nombre visible */}
+                        <p className="font-semibold text-gray-800">
+                          {getExerciseDisplayName(exercise.tipo_ejercicio, lang as 'es' | 'en')}
+                        </p>
                         <p className="text-xs text-gray-500">{exercise.created_at}</p>
                       </div>
                     </div>

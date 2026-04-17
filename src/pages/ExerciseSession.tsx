@@ -74,12 +74,19 @@ export const MUSIC_STYLES: { id: MusicStyle; emoji: string; nameEs: string; name
 ];
 
 // ─── Música ambiental (generada con Web Audio API, 5 estilos) ────────────────
+// Volumen de música secundaria (≈25% del narrador TTS = 1.0). Antes: 0.55 → demasiado alto
+// comparado con la voz. Ajustado para que la narración sea claramente prioritaria.
+const MUSIC_VOLUME_DEFAULT = 0.22;
+
 class AmbientMusic {
   private ctx: AudioContext | null = null;
   private gainNode: GainNode | null = null;
   private oscillators: OscillatorNode[] = [];
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isPlaying = false;
+
+  // Exponer estado para que el componente pueda validar
+  public get playing() { return this.isPlaying; }
 
   private makeCtx(volume: number) {
     this.ctx = new AudioContext();
@@ -117,20 +124,23 @@ class AmbientMusic {
     }, intervalMs);
   }
 
-  start(volume = 0.55, style: MusicStyle = 'zen') {
+  start(volume = MUSIC_VOLUME_DEFAULT, style: MusicStyle = 'zen') {
     if (this.isPlaying) return;
     try {
       this.makeCtx(volume);
 
+      // Nota: los valores de ganancia por nota se mantienen relativos al gainNode
+      // principal (que ya se redujo a MUSIC_VOLUME_DEFAULT). Así la música queda
+      // como secundaria respecto al TTS (narrador a 1.0).
       if (style === 'zen') {
         // Pad F mayor suave + melodía pentatónica
-        this.addPad([174.61, 220, 261.63], 'triangle', 0.25);
-        this.addMelody([261.63, 293.66, 329.63, 392, 440, 523.25], 3500, 'sine', 0.55, 3);
+        this.addPad([174.61, 220, 261.63], 'triangle', 0.22);
+        this.addMelody([261.63, 293.66, 329.63, 392, 440, 523.25], 3500, 'sine', 0.42, 3);
 
       } else if (style === 'bosque') {
         // Pad A menor grave + melodía lenta y profunda
-        this.addPad([110, 130.81, 164.81], 'sine', 0.3);
-        this.addMelody([196, 220, 246.94, 261.63, 293.66], 5000, 'triangle', 0.5, 4.5);
+        this.addPad([110, 130.81, 164.81], 'sine', 0.26);
+        this.addMelody([196, 220, 246.94, 261.63, 293.66], 5000, 'triangle', 0.38, 4.5);
 
       } else if (style === 'oceano') {
         // Solo pulsos rítmicos tipo oleada (sin pad sostenido)
@@ -143,7 +153,7 @@ class AmbientMusic {
           osc.type = 'sine'; osc.frequency.value = freq;
           const g = this.ctx.createGain();
           g.gain.setValueAtTime(0.001, this.ctx.currentTime);
-          g.gain.linearRampToValueAtTime(0.6, this.ctx.currentTime + 1.2);
+          g.gain.linearRampToValueAtTime(0.45, this.ctx.currentTime + 1.2);
           g.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 2.8);
           osc.connect(g); g.connect(this.gainNode);
           osc.start(); osc.stop(this.ctx.currentTime + 3);
@@ -151,8 +161,8 @@ class AmbientMusic {
 
       } else if (style === 'espacial') {
         // Pad alto etéreo C5/E5/G5 + notas cristalinas agudas
-        this.addPad([523.25, 659.25, 783.99], 'sine', 0.15);
-        this.addMelody([783.99, 880, 1046.5, 1174.66, 1318.51], 4500, 'sine', 0.45, 5);
+        this.addPad([523.25, 659.25, 783.99], 'sine', 0.13);
+        this.addMelody([783.99, 880, 1046.5, 1174.66, 1318.51], 4500, 'sine', 0.35, 5);
 
       } else if (style === 'clasico') {
         // Arpegio C mayor ordenado (C E G C5) cada 0.9 s
@@ -164,7 +174,7 @@ class AmbientMusic {
           const osc = this.ctx.createOscillator();
           osc.type = 'triangle'; osc.frequency.value = freq;
           const g = this.ctx.createGain();
-          g.gain.setValueAtTime(0.5, this.ctx.currentTime);
+          g.gain.setValueAtTime(0.38, this.ctx.currentTime);
           g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.85);
           osc.connect(g); g.connect(this.gainNode);
           osc.start(); osc.stop(this.ctx.currentTime + 0.9);
@@ -175,19 +185,25 @@ class AmbientMusic {
     } catch { /* noop */ }
   }
 
+  // Detención inmediata: corta osciladores Y cierra el AudioContext para asegurar
+  // que no queden instancias sonando (antes solo rampeaba volumen y dejaba ctx activo).
   stop() {
     if (!this.isPlaying) return;
+    this.isPlaying = false; // marcar primero para evitar reentradas
     if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
+    // Corte duro del gain (evita cola audible tras silenciar)
     if (this.gainNode && this.ctx) {
-      this.gainNode.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1);
+      try {
+        this.gainNode.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.gainNode.gain.setValueAtTime(0, this.ctx.currentTime);
+      } catch { /* noop */ }
     }
-    setTimeout(() => {
-      this.oscillators.forEach(o => { try { o.stop(); } catch {/**/} });
-      this.oscillators = [];
-      if (this.ctx) { try { this.ctx.close(); } catch {/**/} }
-      this.ctx = null; this.gainNode = null;
-    }, 1200);
-    this.isPlaying = false;
+    // Parar todos los osciladores activos de inmediato
+    this.oscillators.forEach(o => { try { o.stop(); } catch {/**/} });
+    this.oscillators = [];
+    // Cerrar el contexto (libera nodos pendientes)
+    if (this.ctx) { try { this.ctx.close(); } catch {/**/} }
+    this.ctx = null; this.gainNode = null;
   }
 }
 
@@ -528,6 +544,13 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const lastSpokenCountdownRef = useRef<number | null>(null);
   const completionSpokenRef = useRef(false);
 
+  // ── Estado de "retomar" ejercicio incompleto ──────────────────────────────
+  // RESUME_TTL_MS: descarta estados de retomar demasiado viejos (p. ej. semanas).
+  const RESUME_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  const [resumePrompt, setResumePrompt] = useState<
+    { originalDuration: number; timeLeft: number } | null
+  >(null);
+
   useEffect(() => {
     setSelectedDuration(currentExercise.defaultDuration);
     setTimeLeft(currentExercise.defaultDuration);
@@ -541,6 +564,26 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     ambientMusic.stop();
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+
+    // Detectar sesión incompleta previa para ofrecer "Continuar"
+    try {
+      const raw = localStorage.getItem(`therapheye_resume_${exerciseId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { originalDuration: number; timeLeft: number; savedAt: number };
+        const age = Date.now() - (parsed.savedAt || 0);
+        if (
+          parsed && typeof parsed.timeLeft === 'number' && parsed.timeLeft > 0 &&
+          typeof parsed.originalDuration === 'number' && parsed.originalDuration > 0 &&
+          parsed.timeLeft < parsed.originalDuration &&
+          age < RESUME_TTL_MS
+        ) {
+          setResumePrompt({ originalDuration: parsed.originalDuration, timeLeft: parsed.timeLeft });
+        } else {
+          // Expirado o inválido: limpiar
+          localStorage.removeItem(`therapheye_resume_${exerciseId}`);
+        }
+      }
+    } catch { /* noop */ }
   }, [exerciseId, currentExercise.defaultDuration]);
 
   // ── Quartile milestones pre-computed ──────────────────────────────────────
@@ -557,65 +600,96 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     milestones.current = m;
   }, [selectedDuration]);
 
+  // ── Temporizador basado en timestamp (una sola fuente de verdad) ──────────
+  // Antes: setInterval(() => prev - 1) acumulaba drift y ponía el audio/voz y el
+  // contador fuera de sincronía (especialmente en los últimos 5 s).
+  // Ahora: guardamos endTimestampRef = ahora + timeLeft*1000 al iniciar/resumir,
+  // y en cada tick calculamos el nuevo `remaining` a partir de Date.now().
+  // Las llamadas de voz se disparan cuando el contador visible cambia, por lo
+  // que UI y TTS quedan perfectamente alineados.
+  const endTimestampRef = useRef<number | null>(null);
+  const lastAnnouncedSecondRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
 
-    if (isRunning && timeLeft > 0) {
+    if (isRunning && timeLeftRef.current > 0) {
+      // Al (re)arrancar, anclamos el fin absoluto a partir del tiempo restante actual
+      endTimestampRef.current = Date.now() + timeLeftRef.current * 1000;
+      // Reset announcement guard al reanudar
+      lastAnnouncedSecondRef.current = timeLeftRef.current;
+
       // Start ambient music
-      if (!mutedRef.current) ambientMusic.start(0.55, musicStyleRef.current);
+      if (!mutedRef.current) ambientMusic.start(MUSIC_VOLUME_DEFAULT, musicStyleRef.current);
 
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          const next = prev - 1;
-          const d    = selectedDuration;
-          const elapsed = d - next;
+      const tick = () => {
+        if (endTimestampRef.current == null) return;
+        const remainingMs = endTimestampRef.current - Date.now();
+        // ceil para que en t=0.3s restante sigamos mostrando "1" hasta llegar a 0
+        const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
+        const d = selectedDuration;
+        const elapsed = d - remaining;
 
-          // ── Voice announcements ──────────────────────────────────────────
-          // Every full minute elapsed
-          if (next > 0 && elapsed > 0 && elapsed % 60 === 0) {
+        // Actualizar UI (React evita re-render si el valor no cambió)
+        setTimeLeft(remaining);
+
+        // Disparar avisos SOLO cuando el segundo visible cambia.
+        // Esto garantiza que la voz se sincronice con el cambio visual.
+        if (lastAnnouncedSecondRef.current !== remaining) {
+          const prevRemaining = lastAnnouncedSecondRef.current;
+          lastAnnouncedSecondRef.current = remaining;
+
+          // Minuto completo transcurrido
+          if (remaining > 0 && elapsed > 0 && elapsed % 60 === 0 && prevRemaining !== null) {
             const mins = Math.floor(elapsed / 60);
             const minStr = lang === 'es' ? 'minuto' : 'minute';
             const minPluralStr = lang === 'es' ? 'minutos' : 'minutes';
             speakIfUnmuted(`${mins} ${mins > 1 ? minPluralStr : minStr}`, lang);
           }
 
-          // Quartile milestones
-          if (milestones.current.has(next) && next > 5) {
-            const pct = Math.round(((d - next) / d) * 100);
+          // Cuartiles 25/50/75
+          if (milestones.current.has(remaining) && remaining > 5) {
+            const pct = Math.round(((d - remaining) / d) * 100);
             if (pct === 25) speakIfUnmuted(t('exerciseSession', 'voice25'), lang);
             else if (pct === 50) speakIfUnmuted(t('exerciseSession', 'voice50'), lang);
             else if (pct === 75) speakIfUnmuted(t('exerciseSession', 'voice75'), lang);
           }
 
-          // 30 seconds remaining (only for exercises > 60s)
-          if (next === 30 && d > 60) {
+          // Aviso "faltan 30s" (solo para ejercicios > 60s)
+          if (remaining === 30 && d > 60) {
             speakIfUnmuted(t('exerciseSession', 'voice30sec'), lang);
           }
 
-          // Last 5 seconds countdown (evitar repetir el mismo número dos veces)
-          if (next <= 5 && next > 0) {
-            if (lastSpokenCountdownRef.current !== next) {
-              lastSpokenCountdownRef.current = next;
-              speakIfUnmuted(`${next}`, lang);
+          // Countdown final (5..1): se dispara en el MISMO tick que se muestra,
+          // eliminando el desfase voz/UI.
+          if (remaining <= 5 && remaining > 0) {
+            if (lastSpokenCountdownRef.current !== remaining) {
+              lastSpokenCountdownRef.current = remaining;
+              speakIfUnmuted(`${remaining}`, lang);
             }
           }
+        }
 
-          if (next <= 0) {
-            setIsRunning(false);
-            ambientMusic.stop();
-            if (!completionSpokenRef.current) {
-              completionSpokenRef.current = true;
-              speakIfUnmuted(t('exerciseSession', 'voiceComplete'), lang);
-              playIfUnmuted(playComplete);
-              saveExerciseToDatabase('completed');
-            }
-            return 0;
+        if (remaining <= 0) {
+          if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+          endTimestampRef.current = null;
+          setIsRunning(false);
+          ambientMusic.stop();
+          if (!completionSpokenRef.current) {
+            completionSpokenRef.current = true;
+            speakIfUnmuted(t('exerciseSession', 'voiceComplete'), lang);
+            playIfUnmuted(playComplete);
+            // Al completar, la duración guardada debe ser la total elegida (no d-1).
+            saveExerciseToDatabase('completed', d);
           }
-          return next;
-        });
-      }, 1000);
+        }
+      };
+
+      // Resolución alta (250ms) para mayor precisión de la cuenta final
+      intervalRef.current = setInterval(tick, 250);
     } else {
-      // Paused or not running
+      // Pausado o sin correr
+      endTimestampRef.current = null;
       ambientMusic.stop();
     }
     return () => {
@@ -624,16 +698,66 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning, selectedDuration, lang]);
 
-  const saveExerciseToDatabase = async (status: 'completed' | 'incomplete') => {
+  // ── Reacción al toggle de silencio ─────────────────────────────────────────
+  // Antes: al silenciar, la música seguía sonando (el useEffect del timer no
+  // dependía de `muted`). Ahora detenemos inmediatamente música y voz al mutear
+  // y la música se reanuda si se desmutea estando corriendo.
+  useEffect(() => {
+    if (muted) {
+      ambientMusic.stop();
+      if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+      }
+    } else if (isRunning && timeLeftRef.current > 0) {
+      // Reanuda la música ambiental al desmutar si el ejercicio está en curso
+      ambientMusic.start(MUSIC_VOLUME_DEFAULT, musicStyleRef.current);
+    }
+    // Solo reaccionamos a cambios de muted/isRunning (no a timeLeft cada segundo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [muted, isRunning]);
+
+  // Storage key for resume state per exercise
+  const resumeKey = (id: string) => `therapheye_resume_${id}`;
+
+  // Persistimos estado para "retomar" cuando se queda incompleto.
+  // Se limpia al completar correctamente.
+  const saveResumeState = (exerciseId: string, originalDuration: number, timeLeftSnapshot: number) => {
+    try {
+      localStorage.setItem(resumeKey(exerciseId), JSON.stringify({
+        originalDuration,
+        timeLeft: Math.max(0, Math.floor(timeLeftSnapshot)),
+        savedAt: Date.now(),
+      }));
+    } catch { /* noop */ }
+  };
+
+  const clearResumeState = (exerciseId: string) => {
+    try { localStorage.removeItem(resumeKey(exerciseId)); } catch { /* noop */ }
+  };
+
+  // Ahora acepta `exactDuration` opcional. Para 'completed' pasamos selectedDuration
+  // tal cual (así 1 min se guarda como 60, no 59).
+  const saveExerciseToDatabase = async (
+    status: 'completed' | 'incomplete',
+    exactDuration?: number
+  ) => {
     setIsSaving(true);
     try {
-      const elapsed = selectedDuration - timeLeftRef.current;
+      const computedElapsed = exactDuration != null
+        ? Math.max(0, Math.round(exactDuration))
+        : Math.max(0, Math.round(selectedDuration - timeLeftRef.current));
       const exerciseTitleKey = currentExercise.titleKey.split('.')[1];
       await sql`
         INSERT INTO historial_ejercicios (user_id, tipo_ejercicio, duracion, status, created_at)
-        VALUES (${user?.id}, ${exerciseTitleKey}, ${elapsed}, ${status}, ${localISOString()})
+        VALUES (${user?.id}, ${exerciseTitleKey}, ${computedElapsed}, ${status}, ${localISOString()})
       `;
-      if (status === 'completed') setIsComplete(true);
+      // Gestionar estado de reanudación
+      if (status === 'completed') {
+        clearResumeState(exerciseId);
+        setIsComplete(true);
+      } else if (status === 'incomplete' && timeLeftRef.current > 0 && timeLeftRef.current < selectedDuration) {
+        saveResumeState(exerciseId, selectedDuration, timeLeftRef.current);
+      }
     } catch (error) {
       console.error('Error al guardar ejercicio:', error);
       if (status === 'completed') setIsComplete(true);
@@ -875,7 +999,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
                       setMusicStyle(style.id);
                       musicStyleRef.current = style.id;
                       if (wasRunning) {
-                        setTimeout(() => ambientMusic.start(0.55, style.id), 1300);
+                        setTimeout(() => ambientMusic.start(MUSIC_VOLUME_DEFAULT,style.id), 1300);
                       }
                       setShowMusicPicker(false);
                     }}
@@ -904,6 +1028,50 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
                 {lang === 'es' ? 'El cambio aplica en el siguiente inicio' : 'Change applies on next start'}
                 {isRunning && !muted ? (lang === 'es' ? ' o al instante si está corriendo' : ' · instant if running') : ''}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de "Continuar ejercicio incompleto" */}
+        {resumePrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <Play className="w-5 h-5 text-indigo-600" />
+                </div>
+                <h3 className="text-base font-bold text-gray-800">
+                  {lang === 'es' ? '¿Retomar ejercicio?' : 'Resume exercise?'}
+                </h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                {lang === 'es'
+                  ? `Tienes una sesión sin terminar. Faltaban ${formatTime(resumePrompt.timeLeft)} de ${formatTime(resumePrompt.originalDuration)}.`
+                  : `You have an unfinished session. ${formatTime(resumePrompt.timeLeft)} remaining of ${formatTime(resumePrompt.originalDuration)}.`}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    // Empezar de cero: descartar estado
+                    try { localStorage.removeItem(`therapheye_resume_${exerciseId}`); } catch { /* noop */ }
+                    setResumePrompt(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition"
+                >
+                  {lang === 'es' ? 'Empezar de nuevo' : 'Start over'}
+                </button>
+                <button
+                  onClick={() => {
+                    // Retomar: aplicar duración y tiempo restante guardados
+                    setSelectedDuration(resumePrompt.originalDuration);
+                    setTimeLeft(resumePrompt.timeLeft);
+                    setResumePrompt(null);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
+                >
+                  {lang === 'es' ? 'Continuar' : 'Continue'}
+                </button>
+              </div>
             </div>
           </div>
         )}

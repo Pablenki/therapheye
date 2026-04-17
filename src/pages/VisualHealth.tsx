@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   ArrowLeft, HeartPulse, Play, Pause, RotateCcw, Clock,
   AlarmClock, StopCircle, Calendar, TrendingUp, X, Settings, Trash2,
@@ -169,19 +169,32 @@ const dotColor = (minutes: number) => {
 };
 
 // ─── Gráfica SVG de tendencia (estilo History.tsx) ────────────────────────────
+// Cambios clave respecto al comportamiento anterior:
+//   · Acepta totalSessions para habilitar el render desde 2+ sesiones en total
+//     (antes requería 2+ días distintos → con 2 sesiones en el mismo día no dibujaba).
+//   · Si solo hay 1 día agregado, se muestra un punto único (no líneas).
+//   · Añade tooltip *en hover* sobre cada punto con resumen de horas y picos.
 
 const ScreenTimeTrendChart = ({
   data,
   onSelectDay,
   selectedDateKey,
+  totalSessions,
   t,
 }: {
   data: DailyAggregate[];
   onSelectDay: (dateKey: string | null) => void;
   selectedDateKey: string | null;
+  totalSessions: number;
   t: any;
 }) => {
-  if (data.length < 2) {
+  // Estado local de hover para el tooltip
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
+
+  // Permitimos pintar la gráfica desde que haya ≥ 2 registros (sesiones) totales,
+  // aun cuando ambos caigan el mismo día (se mostrará un único punto).
+  const insufficient = data.length === 0 || totalSessions < 2;
+  if (insufficient) {
     return (
       <div className="flex flex-col items-center justify-center h-40 text-gray-400">
         <TrendingUp className="w-10 h-10 mb-2 opacity-30" />
