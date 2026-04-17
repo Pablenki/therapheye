@@ -199,10 +199,32 @@ const playBeep = () => {
 const DB_SYNC_INTERVAL_MS = 30_000;
 const DB_POLL_INTERVAL_MS = 5_000; // Poll BD cada 5s para detectar cambios de la extensión
 
-const loadTimerFromDB = async (userId: string): Promise<PersistedTimerState | null> => {
+// ─── Web source ID (identifica esta instancia del navegador web) ──────────────
+// Distinto al browserId de la extensión, que es 'ext:xxxxx'.
+// Formato: 'web-xxxxxxxx'
+let _webSourceId: string | null = null;
+const getWebSourceId = (): string => {
+  if (_webSourceId) return _webSourceId;
+  const KEY = 'therapeye_web_source_id';
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = 'web-' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+      localStorage.setItem(KEY, id);
+    }
+    _webSourceId = id;
+  } catch {
+    _webSourceId = 'web-' + Date.now().toString(36);
+  }
+  return _webSourceId!;
+};
+
+type DBTimerRow = PersistedTimerState & { _source?: string | null };
+
+const loadTimerFromDB = async (userId: string): Promise<DBTimerRow | null> => {
   try {
     const rows = await sql`
-      SELECT accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized
+      SELECT accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, source
       FROM timer_state
       WHERE user_id = ${userId} AND fecha = ${todayLocalDate()}
       LIMIT 1
@@ -218,6 +240,7 @@ const loadTimerFromDB = async (userId: string): Promise<PersistedTimerState | nu
       finalized: r.finalized !== undefined ? Boolean(r.finalized) : false,
       stateDate: todayLocalDate(),
       userId: null,
+      _source: r.source ?? null,
     };
   } catch (err) {
     console.warn('[TimerWidget] Error cargando timer de BD:', err);
@@ -225,12 +248,13 @@ const loadTimerFromDB = async (userId: string): Promise<PersistedTimerState | nu
   }
 };
 
-const saveTimerToDB = async (userId: string, state: PersistedTimerState) => {
+const saveTimerToDB = async (userId: string, state: PersistedTimerState, source?: string) => {
   try {
     const fecha = todayLocalDate();
+    const src = source ?? null;
     await sql`
-      INSERT INTO timer_state (user_id, fecha, accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, updated_at)
-      VALUES (${userId}, ${fecha}, ${state.accumulatedMs}, ${state.isRunning}, ${state.startTimestamp}, ${state.sessionStartTimestamp}, ${state.nextBreakAtMs}, ${state.finalized}, NOW())
+      INSERT INTO timer_state (user_id, fecha, accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, source, updated_at)
+      VALUES (${userId}, ${fecha}, ${state.accumulatedMs}, ${state.isRunning}, ${state.startTimestamp}, ${state.sessionStartTimestamp}, ${state.nextBreakAtMs}, ${state.finalized}, ${src}, NOW())
       ON CONFLICT (user_id, fecha)
       DO UPDATE SET
         accumulated_ms   = ${state.accumulatedMs},
@@ -239,6 +263,7 @@ const saveTimerToDB = async (userId: string, state: PersistedTimerState) => {
         session_start_ts = ${state.sessionStartTimestamp},
         next_break_at_ms = ${state.nextBreakAtMs},
         finalized        = ${state.finalized},
+        source           = ${src},
         updated_at       = NOW()
     `;
   } catch (err) {
@@ -261,6 +286,9 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   /** Banner "cambiaste de cuenta" */
   const [showAccountChanged, setShowAccountChanged] = useState(false);
   const [isMobile, setIsMobile]                     = useState(isMobileDevice);
+  /** Banner "timer activo en otra ventana/extensión" */
+  const [foreignSessionMs, setForeignSessionMs]     = useState<number | null>(null);
+  const foreignSessionDismissedRef                  = useRef(false);
 
   useEffect(() => {
     const handler = () => setIsMobile(isMobileDevice());
@@ -280,13 +308,20 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const isAuthPage = AUTH_ONLY_PAGES.includes(currentPage);
 
   // ── Guardar en BD (debounced — no más de 1 vez cada 30s) ─────────────────
+  // IMPORTANTE: pasar el estado RAW (st.accumulatedMs = acumulado puro, st.startTimestamp = inicio real).
+  // NO pasar calcElapsedMs() ni Date.now() como startTimestamp — eso causa doble conteo cross-browser.
   const syncToDB = useCallback((state: PersistedTimerState) => {
     if (!user?.id) return;
     const now = Date.now();
     if (now - lastDbSyncRef.current < DB_SYNC_INTERVAL_MS) return;
     lastDbSyncRef.current = now;
-    saveTimerToDB(user.id, state);
+    saveTimerToDB(user.id, state, getWebSourceId());
   }, [user?.id]);
+
+  // ── Migración: agregar columna source si no existe ────────────────────────
+  useEffect(() => {
+    sql`ALTER TABLE timer_state ADD COLUMN IF NOT EXISTS source VARCHAR(64)`.catch(() => {});
+  }, []);
 
   // ── Inicializar: cargar desde BD primero, luego localStorage como fallback ──
   useEffect(() => {
@@ -340,7 +375,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           setElapsedSeconds(Math.floor(pausedMs / 1000));
           setIsRunning(false);
           lastDbSyncRef.current = 0;
-          saveTimerToDB(user.id, mobilePaused);
+          saveTimerToDB(user.id, mobilePaused, getWebSourceId());
           return;
         }
         // Al hacer login, BD es la fuente de verdad SIEMPRE — localStorage puede
@@ -388,13 +423,13 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           accumulatedMs: ms,
         };
         persistState(paused);
-        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused); }
+        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused, getWebSourceId()); }
         setIsRunning(false);
         setNextBreakInMinutes(null);
       } else {
         // Timer ya pausado/finalizado → sincronizar estado actual a BD de todas formas
         // (cubre el caso de pause/finalize desde VisualHealth que solo escribió a localStorage)
-        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, st); }
+        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, st, getWebSourceId()); }
       }
       dbLoadedRef.current = false;
       loginHandledRef.current = false;
@@ -437,7 +472,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         persistState(paused);
         setIsRunning(false);
         setElapsedSeconds(Math.floor(accMs / 1000));
-        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused); }
+        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused, getWebSourceId()); }
 
         // Si ya finalizó hoy → no preguntar nada
         if (baseState.finalized) return;
@@ -519,7 +554,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         setIsRunning(false);
         setElapsedSeconds(Math.floor(safeMsBeforeSleep / 1000));
         setNextBreakInMinutes(null);
-        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused); }
+        if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused, getWebSourceId()); }
         return;
       }
 
@@ -528,29 +563,41 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       setIsRunning(st.isRunning);
 
       // Sync periódico a BD (write local → DB)
+      // Usar st RAW: st.accumulatedMs = acumulado puro antes del run actual,
+      // st.startTimestamp = timestamp real del último inicio. Así otros clientes
+      // calculan correctamente: accumulated + (now - startTimestamp) sin doble conteo.
       if (st.isRunning) {
-        const snapshotState: PersistedTimerState = {
-          ...st,
-          accumulatedMs: ms,
-          startTimestamp: Date.now(),
-        };
-        syncToDB(snapshotState);
+        syncToDB(st);
       }
 
-      // Poll BD cada ~10s para detectar cambios de la extensión (read DB → local)
+      // Poll BD cada 5s para detectar cambios de la extensión (read DB → local)
       if (user?.id && now - lastDbPollRef.current >= DB_POLL_INTERVAL_MS) {
         lastDbPollRef.current = now;
         loadTimerFromDB(user.id).then(dbState => {
           if (!dbState) return;
-          const localNow = loadState();
-          const localMs  = calcElapsedMs(localNow);
-          const dbFullMs = calcElapsedMs(dbState); // elapsed real de la BD (incluye delta vivo)
+          const mySource   = getWebSourceId();
+          const dbSource   = dbState._source ?? null;
+          const isForeign  = dbState.isRunning && dbSource && dbSource !== mySource;
+          const localNow   = loadState();
+          const localMs    = calcElapsedMs(localNow);
+          const dbFullMs   = calcElapsedMs(dbState);
+
+          // ── Detección de sesión externa (extensión activa en otro navegador) ──
+          if (isForeign && !localNow.isRunning) {
+            if (!foreignSessionDismissedRef.current) {
+              setForeignSessionMs(dbFullMs);
+            }
+          } else {
+            setForeignSessionMs(null);
+            foreignSessionDismissedRef.current = false;
+          }
+
           // Adoptar estado de BD solo si tiene MÁS tiempo que local (extensión adelantada)
           // o si la extensión pausó (respetar pausa explícita).
-          // Nunca sumar: el mayor gana, punto.
-          const dbAhead   = dbFullMs > localMs + 2000;
-          const dbPaused  = !dbState.isRunning && localNow.isRunning;
-          if (dbAhead || dbPaused) {
+          // No adoptar sesión de fuente externa cuando la propia ya está corriendo.
+          const dbAhead  = dbFullMs > localMs + 2000;
+          const dbPaused = !dbState.isRunning && localNow.isRunning;
+          if ((dbAhead && (!isForeign || !localNow.isRunning)) || dbPaused) {
             persistState(dbState);
             setElapsedSeconds(Math.floor(dbFullMs / 1000));
             setIsRunning(dbState.isRunning);
@@ -559,7 +606,6 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
               setNextBreakInMinutes(rem > 0 ? Math.round(rem / 60000) : 0);
             }
           }
-          // Si local tiene más tiempo → local gana, no hacer nada.
         }).catch(() => { /* ignore poll errors */ });
       }
 
@@ -624,7 +670,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     persistState(started);
     setIsRunning(true);
     setElapsedSeconds(Math.floor(baseMs / 1000));
-    if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, started); }
+    if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, started, getWebSourceId()); }
   };
 
   const handlePromptSkip = () => {
@@ -649,7 +695,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       persistState(paused);
       setIsRunning(false);
       setNextBreakInMinutes(null);
-      if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused); }
+      if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused, getWebSourceId()); }
     } else {
       // START (resume from accumulated time — even if finalized, user explicitly clicked "Iniciar")
       const now = Date.now();
@@ -664,8 +710,29 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       };
       persistState(started);
       setIsRunning(true);
-      if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, started); }
+      if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, started, getWebSourceId()); }
     }
+  };
+
+  // ── Tomar control del timer externo ──────────────────────────────────────
+  const handleTakeOverForeignSession = () => {
+    setForeignSessionMs(null);
+    foreignSessionDismissedRef.current = false;
+    // Cargar el estado de BD y adoptarlo como propio
+    if (!user?.id) return;
+    loadTimerFromDB(user.id).then(dbState => {
+      if (!dbState) return;
+      const adopted: PersistedTimerState = {
+        ...dbState,
+        userId: user.id,
+        stateDate: todayLocalDate(),
+      };
+      persistState(adopted);
+      setElapsedSeconds(Math.floor(calcElapsedMs(adopted) / 1000));
+      setIsRunning(adopted.isRunning);
+      lastDbSyncRef.current = 0;
+      saveTimerToDB(user.id, adopted, getWebSourceId());
+    });
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -704,6 +771,27 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Banner: timer activo en otra ventana/extensión ── */}
+      {foreignSessionMs !== null && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 bg-indigo-600 text-white rounded-2xl shadow-2xl border border-indigo-500 font-semibold text-sm max-w-sm w-full mx-4">
+          <Monitor className="w-5 h-5 flex-shrink-0" />
+          <span className="flex-1">Timer activo en otra ventana ({formatDuration(Math.floor(foreignSessionMs / 1000))}). ¿Usar aquí?</span>
+          <button
+            onClick={handleTakeOverForeignSession}
+            className="px-3 py-1 rounded-lg bg-white text-indigo-700 text-xs font-bold hover:bg-indigo-50 transition"
+          >
+            Sí
+          </button>
+          <button
+            onClick={() => { setForeignSessionMs(null); foreignSessionDismissedRef.current = true; }}
+            className="p-1 rounded-lg hover:bg-indigo-500 transition"
+            title="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Eye, CheckCircle, RefreshCw, Mic, MicOff, Keyboard, Home, XCircle } from 'lucide-react';
+import { ArrowLeft, Eye, CheckCircle, RefreshCw, Mic, MicOff, Keyboard, Home, X } from 'lucide-react';
 import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -285,37 +285,135 @@ const UI: Record<Lang, {
 };
 
 // ─── Resultado según nivel ────────────────────────────────────────────────────
-const getResultInfo = (bestLevel: number, lang: Lang) => {
+type ResultInfo = {
+  label: string;
+  acuityRange: string;
+  detail: string;
+  description: string;
+  recommendations: string[];
+  urgency: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  showOptometrist: boolean;
+  color: string; bg: string; border: string;
+  badgeColor: string;
+};
+
+const getResultInfo = (bestLevel: number, lang: Lang): ResultInfo => {
   const es = lang === 'es';
-  if (bestLevel >= 9)  return {
-    label: es ? 'Visión excepcional (20/15 – 20/10)' : 'Exceptional vision (20/15 – 20/10)',
-    detail: es ? 'Tu agudeza visual está por encima del promedio normal.' : 'Your visual acuity is above the normal average.',
-    color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200',
-    recommendation: es ? 'Mantén tus hábitos visuales y descansa la vista cada 20 minutos.' : 'Maintain your visual habits and rest your eyes every 20 minutes.',
+
+  if (bestLevel >= 9) return {
+    label:        es ? 'Visión excepcional' : 'Exceptional vision',
+    acuityRange:  '20/15 – 20/10',
+    detail:       es ? 'Tu agudeza visual está por encima del promedio normal.' : 'Your visual acuity is above the normal average.',
+    description:  es
+      ? 'Tienes una capacidad visual sobresaliente. Esto significa que puedes distinguir detalles más finos de lo que la mayoría de las personas considera "normal". Es poco común y generalmente indica una excelente salud ocular. Aún así, los ojos se fatigan con el uso prolongado de pantallas, por lo que los hábitos preventivos siguen siendo importantes.'
+      : 'You have outstanding visual ability. This means you can distinguish finer details than most people consider "normal". It is uncommon and generally indicates excellent eye health. Even so, eyes tire with prolonged screen use, so preventive habits are still important.',
+    recommendations: es ? [
+      'Continúa con la regla 20-20-20: cada 20 min descansa 20 seg mirando a 20 pies (6 m)',
+      'Mantén pantallas a 50–70 cm de distancia para reducir fatiga',
+      'Repite el test cada 3–6 meses para monitorear cambios',
+      'Usa buena iluminación al trabajar frente a pantallas',
+    ] : [
+      'Keep using the 20-20-20 rule: every 20 min rest 20 sec looking 20 feet (6 m) away',
+      'Keep screens 50–70 cm away to reduce fatigue',
+      'Repeat the test every 3–6 months to monitor changes',
+      'Use good lighting when working in front of screens',
+    ],
+    urgency: 'excellent', showOptometrist: false,
+    color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', badgeColor: 'bg-emerald-500',
   };
-  if (bestLevel >= 8)  return {
-    label: es ? 'Visión normal (20/20)' : 'Normal vision (20/20)',
-    detail: es ? 'Tu agudeza visual es óptima para la distancia de pantalla.' : 'Your visual acuity is optimal for screen distance.',
-    color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200',
-    recommendation: es ? 'Mantén buenos hábitos visuales. Realiza ejercicios de prevención.' : 'Maintain good visual habits. Do preventive exercises.',
+
+  if (bestLevel >= 8) return {
+    label:        es ? 'Visión normal' : 'Normal vision',
+    acuityRange:  '20/20',
+    detail:       es ? 'Tu agudeza visual es óptima para la distancia de pantalla.' : 'Your visual acuity is optimal for screen distance.',
+    description:  es
+      ? 'Tu visión se encuentra dentro del rango considerado "normal" o estándar. Esto significa que puedes leer letras a la distancia convencional sin dificultad. La visión 20/20 no es la máxima posible, pero es el punto de referencia clínico para una visión funcional y saludable en adultos.'
+      : 'Your vision is within the "normal" or standard range. This means you can read letters at conventional distance without difficulty. 20/20 vision is not the maximum possible, but it is the clinical reference point for functional and healthy adult vision.',
+    recommendations: es ? [
+      'Aplica la regla 20-20-20 durante el uso de pantallas',
+      'Realiza ejercicios de enfoque cercano-lejano para prevenir miopía digital',
+      'Considera revisión anual con optometrista como medida preventiva',
+      'Ajusta el brillo de la pantalla al nivel del ambiente para reducir fatiga',
+    ] : [
+      'Apply the 20-20-20 rule during screen use',
+      'Do near-far focus exercises to prevent digital myopia',
+      'Consider an annual optometrist checkup as a preventive measure',
+      'Adjust screen brightness to the ambient light level to reduce fatigue',
+    ],
+    urgency: 'good', showOptometrist: false,
+    color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', badgeColor: 'bg-green-500',
   };
-  if (bestLevel >= 6)  return {
-    label: es ? 'Visión buena (20/30 – 20/40)' : 'Good vision (20/30 – 20/40)',
-    detail: es ? 'Ligera dificultad en líneas pequeñas. Puede ser cansancio acumulado.' : 'Slight difficulty with small lines. May be accumulated fatigue.',
-    color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200',
-    recommendation: es ? 'Realiza el ejercicio de enfoque cercano-lejano y aplica la regla 20-20-20.' : 'Do near-far focus exercises and apply the 20-20-20 rule.',
+
+  if (bestLevel >= 6) return {
+    label:        es ? 'Visión buena' : 'Good vision',
+    acuityRange:  '20/30 – 20/40',
+    detail:       es ? 'Ligera dificultad en líneas pequeñas. Puede ser cansancio acumulado.' : 'Slight difficulty with small lines. May be accumulated fatigue.',
+    description:  es
+      ? 'Tu visión es funcional pero muestra una leve reducción respecto al estándar 20/20. Esto puede deberse a fatiga ocular acumulada por pantallas, iluminación inadecuada, o un inicio de miopía. La buena noticia es que en muchos casos mejora con descanso y ejercicios visuales. Si es persistente, puede indicar que necesitas corrección óptica ligera.'
+      : 'Your vision is functional but shows a slight reduction from the 20/20 standard. This may be due to accumulated eye fatigue from screens, poor lighting, or early myopia. The good news is that in many cases it improves with rest and visual exercises. If persistent, it may indicate you need mild optical correction.',
+    recommendations: es ? [
+      'Practica el ejercicio de enfoque cercano-lejano: alterna mirar cerca y lejos durante 5 min',
+      'Aplica palming: cúbrete los ojos con las palmas calientes por 2 min para relajarlos',
+      'Aumenta la distancia a tu pantalla a al menos 60 cm',
+      'Revisa la iluminación — evita reflejos y pantallas más brillantes que el ambiente',
+      'Si la dificultad persiste más de una semana, agenda revisión con optometrista',
+    ] : [
+      'Practice near-far focus exercise: alternate looking near and far for 5 min',
+      'Apply palming: cover your eyes with warm palms for 2 min to relax them',
+      'Increase your screen distance to at least 60 cm',
+      'Check lighting — avoid glare and screens brighter than the environment',
+      'If difficulty persists more than a week, schedule an optometrist visit',
+    ],
+    urgency: 'fair', showOptometrist: false,
+    color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', badgeColor: 'bg-blue-500',
   };
-  if (bestLevel >= 4)  return {
-    label: es ? 'Visión reducida (20/50 – 20/70)' : 'Reduced vision (20/50 – 20/70)',
-    detail: es ? 'Dificultad notable en caracteres medianos. Posible fatiga acumulada.' : 'Notable difficulty with medium characters. Possible accumulated fatigue.',
-    color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200',
-    recommendation: es ? 'Practica palming y regla 20-20-20. Si persiste, consulta a un optometrista.' : 'Practice palming and 20-20-20 rule. If it persists, consult an optometrist.',
+
+  if (bestLevel >= 4) return {
+    label:        es ? 'Visión reducida' : 'Reduced vision',
+    acuityRange:  '20/50 – 20/70',
+    detail:       es ? 'Dificultad notable en caracteres medianos. Se recomienda evaluación.' : 'Notable difficulty with medium characters. Evaluation recommended.',
+    description:  es
+      ? 'Tu visión muestra una reducción notable que va más allá de la fatiga normal. A este nivel, es probable que ya tengas dificultades para leer texto de tamaño normal en la pantalla sin acercarte o forzar la vista. Esto puede indicar miopía moderada, astigmatismo u otro error refractivo que se puede corregir fácilmente con lentes o con tratamiento. No lo dejes pasar — tu calidad de vida mejora significativamente con la corrección adecuada.'
+      : 'Your vision shows a notable reduction that goes beyond normal fatigue. At this level, you likely already have difficulty reading normal-sized text on screen without getting closer or straining. This may indicate moderate myopia, astigmatism, or other refractive error that can be easily corrected with glasses or treatment. Don\'t let it go — your quality of life improves significantly with proper correction.',
+    recommendations: es ? [
+      'Agenda una cita con optometrista o oftalmólogo — la corrección óptica puede cambiar tu día a día',
+      'Mientras tanto: practica palming y la regla 20-20-20 para aliviar síntomas',
+      'Limita el tiempo continuo frente a pantallas a máximo 45 min sin descanso',
+      'Aumenta el tamaño de fuente en dispositivos y aumenta la distancia a la pantalla',
+      'Evita ambientes con poca luz al usar pantallas — esto acelera la fatiga',
+    ] : [
+      'Schedule an appointment with an optometrist or ophthalmologist — optical correction can change your daily life',
+      'Meanwhile: practice palming and the 20-20-20 rule to relieve symptoms',
+      'Limit continuous screen time to a maximum of 45 min without a break',
+      'Increase font size on devices and increase screen distance',
+      'Avoid low-light environments when using screens — this accelerates fatigue',
+    ],
+    urgency: 'poor', showOptometrist: true,
+    color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-yellow-200', badgeColor: 'bg-yellow-500',
   };
+
   return {
-    label: es ? 'Visión limitada (20/100 o menos)' : 'Limited vision (20/100 or less)',
-    detail: es ? 'Solo puedes leer caracteres grandes. Se recomienda evaluación profesional.' : 'You can only read large characters. Professional evaluation recommended.',
-    color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200',
-    recommendation: es ? 'Consulta a un optometrista. Evita pantallas prolongadas sin descanso.' : 'Consult an optometrist. Avoid prolonged screen use without breaks.',
+    label:        es ? 'Visión muy limitada' : 'Very limited vision',
+    acuityRange:  '20/100 o menos',
+    detail:       es ? 'Solo puedes leer caracteres grandes. Se recomienda evaluación profesional urgente.' : 'You can only read large characters. Urgent professional evaluation recommended.',
+    description:  es
+      ? 'Tu resultado indica una dificultad visual significativa. A este nivel, las actividades cotidianas como leer, conducir o trabajar frente a pantallas pueden ser difíciles o incluso peligrosas sin corrección. Es fundamental que consultes a un profesional de la salud visual lo antes posible. La buena noticia: la mayoría de los problemas visuales a este nivel tienen solución — lentes, cirugía refractiva o tratamiento pueden restaurar tu calidad visual.'
+      : 'Your result indicates significant visual difficulty. At this level, everyday activities such as reading, driving, or working in front of screens may be difficult or even dangerous without correction. It is essential that you consult a vision health professional as soon as possible. The good news: most vision problems at this level have a solution — glasses, refractive surgery, or treatment can restore your visual quality.',
+    recommendations: es ? [
+      '⚠️ Consulta a un optometrista u oftalmólogo lo antes posible',
+      'Evita actividades de riesgo (conducir, maquinaria) hasta recibir evaluación',
+      'Limita uso de pantallas a lo estrictamente necesario',
+      'Lleva un registro de tus síntomas (dolores de cabeza, visión doble, etc.) para compartir con el especialista',
+      'No postergues la consulta — la detección temprana mejora el pronóstico',
+    ] : [
+      '⚠️ Consult an optometrist or ophthalmologist as soon as possible',
+      'Avoid risky activities (driving, machinery) until evaluated',
+      'Limit screen use to the strictly necessary',
+      'Keep a record of symptoms (headaches, double vision, etc.) to share with the specialist',
+      'Don\'t delay the appointment — early detection improves the prognosis',
+    ],
+    urgency: 'critical', showOptometrist: true,
+    color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', badgeColor: 'bg-red-500',
   };
 };
 
@@ -435,6 +533,9 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   const [distance, setDistance]               = useState<'40' | '60' | '80'>('60');
   const language: Lang = (ctxLang || 'es') as Lang;  // Usa idioma de accesibilidad
   const [isSaving, setIsSaving]               = useState(false);
+  const [showOptModal, setShowOptModal]       = useState(false);
+  const [optMapUrl, setOptMapUrl]             = useState<string | null>(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
 
   const inputRef        = useRef<HTMLInputElement>(null);
   const recognRef       = useRef<any>(null);
@@ -800,6 +901,27 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
     clearAutoConfirm();
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   }, [clearAutoConfirm]);
+
+  // ── Modal de oftalmólogos ────────────────────────────────────────────────────
+  const handleOpenOptModal = () => {
+    setShowOptModal(true);
+    if (optMapUrl) return; // Ya tenemos la URL
+    setGettingLocation(true);
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const query = encodeURIComponent('oftalmólogo optometrista');
+        setOptMapUrl(`https://maps.google.com/maps?q=${query}&ll=${lat},${lng}&z=13&output=embed&hl=es`);
+        setGettingLocation(false);
+      },
+      () => {
+        // Sin ubicación → búsqueda genérica
+        setOptMapUrl(`https://maps.google.com/maps?q=oftalmólogo+optometrista&output=embed&hl=es`);
+        setGettingLocation(false);
+      },
+      { timeout: 6000 }
+    );
+  };
 
   // ── Guardar resultado en BD ──────────────────────────────────────────────────
   const saveResult = async (finalResults: RowResult[]) => {
@@ -1185,44 +1307,145 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   }
 
   // ─── RESULTADO ──────────────────────────────────────────────────────────────
+  const urgencyIcon: Record<ResultInfo['urgency'], string> = {
+    excellent: '🌟', good: '✅', fair: '👁️', poor: '⚠️', critical: '🚨',
+  };
+
   return (
     <div className="vision-test-root min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+
+      {/* ── Modal: Buscar oftalmólogo ── */}
+      {showOptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden" style={{ maxHeight: '85vh' }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">
+                  {language === 'es' ? 'Oftalmólogos y optometristas cerca' : 'Ophthalmologists near you'}
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {language === 'es' ? 'Resultados de Google Maps · Selecciona uno para ver detalles' : 'Google Maps results · Select one for details'}
+                </p>
+              </div>
+              <button onClick={() => setShowOptModal(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-500">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 relative" style={{ minHeight: 380 }}>
+              {gettingLocation
+                ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-500">
+                    <div className="w-8 h-8 border-4 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
+                    <p className="text-sm">{language === 'es' ? 'Obteniendo ubicación…' : 'Getting location…'}</p>
+                  </div>
+                : optMapUrl
+                  ? <iframe
+                      src={optMapUrl}
+                      className="w-full h-full border-0"
+                      style={{ minHeight: 380 }}
+                      title="Google Maps – Oftalmólogos"
+                      allowFullScreen
+                      loading="lazy"
+                    />
+                  : null
+              }
+            </div>
+            <div className="px-5 py-3 border-t flex items-center justify-between bg-gray-50">
+              <p className="text-xs text-gray-400">
+                {language === 'es' ? 'Powered by Google Maps' : 'Powered by Google Maps'}
+              </p>
+              <a
+                href={`https://www.google.com/maps/search/oftalmólogo+optometrista`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-indigo-600 hover:underline font-semibold"
+              >
+                {language === 'es' ? 'Abrir en Google Maps ↗' : 'Open in Google Maps ↗'}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
-        <div className="text-center mb-6">
-          {bestLevel >= 6
-            ? <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-3" />
-            : <XCircle className="w-14 h-14 text-yellow-500 mx-auto mb-3" />
-          }
+        {/* Header */}
+        <div className="text-center mb-5">
+          <div className="text-5xl mb-2">{urgencyIcon[resultInfo.urgency]}</div>
           <h2 className="text-2xl font-bold text-gray-800">{ui.testCompleted}</h2>
           {isSaving && <p className="text-xs text-gray-400 mt-1">{ui.saving}</p>}
         </div>
 
-        <div className={`${resultInfo.bg} border ${resultInfo.border} rounded-xl p-5 mb-5`}>
-          <p className={`text-xl font-bold ${resultInfo.color} mb-1`}>{resultInfo.label}</p>
-          <p className="text-sm text-gray-600">{resultInfo.detail}</p>
+        {/* Score bar */}
+        <div className="flex items-center gap-2 mb-5">
+          {[1,2,3,4,5,6,7,8,9,10].map(lvl => (
+            <div key={lvl}
+              className={`h-3 flex-1 rounded-full transition-all ${
+                lvl <= bestLevel ? resultInfo.badgeColor : 'bg-gray-100'
+              }`}
+            />
+          ))}
+          <span className={`text-xs font-bold ml-1 whitespace-nowrap ${resultInfo.color}`}>
+            {resultInfo.acuityRange}
+          </span>
         </div>
 
-        <div className="mb-5">
-          <p className="text-sm font-semibold text-gray-700 mb-2">{ui.detailByLevel}</p>
-          <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+        {/* Categoría + descripción */}
+        <div className={`${resultInfo.bg} border ${resultInfo.border} rounded-xl p-5 mb-4`}>
+          <p className={`text-lg font-bold ${resultInfo.color} mb-1`}>{resultInfo.label}</p>
+          <p className="text-sm text-gray-600 mb-3">{resultInfo.detail}</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{resultInfo.description}</p>
+        </div>
+
+        {/* Recomendaciones */}
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-gray-700 mb-2">
+            {language === 'es' ? '💡 Recomendaciones para ti' : '💡 Recommendations for you'}
+          </p>
+          <ul className="space-y-1.5">
+            {resultInfo.recommendations.map((rec, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">
+                <span className="text-indigo-400 mt-0.5 flex-shrink-0">→</span>
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Botón buscar oftalmólogo (solo si score bajo) */}
+        {resultInfo.showOptometrist && (
+          <button
+            onClick={handleOpenOptModal}
+            className={`w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 mb-4 transition
+              ${resultInfo.urgency === 'critical'
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-yellow-100 hover:bg-yellow-200 text-yellow-900 border border-yellow-300'
+              }`}
+          >
+            <Eye className="w-4 h-4" />
+            {language === 'es' ? 'Buscar oftalmólogo cerca de mí' : 'Find an ophthalmologist near me'}
+          </button>
+        )}
+
+        {/* Detalle por nivel (colapsable) */}
+        <details className="mb-5 group">
+          <summary className="text-sm font-semibold text-gray-500 cursor-pointer hover:text-gray-700 select-none list-none flex items-center gap-1">
+            <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+            {ui.detailByLevel}
+          </summary>
+          <div className="space-y-1 max-h-48 overflow-y-auto pr-1 mt-2">
             {results.map((res, i) => (
               <div key={i} className="flex items-center justify-between text-sm px-3 py-1.5 rounded-lg bg-gray-50">
                 <span className="text-gray-400 font-mono w-14">{res.acuity}</span>
-                <span className="font-mono text-gray-600 tracking-widest text-xs flex-1 text-center">
-                  {testRows[i]?.label}
-                </span>
+                <span className="font-mono text-gray-600 tracking-widest text-xs flex-1 text-center">{testRows[i]?.label}</span>
                 <span className={`ml-2 font-bold w-4 ${res.canRead ? 'text-green-600' : 'text-red-500'}`}>
                   {res.canRead ? '✓' : '✗'}
                 </span>
               </div>
             ))}
           </div>
-        </div>
+        </details>
 
-        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 text-sm text-indigo-800">
-          {ui.detailByLevel.includes('D') ? '💡 ' : '💡 '}{resultInfo.recommendation}
-        </div>
-
+        {/* Acciones */}
         <div className="flex gap-3">
           <button onClick={handleRestart}
             className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold transition">
