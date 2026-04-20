@@ -73,6 +73,21 @@ const getExerciseDisplayName = (raw: string, lang: 'es' | 'en'): string => {
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 
+interface ImageCaptura {
+  id: string;
+  sintoma: string;
+  created_at: string;
+}
+
+const SINTOMA_LABELS: Record<string, { es: string; en: string; desc_es: string; desc_en: string }> = {
+  ojo_sano:       { es: 'Ojo sano',             en: 'Healthy eye',          desc_es: 'No se detectaron signos de fatiga visual en la imagen. El ojo presenta un aspecto saludable.', desc_en: 'No signs of eye fatigue were detected. The eye appears healthy.' },
+  enro_leve:      { es: 'Enrojecimiento leve',  en: 'Mild redness',         desc_es: 'Se observa un leve enrojecimiento en la conjuntiva. Puede deberse a exposición prolongada a pantallas o falta de sueño.', desc_en: 'Mild redness in the conjunctiva. May be caused by prolonged screen exposure or lack of sleep.' },
+  piel_enro:      { es: 'Piel enrojecida',      en: 'Skin redness',         desc_es: 'Se detectó enrojecimiento en la piel alrededor del ojo. Puede indicar irritación, alergia o frotamiento frecuente.', desc_en: 'Redness detected around the eye skin. May indicate irritation, allergy, or frequent rubbing.' },
+  enro_moderado:  { es: 'Enrojecimiento moderado', en: 'Moderate redness',  desc_es: 'Enrojecimiento moderado en el ojo. Esto puede relacionarse con fatiga ocular significativa o falta de hidratación.', desc_en: 'Moderate eye redness. This may relate to significant eye strain or dehydration.' },
+  parpado_caido:  { es: 'Párpado caído',        en: 'Drooping eyelid',      desc_es: 'Se observa ptosis o caída del párpado superior. Puede ser señal de fatiga severa o cansancio extremo.', desc_en: 'Ptosis or drooping of the upper eyelid detected. May indicate severe fatigue or extreme tiredness.' },
+  enro_grave:     { es: 'Enrojecimiento grave', en: 'Severe redness',       desc_es: 'Enrojecimiento grave en el ojo. Requiere atención; puede indicar irritación severa, infección o condición que merece evaluación médica.', desc_en: 'Severe eye redness. Requires attention; may indicate severe irritation, infection, or a condition worth medical evaluation.' },
+};
+
 interface Evaluation {
   id: string;
   created_at: string;
@@ -708,9 +723,11 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
   const [evaluations, setEvaluations]         = useState<Evaluation[]>([]);
   const [exercises, setExercises]             = useState<Exercise[]>([]);
   const [visionTests, setVisionTests]         = useState<VisionEntry[]>([]);
+  const [imageCapturas, setImageCapturas]     = useState<ImageCaptura[]>([]);
   const [loading, setLoading]                 = useState(true);
   const [expandedEvalId, setExpandedEvalId]   = useState<string | null>(null);
   const [expandedVisionId, setExpandedVisionId] = useState<string | null>(null);
+  const [expandedCapturaId, setExpandedCapturaId] = useState<string | null>(null);
 
   const { user } = useUser();
 
@@ -799,9 +816,31 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
         };
       });
 
+      // Capturas de imagen
+      let capturasResult: any[] = [];
+      try {
+        capturasResult = await sql`
+          SELECT id, sintoma, created_at
+          FROM image_capture_history
+          WHERE user_id = ${user?.id}
+          ORDER BY created_at DESC
+          LIMIT 20
+        `;
+      } catch { /* tabla aún no creada */ }
+      const localeCapt = lang === 'en' ? 'en-US' : 'es-MX';
+      const formattedCapturas: ImageCaptura[] = capturasResult.map((c: any) => {
+        const d = parseDbDate(c.created_at);
+        return {
+          id: String(c.id),
+          sintoma: c.sintoma,
+          created_at: d.toLocaleString(localeCapt, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
+        };
+      });
+
       setEvaluations(formattedEvaluations);
       setExercises(formattedExercises);
       setVisionTests(formattedVision);
+      setImageCapturas(formattedCapturas);
     } catch (error) {
       console.error('Error al cargar historial:', error);
     } finally {
@@ -1126,6 +1165,62 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
                               );
                             })}
                         </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Capturas de imagen */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-1">
+            {lang === 'es' ? 'Capturas de imagen' : 'Image Captures'}
+          </h2>
+          <p className="text-sm text-gray-400 mb-5">
+            {lang === 'es' ? 'Historial de análisis de imagen del ojo · Clic para ver descripción' : 'Eye image analysis history · Click to see description'}
+          </p>
+          {imageCapturas.length === 0 ? (
+            <div className="text-center py-12">
+              <Eye className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">
+                {lang === 'es' ? 'Aún no hay capturas de imagen registradas' : 'No image captures recorded yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {imageCapturas.map((cap) => {
+                const isExp = expandedCapturaId === cap.id;
+                const label = SINTOMA_LABELS[cap.sintoma];
+                const nombre = label ? (lang === 'es' ? label.es : label.en) : cap.sintoma;
+                const desc   = label ? (lang === 'es' ? label.desc_es : label.desc_en) : '';
+                const isSano = cap.sintoma === 'ojo_sano';
+                const color  = isSano ? 'border-green-200 hover:border-green-300' : 'border-amber-200 hover:border-amber-300';
+                const badge  = isSano ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700';
+                const dot    = isSano ? 'bg-green-500' : 'bg-amber-500';
+                return (
+                  <div key={cap.id}
+                    className={`border-2 rounded-xl transition-all duration-200 overflow-hidden ${isExp ? (isSano ? 'border-green-400 shadow-md' : 'border-amber-400 shadow-md') : color}`}>
+                    <button
+                      className="w-full flex items-center gap-4 p-4 text-left"
+                      onClick={() => setExpandedCapturaId(isExp ? null : cap.id)}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${badge}`}>
+                        <span className={`w-3 h-3 rounded-full ${dot}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 text-sm">{nombre}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{cap.created_at}</p>
+                      </div>
+                      {isExp
+                        ? <ChevronUp   className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                        : <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />}
+                    </button>
+                    {isExp && desc && (
+                      <div className={`px-4 pb-4 border-t ${isSano ? 'border-green-100 bg-green-50/40' : 'border-amber-100 bg-amber-50/40'}`}>
+                        <p className="text-sm text-gray-700 mt-3 leading-relaxed">{desc}</p>
                       </div>
                     )}
                   </div>

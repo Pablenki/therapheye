@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse, Flame, TrendingUp, TrendingDown, Minus, Play, Pause, ChevronDown, KeyRound } from 'lucide-react';
+import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse, Flame, TrendingUp, TrendingDown, Minus, Play, Pause, ChevronDown, KeyRound, ScanEye } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
@@ -15,7 +15,8 @@ type Page =
   | 'image-capture'
   | 'vision-test'
   | 'visual-health'
-  | 'profile';
+  | 'profile'
+  | 'diagnostico-completo';
 
 interface Stats {
   evaluaciones: number;
@@ -316,6 +317,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
       description: t('dashboard', 'visualHealthDesc'),
       color: 'bg-orange-500',
       action: () => onNavigate('visual-health'),
+    },
+    {
+      icon: ScanEye,
+      title: 'Diagnóstico completo',
+      description: 'Análisis integral de tu salud visual con score, gráfica e insights.',
+      color: 'bg-violet-600',
+      action: () => onNavigate('diagnostico-completo'),
     },
   ];
 

@@ -3,8 +3,21 @@ import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '../i18n'
+import { sql } from '../neonCliente'
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+
+const SINTOMA_SEVERITY: Record<string, number> = {
+  ojo_sano: 0, enro_leve: 25, piel_enro: 35,
+  enro_moderado: 50, parpado_caido: 70, enro_grave: 90,
+}
+
+const getMostSevere = (sintomas: string[]): string => {
+  if (sintomas.length === 0) return 'ojo_sano'
+  return sintomas.reduce((prev, curr) =>
+    (SINTOMA_SEVERITY[curr] ?? 0) > (SINTOMA_SEVERITY[prev] ?? 0) ? curr : prev
+  )
+}
 
 type Props = {
   onBack: () => void
@@ -150,6 +163,22 @@ const ImageCapture = ({ onBack }: Props) => {
       const data: DiagnosticoResult = await res.json()
       setResultado(data)
       setDiagnosticoCompletado(true)
+      // Guardar síntoma más grave en historial
+      if (user?.id) {
+        const sintomaGuardar = getMostSevere(data.sintomas)
+        await sql`
+          CREATE TABLE IF NOT EXISTS image_capture_history (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            sintoma VARCHAR(100) NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          )
+        `.catch(() => {})
+        await sql`
+          INSERT INTO image_capture_history (user_id, sintoma)
+          VALUES (${user.id}, ${sintomaGuardar})
+        `.catch(err => console.warn('[ImageCapture] Error guardando historial:', err))
+      }
     } catch (e) {
       setErrorDiagnostico(e instanceof Error ? e.message : 'No se pudo conectar con el servidor.')
     } finally {

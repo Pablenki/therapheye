@@ -175,6 +175,8 @@ export default function Profile({ onBack, onLogout }: Props) {
       await sql`DELETE FROM timer_state             WHERE user_id = ${uid}`;
       await sql`DELETE FROM user_preferences        WHERE user_id = ${uid}`;
       await sql`DELETE FROM user_sessions           WHERE user_id = ${uid}`;
+      await sql`DELETE FROM image_capture_history   WHERE user_id = ${uid}`.catch(() => {});
+      await sql`DELETE FROM diagnostico_completo    WHERE user_id = ${uid}`.catch(() => {});
       await sql`DELETE FROM users                   WHERE id      = ${uid}`;
       logout();
       onLogout();

@@ -16,6 +16,7 @@ import ImageCapture from './pages/ImageCapture'
 import VisionTest from './pages/VisionTest'
 import VisualHealth from './pages/VisualHealth'
 import Profile from './pages/Profile'
+import DiagnosticoCompleto from './pages/DiagnosticoCompleto'
 
 type Page =
   | 'login'
@@ -29,7 +30,8 @@ type Page =
   | 'image-capture'
   | 'vision-test'
   | 'visual-health'
-  | 'profile';
+  | 'profile'
+  | 'diagnostico-completo';
 
 interface PendingUser {
   name: string;
@@ -162,6 +164,8 @@ function AppContent() {
         return <VisualHealth onBack={() => handleNavigate('dashboard')} />
       case 'profile':
         return <Profile onBack={() => handleNavigate('dashboard')} onLogout={() => { handleNavigate('login') }} />
+      case 'diagnostico-completo':
+        return <DiagnosticoCompleto onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login
