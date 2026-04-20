@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ArrowLeft, HeartPulse, Play, Pause, RotateCcw, Clock,
   AlarmClock, StopCircle, Calendar, TrendingUp, X, Settings, Trash2,
@@ -188,9 +188,6 @@ const ScreenTimeTrendChart = ({
   totalSessions: number;
   t: any;
 }) => {
-  // Estado local de hover para el tooltip
-  const [hoverKey, setHoverKey] = useState<string | null>(null);
-
   // Permitimos pintar la gráfica desde que haya ≥ 2 registros (sesiones) totales,
   // aun cuando ambos caigan el mismo día (se mostrará un único punto).
   const insufficient = data.length === 0 || totalSessions < 2;
@@ -1050,6 +1047,7 @@ const VisualHealth = ({ onBack }: Props) => {
             data={dailyData}
             onSelectDay={setSelectedDay}
             selectedDateKey={selectedDay}
+            totalSessions={sessions.length}
             t={t}
           />
 

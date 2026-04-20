@@ -18,7 +18,8 @@ type Page =
   | 'image-capture'
   | 'vision-test'
   | 'visual-health'
-  | 'profile';
+  | 'profile'
+  | 'diagnostico-completo';
 
 type Props = {
   currentPage: Page;
