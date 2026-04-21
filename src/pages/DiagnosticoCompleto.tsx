@@ -186,10 +186,16 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
     if (!user?.id) return
     const init = async () => {
       try {
+        // Migración: si user_id es INTEGER (versión antigua), convertir a VARCHAR
+        await sql`
+          ALTER TABLE diagnostico_completo
+          ALTER COLUMN user_id TYPE VARCHAR(100) USING user_id::VARCHAR
+        `.catch(() => {}) // silencioso si la tabla no existe o ya es VARCHAR
+
         await sql`
           CREATE TABLE IF NOT EXISTS diagnostico_completo (
             id                  SERIAL PRIMARY KEY,
-            user_id             INTEGER NOT NULL,
+            user_id             VARCHAR(100) NOT NULL,
             score_final         DECIMAL(5,2) NOT NULL,
             nivel               VARCHAR(20)  NOT NULL,
             valor_imagen        INTEGER NOT NULL,
