@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import {
-  Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses,
-  HeartPulse, Flame, TrendingDown, TrendingUp, Minus, Bell,
-  ChevronRight, ScanEye, Settings, Home, KeyRound, Play, Pause,
+  Flame, TrendingDown, TrendingUp, Minus, Bell,
+  ChevronRight, Play, Pause,
+  Activity, Camera, Glasses, HeartPulse, ScanEye,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -156,8 +156,8 @@ const FatigaGauge = ({ score }: { score: number }) => {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
-  const { user, logout } = useUser();
-  const { t } = useLanguage();
+  const { user } = useUser();
+  useLanguage();
 
   const [stats, setStats] = useState<Stats>({
     evaluaciones: 0, ejercicios: 0, racha: 0,
@@ -168,7 +168,6 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [screenTimeMs, setScreenTimeMs]     = useState(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [extensionInstalled, setExtensionInstalled] = useState(false);
   const extensionDismissed = localStorage.getItem('therapheye_ext_banner_dismissed') === 'true';
   const notifRef = useRef<HTMLDivElement>(null);
@@ -291,18 +290,6 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
     fetch();
   }, [user?.id]);
 
-  // ── Sidebar nav items ──────────────────────────────────────────────────────
-  const navItems = [
-    { icon: Home,         label: 'Inicio',           page: null as Page|null,           active: true  },
-    { icon: Activity,     label: 'Ejercicios',        page: 'exercises' as Page,          active: false },
-    { icon: Camera,       label: 'Captura de imagen', page: 'image-capture' as Page,      active: false },
-    { icon: Glasses,      label: 'Prueba de visión',  page: 'vision-test' as Page,        active: false },
-    { icon: History,      label: 'Historial',         page: 'history' as Page,            active: false },
-    { icon: HeartPulse,   label: 'Salud Visual',      page: 'visual-health' as Page,      active: false },
-    { icon: ScanEye,      label: 'Diagnóstico',       page: 'diagnostico-completo' as Page, active: false },
-    { icon: ClipboardList,label: 'Cuestionario',      page: 'questionnaire' as Page,      active: false },
-    { icon: Settings,     label: 'Mi cuenta',         page: 'profile' as Page,            active: false },
-  ];
 
   const fatiga      = getFatigaInfo(stats.ultimoPuntaje);
   const screenHH    = String(Math.floor(screenTimeMs/3600000)).padStart(2,'0');
@@ -332,83 +319,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   })();
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-
-      {/* ── Modal logout ── */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4 flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <LogOut className="w-5 h-5 text-red-600"/>
-              </div>
-              <h2 className="text-lg font-bold text-gray-800">{t('common','confirmLogoutTitle')}</h2>
-            </div>
-            <p className="text-sm text-gray-600 leading-relaxed">{t('common','confirmLogoutMsg')}</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={()=>setShowLogoutConfirm(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Cancelar</button>
-              <button onClick={()=>{setShowLogoutConfirm(false);logout();onNavigate('login');}} className="px-5 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow">Cerrar sesión</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════ SIDEBAR ════════════════════ */}
-      <aside className="w-60 flex-shrink-0 bg-[#1a2236] flex flex-col h-full overflow-hidden">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
-          <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Eye className="w-5 h-5 text-white"/>
-          </div>
-          <span className="text-white font-bold text-base leading-tight">Salud Visual</span>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => item.page ? onNavigate(item.page) : undefined}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
-                ${item.active
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
-                  : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}
-            >
-              <item.icon className="w-4.5 h-4.5 flex-shrink-0" style={{width:'18px',height:'18px'}}/>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* User footer */}
-        <div className="border-t border-white/10 px-4 py-4">
-          <button
-            onClick={()=>onNavigate('profile')}
-            className="w-full flex items-center gap-3 hover:bg-white/10 rounded-xl px-2 py-2 transition"
-          >
-            <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
-              {user?.foto_perfil
-                ? <img src={user.foto_perfil} alt="avatar" className="w-full h-full object-cover"/>
-                : <span>{user?.nombre?.charAt(0).toUpperCase()??'?'}</span>}
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-white text-sm font-semibold truncate">{user?.nombre?.split(' ').slice(0,2).join(' ')}</p>
-              <p className="text-gray-400 text-xs truncate flex items-center gap-1">
-                <KeyRound className="w-3 h-3"/> Ver perfil
-              </p>
-            </div>
-          </button>
-          <button
-            onClick={()=>setShowLogoutConfirm(true)}
-            className="w-full mt-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition"
-          >
-            <LogOut className="w-3.5 h-3.5"/> Cerrar sesión
-          </button>
-        </div>
-      </aside>
-
-      {/* ════════════════════ MAIN CONTENT ════════════════════ */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden bg-gray-50">
 
         {/* Top bar */}
         <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
@@ -630,7 +541,6 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           </div>
 
         </main>
-      </div>
     </div>
   );
 };

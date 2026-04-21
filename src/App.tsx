@@ -4,6 +4,7 @@ import { LanguageProvider } from './i18n'
 import { AccessibilityMenu } from './components/AccessibilityMenu'
 import GlobalTimerWidget from './components/GlobalTimerWidget'
 import SessionGuard from './components/SessionGuard'
+import AppShell from './layouts/AppShell'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
@@ -103,7 +104,10 @@ function AppContent() {
     )
   }
 
-  const renderPage = () => {
+  // Pages that don't need the sidebar shell
+  const isPublicPage = currentPage === 'login' || currentPage === 'register' || currentPage === 'verify-email';
+
+  const renderPageContent = () => {
     switch (currentPage) {
       case 'login':
         return (
@@ -176,22 +180,37 @@ function AppContent() {
     }
   }
 
-  return (
-    <div className="flex flex-col min-h-screen">
-      <div className="flex-1">
-        {renderPage()}
+  if (isPublicPage) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <div className="flex-1">{renderPageContent()}</div>
+        <footer className="w-full py-4 text-center text-xs text-gray-400 bg-transparent">
+          <span>&copy; {new Date().getFullYear()} Therapheye</span>
+          <span className="mx-2">·</span>
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 underline underline-offset-2 transition-colors">
+            Política de Privacidad
+          </a>
+        </footer>
+        <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
+        <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
+        <AccessibilityMenu />
       </div>
-      <footer className="w-full py-4 text-center text-xs text-gray-400 bg-transparent">
-        <span>&copy; {new Date().getFullYear()} Therapheye</span>
-        <span className="mx-2">·</span>
-        <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 underline underline-offset-2 transition-colors">
-          Política de Privacidad
-        </a>
-      </footer>
+    )
+  }
+
+  return (
+    <>
+      <AppShell
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
+        onLogout={() => setCurrentPage('login')}
+      >
+        {renderPageContent()}
+      </AppShell>
       <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
       <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
       <AccessibilityMenu />
-    </div>
+    </>
   )
 }
 
