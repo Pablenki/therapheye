@@ -828,7 +828,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
 
       {/* ── Widget flotante ── */}
       <div
-        className={`fixed bottom-6 left-6 z-[9000] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl cursor-pointer transition-all duration-200 ${pillBg} text-white select-none group`}
+        className={`fixed bottom-5 right-[76px] z-[9000] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl cursor-pointer transition-all duration-200 ${pillBg} text-white select-none group`}
         onClick={() => onNavigate('visual-health')}
         title={t('visualHealth', 'openVisualHealth')}
       >

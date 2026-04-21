@@ -999,7 +999,7 @@ const VisualHealth = ({ onBack }: Props) => {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-10 space-y-8">
+      <main className="max-w-5xl mx-auto px-4 pt-10 pb-24 space-y-8">
 
         {/* ── Tarjeta del cronómetro ── */}
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10">

@@ -202,7 +202,7 @@ export default function Profile({ onBack, onLogout }: Props) {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 pt-8 pb-24">
         <p className="text-center text-sm text-gray-500 mb-6">{user?.email}</p>
 
         <div className="flex gap-6">

@@ -397,7 +397,7 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-4 pt-8 pb-24">
         {/* Título */}
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-violet-600 rounded-xl">

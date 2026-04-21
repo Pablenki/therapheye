@@ -244,7 +244,7 @@ const ImageCapture = ({ onBack }: Props) => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-3xl mx-auto px-4 pt-8 pb-24">
         <div className="bg-white rounded-xl p-6 shadow-lg">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-red-500 rounded-lg">

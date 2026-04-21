@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(grep -r \"Evolución\\\\|Fatiga Visual\" . --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"trendChart\\\\|trend\" ./src --include=*.tsx --include=*.ts)",
+      "Bash(netlify login:*)",
+      "Bash(netlify:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(gh run:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(powershell Compress-Archive:*)",
+      "Bash(powershell:*)",
+      "mcp__claude_ai_Netlify__netlify-project-services-reader",
+      "mcp__claude_ai_Netlify__netlify-project-services-updater",
+      "mcp__claude_ai_Netlify__netlify-deploy-services-updater",
+      "Bash(npx -y @netlify/mcp@latest --site-id d1f6fdc2-b443-43ce-be6f-55a160b121b9 --proxy-path \"https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..XpudizRHCrspnZYY.N2znsThsY70c64lQYeUGiZuTOF3gLsE-iiGzUzKYIGA3_ilQCPOep82zgwyuYuLaM60Nn2z0gntNHRhCLR0Xz1TKRZtT5ONoY6_LPaymdWs-ezJZcyq2OWzdw41HFBX3tC-krXpsbijNwUd565MCNkJgFFDRsz6bT_7nPH9DKRR45bahNBPRyr4QIgrfY13EovGyVBq7Fz9E_bteqrneEauXpDu8EK6fkH-VHu6uhbl3xhmS7wBkRiQdTkG2Eo8Kgq7vctm0AIrGO06XOmyxAgv3TuRDHGKuTSF-iKUPLoAfeNe0aNJgPgkwrD_DkwxNCvhj-cQd541AtXfNdy9GApMn-OLvabPb91KkfglzEoFPnhA5NQ.LYJWCkx5jwaPGnQSPWnMbA\")",
+      "Bash(npx -y @netlify/mcp@latest --site-id d1f6fdc2-b443-43ce-be6f-55a160b121b9 --proxy-path \"https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..XpudizRHCrspnZYY.N2znsThsY70c64lQYeUGiZuTOF3gLsE-iiGzUzKYIGA3_ilQCPOep82zgwyuYuLaM60Nn2z0gntNHRhCLR0Xz1TKRZtT5ONoY6_LPaymdWs-ezJZcyq2OWzdw41HFBX3tC-krXpsbijNwUd565MCNkJgFFDRsz6bT_7nPH9DKRR45bahNBPRyr4QIgrfY13EovGyVBq7Fz9E_bteqrneEauXpDu8EK6fkH-VHu6uhbl3xhmS7wBkRiQdTkG2Eo8Kgq7vctm0AIrGO06XOmyxAgv3TuRDHGKuTSF-iKUPLoAfeNe0aNJgPgkwrD_DkwxNCvhj-cQd541AtXfNdy9GApMn-OLvabPb91KkfglzEoFPnhA5NQ.LYJWCkx5jwaPGnQSPWnMbA\" --no-wait)",
+      "mcp__claude_ai_Netlify__netlify-deploy-services-reader",
+      "Bash(npx -y @netlify/mcp@latest --site-id d1f6fdc2-b443-43ce-be6f-55a160b121b9 --proxy-path \"https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..6RqH3cUSpcKk14Mc.HXMz3ML-AIZw-bDewasu8GFb4ne-ywFWOL14oL9uioVY3KabxgtfweGGU1oWZVfi-OWPBxNDqM22HDPIjhdBnRGFdpMejRhkygCuyxlkqd33eLfsRKEz9amAYFGFlctobBx6gyx0LecLVr6TVbR-0pRW1wQGJaB5Pv8NDRSUm8mX5X2aN6EWZatuJtBdDKwskDU42pdkKlp7sg_7Rmmg3qhpZaIlguvo0C67Uqg49r8IATcYrJwQpwOEFTAWLrxMMdXJuJzUfeUo4srCpd4xzIGXyE_L2jzFZ4QRuvSwyFNA6rU2SBrPtR9w32PrpBO9tg24XRwbhJ03fzX-IE3o6G6rC9k8-G59m_CTbCSsrrGjDi2yxg.MkX0S1rwcSKrxzybzQQH7A\")",
+      "Bash(npx -y @netlify/mcp@latest --site-id d1f6fdc2-b443-43ce-be6f-55a160b121b9 --proxy-path \"https://netlify-mcp.netlify.app/proxy/eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..D1oEKCdiiVWJd-bF.VuAPZJS-Ce4J2YGmkpov92wru85Mhy4fQZaHKu43IhlPqJZRpIWqvWJGZVax3z6EhvBKCULXPcmVcjF5Lizf-QQ_uP305CeVLAUHkvO9puoqsVKy0gnE7HuyjvgLNWEDa0QzVTlmpfwU1uMRKGnuukooF-mXnvvYa1YOxuQ5K9SSGr_ZFIU9EPAlMHnX5I0Bkg_1l-B8PEgjtBMfOuGwcJWrXbFbFxDIyvJNI0KHde-8jWrdRJUNuzHU9fzhPxHX90GCRpJojqXAJEkrevql0czJ-olkwuJBaV1g-pilOs0Xq3KCuUTveLPlSoW0vpMe4B8jn3IaYKAY-yFSaJx68tOQaCa19z-7d818Rmbn_vfX747ECA.l0_7IofJBAenRlVOzmPV3A\")",
+      "Bash(npx netlify:*)",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s \"https://api.netlify.com/api/v1/sites\" -H \"Authorization: Bearer $\\(cat C:/Users/OWNER/Desktop/therapheye/.netlify/state.json)",
+      "Bash(curl -s \"https://therapheye.netlify.app\" -o /dev/null -w \"%{http_code} - %{time_total}s\")",
+      "Bash(curl -s \"https://therapheye.netlify.app/assets/\" -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s \"https://therapheye.netlify.app\" -I)",
+      "Bash(curl -s \"https://therapheye.netlify.app\")",
+      "Bash(unzip -l extension.zip)",
+      "Bash(node --check C:/Users/OWNER/Desktop/therapheye/extension/popup.js)",
+      "Bash(node --check C:/Users/OWNER/Desktop/therapheye/extension/background.js)",
+      "Bash(git reset:*)",
+      "Bash(grep -n \"CREATE TABLE\\\\|INSERT INTO\\\\|SELECT \\\\* FROM\" /c/Users/OWNER/Desktop/therapheye/src/pages/*.tsx)",
+      "Bash(grep:*)",
+      "Bash(npx vite:*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('summary',{}\\)\\)\")",
+      "Bash(node seed-fake-data.mjs)"
+    ]
+  }
+}

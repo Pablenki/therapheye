@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
-  ScanEye, ClipboardList, Settings, LogOut, Eye,
+  ScanEye, ClipboardList, LogOut, Eye,
   KeyRound, Menu, X, ChevronLeft,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
@@ -28,7 +28,6 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: HeartPulse,    label: 'Salud Visual',      page: 'visual-health'       },
   { icon: ScanEye,       label: 'Diagnóstico',       page: 'diagnostico-completo'},
   { icon: ClipboardList, label: 'Cuestionario',      page: 'questionnaire'       },
-  { icon: Settings,      label: 'Mi cuenta',         page: 'profile'             },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded
@@ -73,7 +72,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
 
       {/* ── Mobile overlay backdrop ─────────────────────────────────────── */}
       {isMobile && open && (
@@ -206,7 +205,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
       {/* ══════════════════ MAIN CONTENT ══════════════════ */}
       <div
         style={{ marginLeft: isMobile ? 0 : sideW }}
-        className="flex-1 flex flex-col min-w-0 overflow-y-auto transition-all duration-300"
+        className="flex-1 flex flex-col min-w-0 overflow-y-auto transition-all duration-300 bg-transparent"
       >
         {/* Mobile hamburger — fixed so it's always accessible */}
         {isMobile && !open && (

@@ -953,7 +953,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 pt-8 pb-24">
         <button onClick={onBack} className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6">
           <ArrowLeft className="w-5 h-5" />
           {t('common', 'backToDashboard')}
