@@ -199,6 +199,20 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
               </button>
             </div>
           )}
+
+          {/* Privacy link */}
+          {showLabels && (
+            <div className="px-2 pt-2 pb-1">
+              <a
+                href="/privacy.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-[10px] text-gray-500 hover:text-gray-300 transition truncate"
+              >
+                Política de Privacidad · © {new Date().getFullYear()} Therapheye
+              </a>
+            </div>
+          )}
         </div>
       </aside>
 
