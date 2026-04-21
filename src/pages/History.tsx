@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, TrendingUp, Eye, CheckCircle2, XCircle, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { ArrowLeft, Calendar, TrendingUp, Eye, CheckCircle2, XCircle, ChevronDown, ChevronUp, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import translations from '../i18n/translations';
 
@@ -118,10 +118,114 @@ interface VisionEntry {
   resultados_json: VisionRowResult[];
 }
 
+// ─── Tipos y utilidades de período ──────────────────────────────────────────────
+type ChartPeriod = '7d' | '1m' | '3m' | '1a' | 'all';
+
+const PERIOD_MS: Record<Exclude<ChartPeriod, 'all'>, number> = {
+  '7d': 7 * 86_400_000,
+  '1m': 30 * 86_400_000,
+  '3m': 90 * 86_400_000,
+  '1a': 365 * 86_400_000,
+};
+
+function getDateWindow(period: ChartPeriod, offset: number): { from: Date | null; to: Date } {
+  if (period === 'all') return { from: null, to: new Date() };
+  const ms = PERIOD_MS[period];
+  const to = new Date(Date.now() - offset * ms);
+  const from = new Date(to.getTime() - ms);
+  return { from, to };
+}
+
+function periodRangeLabel(period: ChartPeriod, offset: number, lang: string): string {
+  if (period === 'all') return lang === 'es' ? 'Todo el historial' : 'All history';
+  const { from, to } = getDateWindow(period, offset);
+  const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short' };
+  const locale = lang === 'es' ? 'es-MX' : 'en-US';
+  return `${from!.toLocaleDateString(locale, opts)} – ${to.toLocaleDateString(locale, opts)} ${to.getFullYear()}`;
+}
+
+const PERIOD_BTNS: { key: ChartPeriod; es: string; en: string }[] = [
+  { key: '7d',  es: '7D',   en: '7D'  },
+  { key: '1m',  es: '1M',   en: '1M'  },
+  { key: '3m',  es: '3M',   en: '3M'  },
+  { key: '1a',  es: '1A',   en: '1Y'  },
+  { key: 'all', es: 'Todo', en: 'All' },
+];
+
+const PeriodNav = ({
+  period, setPeriod, offset, setOffset, lang,
+}: {
+  period: ChartPeriod;
+  setPeriod: (p: ChartPeriod) => void;
+  offset: number;
+  setOffset: (fn: (n: number) => number) => void;
+  lang: string;
+}) => (
+  <div className="flex flex-wrap items-center gap-2 mb-4">
+    <div className="flex gap-1 flex-wrap">
+      {PERIOD_BTNS.map(b => (
+        <button key={b.key} onClick={() => { setPeriod(b.key); setOffset(() => 0); }}
+          className={`px-3 py-1 rounded-lg text-xs font-bold transition
+            ${period === b.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          {lang === 'es' ? b.es : b.en}
+        </button>
+      ))}
+    </div>
+    {period !== 'all' && (
+      <div className="flex items-center gap-1 ml-auto">
+        <button onClick={() => setOffset(o => o + 1)}
+          className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 transition" title={lang === 'es' ? 'Período anterior' : 'Previous period'}>
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-xs text-gray-500 min-w-[150px] text-center font-medium">
+          {periodRangeLabel(period, offset, lang)}
+        </span>
+        <button onClick={() => setOffset(o => Math.max(0, o - 1))}
+          disabled={offset === 0}
+          className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 transition" title={lang === 'es' ? 'Período siguiente' : 'Next period'}>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    )}
+  </div>
+);
+
+const PAGE_SIZE = 5;
+
+const ListPager = ({
+  total, page, setPage, lang,
+}: {
+  total: number;
+  page: number;
+  setPage: (fn: (p: number) => number) => void;
+  lang: string;
+}) => {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+      <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-30 transition">
+        <ChevronLeft className="w-4 h-4" />
+        {lang === 'es' ? 'Anterior' : 'Previous'}
+      </button>
+      <span className="text-xs text-gray-400">
+        {lang === 'es' ? `Pág. ${page + 1} / ${totalPages}` : `Page ${page + 1} / ${totalPages}`}
+      </span>
+      <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-30 transition">
+        {lang === 'es' ? 'Siguiente' : 'Next'}
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
 // ─── Gráfica de tendencia SVG con interactividad ────────────────────────────────
 const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
   const { t, lang } = useLanguage();
-  const [timeRange, setTimeRange] = useState<'all' | 'last7' | 'last30'>('all');
+  const [period, setPeriod]   = useState<ChartPeriod>('1m');
+  const [offset, setOffset]   = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: Evaluation } | null>(null);
 
@@ -134,39 +238,25 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
     );
   }
 
-  // Filter evaluations by time range
-  const now = new Date();
-  let filteredEvals = evaluations;
-  if (timeRange === 'last7') {
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    filteredEvals = evaluations.filter(e => new Date(e.raw_date) >= sevenDaysAgo);
-  } else if (timeRange === 'last30') {
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    filteredEvals = evaluations.filter(e => new Date(e.raw_date) >= thirtyDaysAgo);
-  }
+  // Filtrar por período + offset
+  const { from, to } = getDateWindow(period, offset);
+  const filteredEvals = evaluations.filter(e => {
+    if (from && e.raw_date < from) return false;
+    if (e.raw_date > to) return false;
+    return true;
+  });
 
   // Los datos vienen ORDER BY DESC → invertimos para cronológico
   const data = [...filteredEvals].reverse();
 
-  // Si no hay suficientes datos en el rango filtrado, mostrar mensaje
+  // Si no hay suficientes datos en el rango filtrado
   if (data.length < 2) {
     return (
       <div>
-        {/* Time range filter buttons (siempre visibles para poder cambiar el filtro) */}
-        <div className="flex gap-2 mb-4">
-          <button onClick={() => setTimeRange('all')} className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${timeRange === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-            {lang === 'en' ? 'All' : 'Todos'}
-          </button>
-          <button onClick={() => setTimeRange('last7')} className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${timeRange === 'last7' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-            {lang === 'en' ? 'Last 7' : 'Últimos 7'}
-          </button>
-          <button onClick={() => setTimeRange('last30')} className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${timeRange === 'last30' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-            {lang === 'en' ? 'Last 30' : 'Últimos 30'}
-          </button>
-        </div>
+        <PeriodNav period={period} setPeriod={setPeriod} offset={offset} setOffset={setOffset} lang={lang} />
         <div className="flex flex-col items-center justify-center h-40 text-gray-400">
           <TrendingUp className="w-10 h-10 mb-2 opacity-30" />
-          <p className="text-sm">{lang === 'en' ? 'Not enough evaluations in this time range' : 'No hay suficientes evaluaciones en este rango de tiempo'}</p>
+          <p className="text-sm">{lang === 'en' ? 'Not enough data in this period' : 'Sin suficientes datos en este período'}</p>
         </div>
       </div>
     );
@@ -291,39 +381,8 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
         </div>
       </div>
 
-      {/* Time range filter buttons */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setTimeRange('all')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-            timeRange === 'all'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {lang === 'en' ? 'All' : 'Todos'}
-        </button>
-        <button
-          onClick={() => setTimeRange('last7')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-            timeRange === 'last7'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {lang === 'en' ? 'Last 7' : 'Últimos 7'}
-        </button>
-        <button
-          onClick={() => setTimeRange('last30')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-            timeRange === 'last30'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {lang === 'en' ? 'Last 30' : 'Últimos 30'}
-        </button>
-      </div>
+      {/* Period filter + nav */}
+      <PeriodNav period={period} setPeriod={setPeriod} offset={offset} setOffset={setOffset} lang={lang} />
 
       {/* Chart hint */}
       <p className="text-xs text-gray-400 mb-2">{t('history', 'chartTooltip')}</p>
@@ -544,26 +603,9 @@ const visionDotColor = (nivel: number) => {
 };
 
 const VisionChart = ({ entries, lang }: { entries: VisionEntry[]; lang: string }) => {
-  const [timeRange, setTimeRange] = useState<'all' | 'last7' | 'last30'>('all');
-  const [tooltip, setTooltip]     = useState<{ x: number; y: number; entry: VisionEntry } | null>(null);
-
-  const filterBtns = [
-    { key: 'all',    label_es: 'Todos',       label_en: 'All'     },
-    { key: 'last7',  label_es: 'Últimos 7',   label_en: 'Last 7'  },
-    { key: 'last30', label_es: 'Últimos 30',  label_en: 'Last 30' },
-  ] as const;
-
-  const Filters = () => (
-    <div className="flex gap-2 mb-4">
-      {filterBtns.map(b => (
-        <button key={b.key} onClick={() => setTimeRange(b.key)}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition
-            ${timeRange === b.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-          {lang === 'en' ? b.label_en : b.label_es}
-        </button>
-      ))}
-    </div>
-  );
+  const [period, setPeriod]   = useState<ChartPeriod>('3m');
+  const [offset, setOffset]   = useState(0);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; entry: VisionEntry } | null>(null);
 
   if (entries.length === 0) {
     return (
@@ -574,21 +616,33 @@ const VisionChart = ({ entries, lang }: { entries: VisionEntry[]; lang: string }
     );
   }
 
-  const now = new Date();
-  let filtered = entries;
-  if (timeRange === 'last7')  filtered = entries.filter(e => e.raw_date >= new Date(now.getTime() - 7  * 86400000));
-  if (timeRange === 'last30') filtered = entries.filter(e => e.raw_date >= new Date(now.getTime() - 30 * 86400000));
+  const { from, to } = getDateWindow(period, offset);
+  const filtered = entries.filter(e => {
+    if (from && e.raw_date < from) return false;
+    if (e.raw_date > to) return false;
+    return true;
+  });
 
   const data = [...filtered].reverse(); // cronológico
 
+  const Nav = () => <PeriodNav period={period} setPeriod={setPeriod} offset={offset} setOffset={setOffset} lang={lang} />;
+
   if (data.length === 0) {
-    return (<><Filters /><div className="flex flex-col items-center justify-center h-40 text-gray-400"><Eye className="w-10 h-10 mb-2 opacity-30" /><p className="text-sm">{lang === 'es' ? 'Sin datos en este rango' : 'No data in this range'}</p></div></>);
+    return (
+      <>
+        <Nav />
+        <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+          <Eye className="w-10 h-10 mb-2 opacity-30" />
+          <p className="text-sm">{lang === 'es' ? 'Sin datos en este período' : 'No data in this period'}</p>
+        </div>
+      </>
+    );
   }
 
   if (data.length === 1) {
     return (
       <>
-        <Filters />
+        <Nav />
         <div className="flex flex-col items-center justify-center h-40">
           <div className="text-6xl font-black" style={{ color: visionDotColor(data[0].mejor_nivel) }}>
             {data[0].mejor_nivel}<span className="text-3xl text-gray-400">/10</span>
@@ -611,7 +665,7 @@ const VisionChart = ({ entries, lang }: { entries: VisionEntry[]; lang: string }
 
   return (
     <>
-      <Filters />
+      <Nav />
       <div className="relative overflow-visible">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
           <defs>
@@ -728,6 +782,11 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
   const [expandedEvalId, setExpandedEvalId]   = useState<string | null>(null);
   const [expandedVisionId, setExpandedVisionId] = useState<string | null>(null);
   const [expandedCapturaId, setExpandedCapturaId] = useState<string | null>(null);
+  // Paginación de listas
+  const [evalPage, setEvalPage]       = useState(0);
+  const [visionPage, setVisionPage]   = useState(0);
+  const [exPage, setExPage]           = useState(0);
+  const [captPage, setCaptPage]       = useState(0);
 
   const { user } = useUser();
 
@@ -771,7 +830,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
         FROM historial_ejercicios
         WHERE user_id = ${user?.id}
         ORDER BY created_at DESC
-        LIMIT 10
+        LIMIT 200
       `;
 
       const formattedExercises = exercisesResult.map((ex: any) => {
@@ -959,7 +1018,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
         </div>
 
         {/* ── Gráfica de tendencia ── */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8" id="chart-fatiga">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-gray-800">{t('history', 'trendChartTitle')}</h2>
             <div className="flex gap-3 text-xs">
@@ -998,7 +1057,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
                 {lang === 'es' ? 'Historial de pruebas' : 'Test history'}
               </p>
               <div className="space-y-2">
-                {visionTests.map(v => {
+                {visionTests.slice(visionPage * PAGE_SIZE, (visionPage + 1) * PAGE_SIZE).map(v => {
                   const isExp = expandedVisionId === v.id;
                   const dot   = visionDotColor(v.mejor_nivel);
                   const zoneLbl = VISION_ZONES.slice().reverse().find(z => v.mejor_nivel > z.min)
@@ -1059,6 +1118,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
                   );
                 })}
               </div>
+              <ListPager total={visionTests.length} page={visionPage} setPage={setVisionPage} lang={lang} />
             </div>
           )}
         </div>
@@ -1074,7 +1134,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {evaluations.map((evaluation) => {
+              {evaluations.slice(evalPage * PAGE_SIZE, (evalPage + 1) * PAGE_SIZE).map((evaluation: Evaluation) => {
                 const isExpanded = expandedEvalId === evaluation.id;
                 const answers    = evaluation.respuestas_json ?? {};
                 const qIds       = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(k => k in answers);
@@ -1170,6 +1230,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
                   </div>
                 );
               })}
+              <ListPager total={evaluations.length} page={evalPage} setPage={setEvalPage} lang={lang} />
             </div>
           )}
         </div>
@@ -1191,7 +1252,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           ) : (
             <div className="space-y-2">
-              {imageCapturas.map((cap) => {
+              {imageCapturas.slice(captPage * PAGE_SIZE, (captPage + 1) * PAGE_SIZE).map((cap) => {
                 const isExp = expandedCapturaId === cap.id;
                 const label = SINTOMA_LABELS[cap.sintoma];
                 const nombre = label ? (lang === 'es' ? label.es : label.en) : cap.sintoma;
@@ -1226,6 +1287,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
                   </div>
                 );
               })}
+              <ListPager total={imageCapturas.length} page={captPage} setPage={setCaptPage} lang={lang} />
             </div>
           )}
         </div>
@@ -1245,7 +1307,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {exercises.map((exercise, index) => {
+              {exercises.slice(exPage * PAGE_SIZE, (exPage + 1) * PAGE_SIZE).map((exercise, index) => {
                 const isComplete  = exercise.status !== 'incomplete';
                 const exerciseId  = EXERCISE_NAME_TO_ID[exercise.tipo_ejercicio];
                 return (
@@ -1288,6 +1350,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
                   </div>
                 );
               })}
+              <ListPager total={exercises.length} page={exPage} setPage={setExPage} lang={lang} />
             </div>
           )}
         </div>

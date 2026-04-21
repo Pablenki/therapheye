@@ -2,12 +2,43 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ArrowLeft, HeartPulse, Play, Pause, RotateCcw, Clock,
   AlarmClock, StopCircle, Calendar, TrendingUp, X, Settings, Trash2,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Eye } from 'lucide-react';
 import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { loadTimerPrefs, saveTimerPrefs } from '../components/GlobalTimerWidget';
+
+// ─── Período de gráfica ───────────────────────────────────────────────────────
+type ChartPeriod = '7d' | '1m' | '3m' | '1a' | 'all';
+const PERIOD_MS_VH: Record<Exclude<ChartPeriod, 'all'>, number> = {
+  '7d': 7 * 86_400_000,
+  '1m': 30 * 86_400_000,
+  '3m': 90 * 86_400_000,
+  '1a': 365 * 86_400_000,
+};
+function vhGetWindow(period: ChartPeriod, offset: number): { from: Date | null; to: Date } {
+  if (period === 'all') return { from: null, to: new Date() };
+  const ms = PERIOD_MS_VH[period];
+  const to = new Date(Date.now() - offset * ms);
+  return { from: new Date(to.getTime() - ms), to };
+}
+function vhPeriodLabel(period: ChartPeriod, offset: number, lang: string): string {
+  if (period === 'all') return lang === 'es' ? 'Todo el historial' : 'All history';
+  const { from, to } = vhGetWindow(period, offset);
+  const opts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short' };
+  const locale = lang === 'es' ? 'es-MX' : 'en-US';
+  return `${from!.toLocaleDateString(locale, opts)} – ${to.toLocaleDateString(locale, opts)} ${to.getFullYear()}`;
+}
+const VH_PERIOD_BTNS: { key: ChartPeriod; es: string; en: string }[] = [
+  { key: '7d',  es: '7D',   en: '7D'  },
+  { key: '1m',  es: '1M',   en: '1M'  },
+  { key: '3m',  es: '3M',   en: '3M'  },
+  { key: '1a',  es: '1A',   en: '1Y'  },
+  { key: 'all', es: 'Todo', en: 'All' },
+];
+const VH_PAGE_SIZE = 5;
 
 type Props = {
   onBack: () => void;
@@ -181,13 +212,57 @@ const ScreenTimeTrendChart = ({
   selectedDateKey,
   totalSessions,
   t,
+  lang,
 }: {
   data: DailyAggregate[];
   onSelectDay: (dateKey: string | null) => void;
   selectedDateKey: string | null;
   totalSessions: number;
   t: any;
+  lang: string;
 }) => {
+  const [period, setPeriod] = useState<ChartPeriod>('1m');
+  const [offset, setOffset] = useState(0);
+
+  // Filtrar data por período
+  const { from, to } = vhGetWindow(period, offset);
+  const filteredData = data.filter(d => {
+    const day = new Date(d.dateKey);
+    if (from && day < from) return false;
+    if (day > to) return false;
+    return true;
+  });
+
+  // Barra de período
+  const PNav = () => (
+    <div className="flex flex-wrap items-center gap-2 mb-4">
+      <div className="flex gap-1 flex-wrap">
+        {VH_PERIOD_BTNS.map(b => (
+          <button key={b.key} onClick={() => { setPeriod(b.key); setOffset(0); }}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition
+              ${period === b.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            {lang === 'es' ? b.es : b.en}
+          </button>
+        ))}
+      </div>
+      {period !== 'all' && (
+        <div className="flex items-center gap-1 ml-auto">
+          <button onClick={() => setOffset(o => o + 1)}
+            className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 transition">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs text-gray-500 min-w-[150px] text-center font-medium">
+            {vhPeriodLabel(period, offset, lang)}
+          </span>
+          <button onClick={() => setOffset(o => Math.max(0, o - 1))} disabled={offset === 0}
+            className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 transition">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   // Permitimos pintar la gráfica desde que haya ≥ 2 registros (sesiones) totales,
   // aun cuando ambos caigan el mismo día (se mostrará un único punto).
   const insufficient = data.length === 0 || totalSessions < 2;
@@ -200,29 +275,43 @@ const ScreenTimeTrendChart = ({
     );
   }
 
+  if (filteredData.length === 0) {
+    return (
+      <>
+        <PNav />
+        <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+          <TrendingUp className="w-10 h-10 mb-2 opacity-30" />
+          <p className="text-sm">{lang === 'es' ? 'Sin datos en este período' : 'No data in this period'}</p>
+        </div>
+      </>
+    );
+  }
+
   const W = 560, H = 180;
   const PAD = { top: 20, right: 20, bottom: 40, left: 48 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
-  const maxMinutes = Math.max(...data.map(d => d.totalMinutes));
+  const chartData = filteredData;
+  const maxMinutes = chartData.length > 0 ? Math.max(...chartData.map(d => d.totalMinutes)) : 60;
   // Redondear al siguiente múltiplo de 60 (hora completa) para escala limpia
   const ceilHour = Math.max(Math.ceil(maxMinutes / 60) * 60, 60);
 
-  const xStep = data.length > 1 ? chartW / (data.length - 1) : chartW;
+  const xStep = chartData.length > 1 ? chartW / (chartData.length - 1) : chartW;
   const toX = (i: number) => PAD.left + i * xStep;
   const toY = (v: number) => PAD.top + chartH - (v / ceilHour) * chartH;
 
   // Línea
-  const linePath = data
+  const linePath = chartData
     .map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(i)} ${toY(d.totalMinutes)}`)
     .join(' ');
 
   // Área
-  const areaPath =
-    `M ${toX(0)} ${toY(data[0].totalMinutes)} ` +
-    data.slice(1).map((d, i) => `L ${toX(i + 1)} ${toY(d.totalMinutes)}`).join(' ') +
-    ` L ${toX(data.length - 1)} ${PAD.top + chartH} L ${toX(0)} ${PAD.top + chartH} Z`;
+  const areaPath = chartData.length > 0
+    ? `M ${toX(0)} ${toY(chartData[0].totalMinutes)} ` +
+      chartData.slice(1).map((d, i) => `L ${toX(i + 1)} ${toY(d.totalMinutes)}`).join(' ') +
+      ` L ${toX(chartData.length - 1)} ${PAD.top + chartH} L ${toX(0)} ${PAD.top + chartH} Z`
+    : '';
 
   // Etiquetas Y (horas)
   const ySteps: number[] = [];
@@ -238,6 +327,8 @@ const ScreenTimeTrendChart = ({
   ].filter(z => z.from < ceilHour);
 
   return (
+    <>
+    <PNav />
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full cursor-pointer" aria-label={t('visualHealth', 'trendTitle')}>
       <defs>
         <linearGradient id="screenAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -278,7 +369,7 @@ const ScreenTimeTrendChart = ({
         strokeLinecap="round" strokeLinejoin="round" />
 
       {/* Puntos interactivos */}
-      {data.map((d, i) => {
+      {chartData.map((d, i) => {
         const isSelected = d.dateKey === selectedDateKey;
         const cx = toX(i), cy = toY(d.totalMinutes);
         const color = dotColor(d.totalMinutes);
@@ -303,7 +394,7 @@ const ScreenTimeTrendChart = ({
             </text>
             {/* Fecha */}
             <text x={cx} y={PAD.top + chartH + 14} textAnchor="middle" fontSize="8" fill="#6b7280"
-              transform={data.length > 6 ? `rotate(-30, ${cx}, ${PAD.top + chartH + 14})` : undefined}>
+              transform={chartData.length > 6 ? `rotate(-30, ${cx}, ${PAD.top + chartH + 14})` : undefined}>
               {d.dateLabel}
             </text>
           </g>
@@ -316,6 +407,7 @@ const ScreenTimeTrendChart = ({
       <line x1={PAD.left} y1={PAD.top} x2={PAD.left} y2={PAD.top + chartH}
         stroke="#d1d5db" strokeWidth="1" />
     </svg>
+    </>
   );
 };
 
@@ -429,6 +521,7 @@ const VisualHealth = ({ onBack }: Props) => {
   const [elapsedSeconds, setElapsedSeconds]         = useState(0);
   const [nextBreakInMinutes, setNextBreakInMinutes] = useState<number | null>(null);
   const [sessions, setSessions]                     = useState<SessionRecord[]>([]);
+  const [sessionPage, setSessionPage]               = useState(0);
   const [selectedDay, setSelectedDay]               = useState<string | null>(null);
   const [countdown, setCountdown]                   = useState<number | null>(null);
 
@@ -1049,6 +1142,7 @@ const VisualHealth = ({ onBack }: Props) => {
             selectedDateKey={selectedDay}
             totalSessions={sessions.length}
             t={t}
+            lang={lang}
           />
 
           {/* Panel de detalle del día */}
@@ -1074,7 +1168,8 @@ const VisualHealth = ({ onBack }: Props) => {
             </div>
           ) : (
             <div className="space-y-3">
-              {sessions.map((session, index) => {
+              {sessions.slice(sessionPage * VH_PAGE_SIZE, (sessionPage + 1) * VH_PAGE_SIZE).map((session, index) => {
+                const globalIndex = sessionPage * VH_PAGE_SIZE + index;
                 const totalMin = Math.floor(session.durationMs / 60_000);
                 const hours    = Math.floor(totalMin / 60);
                 const minutes  = totalMin % 60;
@@ -1087,7 +1182,7 @@ const VisualHealth = ({ onBack }: Props) => {
                         <Calendar className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-800 text-sm">{t('visualHealth', 'sessionNum')} {sessions.length - index}</p>
+                        <p className="font-semibold text-gray-800 text-sm">{t('visualHealth', 'sessionNum')} {sessions.length - globalIndex}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{t('visualHealth', 'startedAt')} {session.startedAt}</p>
                         <p className="text-xs text-gray-400">{t('visualHealth', 'endedAt')} {session.endedAt}</p>
                       </div>
@@ -1109,6 +1204,27 @@ const VisualHealth = ({ onBack }: Props) => {
                   </div>
                 );
               })}
+              {/* Paginador de sesiones */}
+              {Math.ceil(sessions.length / VH_PAGE_SIZE) > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                  <button onClick={() => setSessionPage(p => p - 1)} disabled={sessionPage === 0}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-30 transition">
+                    <ChevronLeft className="w-4 h-4" />
+                    {lang === 'es' ? 'Anterior' : 'Previous'}
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    {lang === 'es'
+                      ? `Pág. ${sessionPage + 1} / ${Math.ceil(sessions.length / VH_PAGE_SIZE)}`
+                      : `Page ${sessionPage + 1} / ${Math.ceil(sessions.length / VH_PAGE_SIZE)}`}
+                  </span>
+                  <button onClick={() => setSessionPage(p => p + 1)}
+                    disabled={sessionPage >= Math.ceil(sessions.length / VH_PAGE_SIZE) - 1}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-30 transition">
+                    {lang === 'es' ? 'Siguiente' : 'Next'}
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
