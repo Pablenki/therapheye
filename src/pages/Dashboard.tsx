@@ -1,22 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
-import { Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses, HeartPulse, Flame, TrendingUp, TrendingDown, Minus, Play, Pause, ChevronDown, KeyRound, ScanEye } from 'lucide-react';
+import {
+  Activity, ClipboardList, History, LogOut, Eye, Camera, Glasses,
+  HeartPulse, Flame, TrendingDown, TrendingUp, Minus, Bell,
+  ChevronRight, ScanEye, Settings, Home, KeyRound, Play, Pause,
+} from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
 
 type Page =
-  | 'login'
-  | 'register'
-  | 'dashboard'
-  | 'questionnaire'
-  | 'exercises'
-  | 'exercise-session'
-  | 'history'
-  | 'image-capture'
-  | 'vision-test'
-  | 'visual-health'
-  | 'profile'
-  | 'diagnostico-completo';
+  | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
+  | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
+  | 'visual-health' | 'profile' | 'diagnostico-completo';
 
 interface Stats {
   evaluaciones: number;
@@ -27,581 +22,615 @@ interface Stats {
   penultimoPuntaje: number | null;
 }
 
-// ─── Calcular racha de días activos ──────────────────────────────────────────
-// Un día se considera "activo" si tuvo al menos un ejercicio completado
-// o un cuestionario respondido.
+interface WeekDay {
+  label: string;
+  score: number | null;
+  active: boolean;
+  dateKey: string;
+}
+
+interface DiagEntry {
+  fecha: string;
+  nivel: string;
+  score: number;
+  color: string;
+}
+
+// ─── Racha ────────────────────────────────────────────────────────────────────
 const calcularRacha = (fechas: string[]): number => {
   if (fechas.length === 0) return 0;
-
-  // Normalizar a YYYY-MM-DD en timezone local
   const diasUnicos = [...new Set(
     fechas.map(f => {
       const d = new Date(f.includes('Z') || f.includes('+') ? f : f.replace(' ', 'T') + 'Z');
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     })
-  )].sort().reverse(); // más reciente primero
-
+  )].sort().reverse();
   if (diasUnicos.length === 0) return 0;
-
-  const hoy     = new Date();
-  const hoyKey  = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-  const ayerKey = (() => {
-    const a = new Date(hoy);
-    a.setDate(a.getDate() - 1);
-    return `${a.getFullYear()}-${String(a.getMonth() + 1).padStart(2, '0')}-${String(a.getDate()).padStart(2, '0')}`;
-  })();
-
-  // La racha solo cuenta si la actividad más reciente fue hoy o ayer
+  const hoy = new Date();
+  const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const hoyKey  = key(hoy);
+  const ayer    = new Date(hoy); ayer.setDate(ayer.getDate()-1);
+  const ayerKey = key(ayer);
   if (diasUnicos[0] !== hoyKey && diasUnicos[0] !== ayerKey) return 0;
-
-  let racha = 0;
-  let esperado = diasUnicos[0];
-
+  let racha = 0, esperado = diasUnicos[0];
   for (const dia of diasUnicos) {
     if (dia === esperado) {
       racha++;
-      // Calcular el día anterior
-      const prev = new Date(esperado);
-      prev.setDate(prev.getDate() - 1);
-      esperado = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
-    } else {
-      break; // Cadena rota
-    }
+      const p = new Date(esperado); p.setDate(p.getDate()-1);
+      esperado = key(p);
+    } else break;
   }
-
   return racha;
 };
 
+// ─── Nivel de fatiga ──────────────────────────────────────────────────────────
+const getFatigaInfo = (score: number | null) => {
+  if (score === null) return { label: 'Sin datos', color: '#6366f1', bg: 'from-indigo-400 to-violet-500', textClass: 'text-gray-400' };
+  if (score < 25)  return { label: 'Leve',        color: '#16a34a', bg: 'from-emerald-400 to-teal-500',   textClass: 'text-emerald-600' };
+  if (score < 50)  return { label: 'Moderada',    color: '#ca8a04', bg: 'from-amber-400 to-orange-500',   textClass: 'text-amber-600'   };
+  if (score < 75)  return { label: 'Considerable',color: '#ea580c', bg: 'from-orange-500 to-red-500',     textClass: 'text-orange-600'  };
+  return             { label: 'Severa',           color: '#dc2626', bg: 'from-red-500 to-rose-600',       textClass: 'text-red-600'     };
+};
+
+const getDiagColor = (score: number) => {
+  if (score < 25)  return { dot: 'bg-emerald-400', text: 'text-emerald-600', label: 'Fatiga leve' };
+  if (score < 50)  return { dot: 'bg-amber-400',   text: 'text-amber-600',   label: 'Fatiga moderada' };
+  if (score < 75)  return { dot: 'bg-orange-500',  text: 'text-orange-600',  label: 'Fatiga alta' };
+  return             { dot: 'bg-red-500',    text: 'text-red-600',     label: 'Fatiga severa' };
+};
+
+// ─── Mini gráfica semanal SVG ─────────────────────────────────────────────────
+const WeeklyChart = ({ data }: { data: WeekDay[] }) => {
+  const W = 400, H = 110;
+  const PAD = { top: 16, right: 12, bottom: 28, left: 32 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top - PAD.bottom;
+  const points = data.filter(d => d.score !== null);
+  if (points.length < 2) return (
+    <div className="flex items-center justify-center h-24 text-gray-300 text-sm">Sin datos esta semana</div>
+  );
+  const toX = (i: number) => PAD.left + (i / (data.length - 1)) * cW;
+  const toY = (v: number) => PAD.top + cH - (v / 100) * cH;
+  const dotColor = (v: number) => v < 25 ? '#16a34a' : v < 50 ? '#ca8a04' : v < 75 ? '#ea580c' : '#dc2626';
+
+  const linePts = data.map((d, i) => d.score !== null ? { x: toX(i), y: toY(d.score) } : null).filter(Boolean) as {x:number;y:number}[];
+  const linePath = linePts.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = linePts.length > 0
+    ? `${linePath} L ${linePts[linePts.length-1].x} ${PAD.top+cH} L ${linePts[0].x} ${PAD.top+cH} Z`
+    : '';
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      <defs>
+        <linearGradient id="wkGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25"/>
+          <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02"/>
+        </linearGradient>
+      </defs>
+      {[0,25,50,75,100].map(v => (
+        <g key={v}>
+          <line x1={PAD.left} y1={toY(v)} x2={PAD.left+cW} y2={toY(v)} stroke="#f3f4f6" strokeWidth="1"/>
+          <text x={PAD.left-4} y={toY(v)+4} textAnchor="end" fontSize="8" fill="#d1d5db">{v}%</text>
+        </g>
+      ))}
+      <path d={areaPath} fill="url(#wkGrad)"/>
+      <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      {data.map((d, i) => {
+        if (d.score === null) return null;
+        const x = toX(i), y = toY(d.score);
+        return (
+          <g key={i}>
+            <circle cx={x} cy={y} r={4} fill={dotColor(d.score)} stroke="white" strokeWidth="1.5"/>
+          </g>
+        );
+      })}
+      {data.map((d, i) => (
+        <text key={i} x={toX(i)} y={PAD.top+cH+14} textAnchor="middle" fontSize="8" fill="#9ca3af">
+          {d.label}
+        </text>
+      ))}
+    </svg>
+  );
+};
+
+// ─── Gauge circular ────────────────────────────────────────────────────────────
+const FatigaGauge = ({ score }: { score: number }) => {
+  const r = 36, circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color = score < 25 ? '#16a34a' : score < 50 ? '#f59e0b' : score < 75 ? '#ea580c' : '#dc2626';
+  return (
+    <div className="relative w-24 h-24 flex-shrink-0">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 88 88">
+        <circle cx="44" cy="44" r={r} fill="rgba(255,255,255,0.15)" strokeWidth="8" stroke="rgba(255,255,255,0.2)"/>
+        <circle cx="44" cy="44" r={r} fill="none" stroke={color} strokeWidth="8"
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+          style={{filter:'drop-shadow(0 0 6px rgba(255,255,255,0.5))'}}/>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-white text-xl font-black leading-none">{score}%</span>
+        <span className="text-white/70 text-[9px] font-medium leading-none mt-0.5">Nivel</span>
+      </div>
+    </div>
+  );
+};
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const { user, logout } = useUser();
-  const { t, lang } = useLanguage();
-  const [stats, setStats]       = useState<Stats>({ evaluaciones: 0, ejercicios: 0, racha: 0, tendencia: null, ultimoPuntaje: null, penultimoPuntaje: null });
+  const { t } = useLanguage();
+
+  const [stats, setStats] = useState<Stats>({
+    evaluaciones: 0, ejercicios: 0, racha: 0,
+    tendencia: null, ultimoPuntaje: null, penultimoPuntaje: null,
+  });
+  const [weekData, setWeekData]     = useState<WeekDay[]>([]);
+  const [diagList, setDiagList]     = useState<DiagEntry[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
-  const [screenTimeMs, setScreenTimeMs] = useState<number>(0);
+  const [screenTimeMs, setScreenTimeMs]     = useState(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showUserMenu, setShowUserMenu]           = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-
-  // Cerrar dropdown al click fuera
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-  const [extensionDismissed, setExtensionDismissed] = useState(
-    () => localStorage.getItem('therapheye_ext_banner_dismissed') === 'true'
-  );
   const [extensionInstalled, setExtensionInstalled] = useState(false);
+  const extensionDismissed = localStorage.getItem('therapheye_ext_banner_dismissed') === 'true';
+  const notifRef = useRef<HTMLDivElement>(null);
+  const [showNotif, setShowNotif] = useState(false);
 
   const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye-%E2%80%93-screen-time/lephmmimjeeeknpgdmnhpjkbbnmplcal';
 
-  // ── Detectar si la extensión ya está instalada ───────────────────────────────
+  // Detectar extensión
   useEffect(() => {
     const EXT_ID = 'lephmmimjeeeknpgdmnhpjkbbnmplcal';
-
-    // Método 1: atributo DOM inyectado por content.js (instantáneo)
-    if (document.documentElement.hasAttribute('data-therapheye-ext')) {
-      setExtensionInstalled(true);
-      return;
-    }
-
-    // Método 2: intentar cargar un recurso de la extensión
-    // Funciona si web_accessible_resources está configurado en el manifest
+    if (document.documentElement.hasAttribute('data-therapheye-ext')) { setExtensionInstalled(true); return; }
     const img = new Image();
     img.onload = () => setExtensionInstalled(true);
     img.src = `chrome-extension://${EXT_ID}/icons/icon16.png`;
-
-    // Método 3: MutationObserver por si content.js carga después del componente
-    const observer = new MutationObserver(() => {
-      if (document.documentElement.hasAttribute('data-therapheye-ext')) {
-        setExtensionInstalled(true);
-        observer.disconnect();
-      }
+    const obs = new MutationObserver(() => {
+      if (document.documentElement.hasAttribute('data-therapheye-ext')) { setExtensionInstalled(true); obs.disconnect(); }
     });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-therapheye-ext'] });
-    return () => { observer.disconnect(); img.onload = null; };
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-therapheye-ext'] });
+    return () => { obs.disconnect(); img.onload = null; };
   }, []);
 
-  // ── Cargar stats reales desde BD ─────────────────────────────────────────────
+  // Cerrar notif al click fuera
   useEffect(() => {
-    if (!user?.id) return;
+    const h = (e: MouseEvent) => { if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
 
-    const fetchStats = async () => {
-      setLoadingStats(true);
-      try {
-        // 1. Contar evaluaciones y obtener últimas 2 para tendencia
-        const evalRows = await sql`
-          SELECT puntaje_fatiga, created_at
-          FROM   respuestas_cuestionario
-          WHERE  user_id = ${user.id}
-          ORDER  BY created_at DESC
-          LIMIT  2
-        `;
-
-        // 2. Contar ejercicios completados
-        const exRows = await sql`
-          SELECT COUNT(*) AS total
-          FROM   historial_ejercicios
-          WHERE  user_id = ${user.id}
-            AND  status = 'completed'
-        `;
-
-        // 3. Todas las fechas de actividad (ejercicios + cuestionarios) para racha
-        const activityRows = await sql`
-          SELECT created_at FROM historial_ejercicios  WHERE user_id = ${user.id}
-          UNION ALL
-          SELECT created_at FROM respuestas_cuestionario WHERE user_id = ${user.id}
-        `;
-
-        const evaluaciones  = evalRows.length;
-        const ejercicios    = Number(exRows[0]?.total ?? 0);
-        const todasFechas   = activityRows.map((r: Record<string, unknown>) => String(r.created_at));
-        const racha         = calcularRacha(todasFechas);
-
-        // Tendencia: comparar último puntaje vs penúltimo
-        let tendencia: Stats['tendencia'] = null;
-        let ultimoPuntaje: number | null = null;
-        let penultimoPuntaje: number | null = null;
-
-        if (evalRows.length >= 2) {
-          ultimoPuntaje     = Number(evalRows[0].puntaje_fatiga);
-          penultimoPuntaje  = Number(evalRows[1].puntaje_fatiga);
-          const diff = ultimoPuntaje - penultimoPuntaje;
-          if (diff <= -5)       tendencia = 'mejorando';
-          else if (diff >= 5)   tendencia = 'empeorando';
-          else                  tendencia = 'estable';
-        } else if (evalRows.length === 1) {
-          ultimoPuntaje = Number(evalRows[0].puntaje_fatiga);
-        }
-
-        setStats({ evaluaciones, ejercicios, racha, tendencia, ultimoPuntaje, penultimoPuntaje });
-      } catch (err) {
-        console.error('[Dashboard] Error cargando stats:', err);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-
-    fetchStats();
-  }, [user?.id]);
-
-  // ── Timer helpers (comparten lógica con GlobalTimerWidget) ───────────────────
-  const TIMER_STORAGE_KEY  = 'therapeye_visual_health_timer';
-  const TIMER_MAX_MS       = 16 * 60 * 60 * 1000;
+  // ── Timer ──────────────────────────────────────────────────────────────────
+  const TIMER_STORAGE_KEY = 'therapeye_visual_health_timer';
+  const TIMER_MAX_MS      = 16 * 60 * 60 * 1000;
   const TIMER_WORK_MINUTES = 20;
-
-  type DashTimerState = {
-    isRunning: boolean; startTimestamp: number | null; accumulatedMs: number;
-    nextBreakAtMs: number | null; sessionStartTimestamp: number | null;
-    finalized?: boolean; stateDate?: string | null;
-  };
-
-  const readTimerState = (): DashTimerState => {
-    try {
-      const raw = localStorage.getItem(TIMER_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : { isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null };
-    } catch { return { isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null }; }
-  };
-
-  const calcTimerMs = (state: DashTimerState): number => {
-    let ms = state.accumulatedMs;
-    if (state.isRunning && state.startTimestamp) {
-      const delta = Date.now() - state.startTimestamp;
-      if (delta > 0 && delta < TIMER_MAX_MS) ms += delta;
-    }
-    return Math.max(0, Math.min(ms, TIMER_MAX_MS));
-  };
+  type DashTimerState = { isRunning: boolean; startTimestamp: number | null; accumulatedMs: number; nextBreakAtMs: number | null; sessionStartTimestamp: number | null; finalized?: boolean; stateDate?: string | null };
+  const readTimerState = (): DashTimerState => { try { const r = localStorage.getItem(TIMER_STORAGE_KEY); return r ? JSON.parse(r) : { isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null }; } catch { return { isRunning: false, startTimestamp: null, accumulatedMs: 0, nextBreakAtMs: null, sessionStartTimestamp: null }; } };
+  const calcTimerMs = (s: DashTimerState) => { let ms = s.accumulatedMs; if (s.isRunning && s.startTimestamp) { const d = Date.now()-s.startTimestamp; if (d>0&&d<TIMER_MAX_MS) ms+=d; } return Math.max(0,Math.min(ms,TIMER_MAX_MS)); };
 
   const handleTimerToggle = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Evitar que el click navegue a visual-health
-    const st  = readTimerState();
-    const now = Date.now();
-    const d   = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    let newState: DashTimerState;
+    e.stopPropagation();
+    const st = readTimerState(), now = Date.now();
+    const d = new Date(), today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    let ns: DashTimerState;
     if (st.isRunning) {
-      // Pausar
-      const ms = calcTimerMs(st);
-      newState = { ...st, isRunning: false, startTimestamp: null, accumulatedMs: ms };
+      ns = { ...st, isRunning: false, startTimestamp: null, accumulatedMs: calcTimerMs(st) };
     } else {
-      // Iniciar
       const ms = st.accumulatedMs;
-      newState = {
-        ...st, isRunning: true, startTimestamp: now, accumulatedMs: ms,
-        sessionStartTimestamp: st.sessionStartTimestamp ?? now,
-        nextBreakAtMs: ms + TIMER_WORK_MINUTES * 60_000,
-        finalized: false, stateDate: today,
-      };
+      ns = { ...st, isRunning: true, startTimestamp: now, accumulatedMs: ms, sessionStartTimestamp: st.sessionStartTimestamp ?? now, nextBreakAtMs: ms + TIMER_WORK_MINUTES*60_000, finalized: false, stateDate: today };
     }
-    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(newState));
-    // Sincronizar a BD para evitar desincronización
+    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(ns));
     if (user?.id) {
-      sql`
-        INSERT INTO timer_state (user_id, fecha, accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, updated_at)
-        VALUES (${user.id}, ${today}, ${newState.accumulatedMs}, ${newState.isRunning}, ${newState.startTimestamp}, ${newState.sessionStartTimestamp}, ${newState.nextBreakAtMs}, ${newState.finalized ?? false}, NOW())
-        ON CONFLICT (user_id, fecha)
-        DO UPDATE SET
-          accumulated_ms   = ${newState.accumulatedMs},
-          is_running       = ${newState.isRunning},
-          last_start_ts    = ${newState.startTimestamp},
-          session_start_ts = ${newState.sessionStartTimestamp},
-          next_break_at_ms = ${newState.nextBreakAtMs},
-          finalized        = ${newState.finalized ?? false},
-          updated_at       = NOW()
-      `.catch(err => console.warn('[Dashboard] Error syncing timer to DB:', err));
+      sql`INSERT INTO timer_state (user_id,fecha,accumulated_ms,is_running,last_start_ts,session_start_ts,next_break_at_ms,finalized,updated_at) VALUES (${user.id},${today},${ns.accumulatedMs},${ns.isRunning},${ns.startTimestamp},${ns.sessionStartTimestamp},${ns.nextBreakAtMs},${ns.finalized??false},NOW()) ON CONFLICT (user_id,fecha) DO UPDATE SET accumulated_ms=${ns.accumulatedMs},is_running=${ns.isRunning},last_start_ts=${ns.startTimestamp},session_start_ts=${ns.sessionStartTimestamp},next_break_at_ms=${ns.nextBreakAtMs},finalized=${ns.finalized??false},updated_at=NOW()`.catch(()=>{});
     }
   };
 
-  // ── Cargar y actualizar tiempo en pantalla desde localStorage ──────────────────
   useEffect(() => {
-    const loadScreenTime = () => {
-      try {
-        const state = readTimerState();
-        setScreenTimeMs(calcTimerMs(state));
-        setScreenTimeRunning(state.isRunning);
-      } catch (err) {
-        console.error('[Dashboard] Error loading screen time:', err);
-      }
-    };
-
-    loadScreenTime();
-    const interval = setInterval(loadScreenTime, 1000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const load = () => { const s = readTimerState(); setScreenTimeMs(calcTimerMs(s)); setScreenTimeRunning(s.isRunning); };
+    load(); const iv = setInterval(load, 1000); return () => clearInterval(iv);
   }, []);
 
-  const modules = [
-    {
-      icon: ClipboardList,
-      title: t('dashboard', 'questionnaire'),
-      description: t('dashboard', 'questionnaireDesc'),
-      color: 'bg-blue-500',
-      action: () => onNavigate('questionnaire'),
-    },
-    {
-      icon: Activity,
-      title: t('dashboard', 'exercises'),
-      description: t('dashboard', 'exercisesDesc'),
-      color: 'bg-green-500',
-      action: () => onNavigate('exercises'),
-    },
-    {
-      icon: History,
-      title: t('dashboard', 'history'),
-      description: t('dashboard', 'historyDesc'),
-      color: 'bg-purple-500',
-      action: () => onNavigate('history'),
-    },
-    {
-      icon: Camera,
-      title: t('dashboard', 'imageCapture'),
-      description: t('dashboard', 'imageCaptureDesc'),
-      color: 'bg-red-500',
-      action: () => onNavigate('image-capture'),
-    },
-    {
-      icon: Glasses,
-      title: t('dashboard', 'visionTest'),
-      description: t('dashboard', 'visionTestDesc'),
-      color: 'bg-teal-500',
-      action: () => onNavigate('vision-test'),
-    },
-    {
-      icon: HeartPulse,
-      title: t('dashboard', 'visualHealth'),
-      description: t('dashboard', 'visualHealthDesc'),
-      color: 'bg-orange-500',
-      action: () => onNavigate('visual-health'),
-    },
-    {
-      icon: ScanEye,
-      title: 'Diagnóstico completo',
-      description: 'Análisis integral de tu salud visual con score, gráfica e insights.',
-      color: 'bg-violet-600',
-      action: () => onNavigate('diagnostico-completo'),
-    },
+  // ── Stats + datos semanales + últimos diagnósticos ─────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetch = async () => {
+      setLoadingStats(true);
+      try {
+        const [evalRows, exRows, actRows, weekRows, diagRows] = await Promise.all([
+          sql`SELECT puntaje_fatiga, created_at FROM respuestas_cuestionario WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 2`,
+          sql`SELECT COUNT(*) AS total FROM historial_ejercicios WHERE user_id=${user.id} AND status='completed'`,
+          sql`SELECT created_at FROM historial_ejercicios WHERE user_id=${user.id} UNION ALL SELECT created_at FROM respuestas_cuestionario WHERE user_id=${user.id}`,
+          sql`SELECT DATE(created_at AT TIME ZONE 'America/Mexico_City') as dia, AVG(puntaje_fatiga) as avg_score FROM respuestas_cuestionario WHERE user_id=${user.id} AND created_at >= NOW()-INTERVAL '7 days' GROUP BY dia ORDER BY dia`,
+          sql`SELECT score_final, nivel, created_at FROM diagnostico_completo WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 3`.catch(()=>[]),
+        ]);
+
+        const evaluaciones = evalRows.length;
+        const ejercicios   = Number(exRows[0]?.total ?? 0);
+        const racha        = calcularRacha(actRows.map((r:any)=>String(r.created_at)));
+        let tendencia: Stats['tendencia'] = null, ultimoPuntaje: number|null = null, penultimoPuntaje: number|null = null;
+        if (evalRows.length >= 2) {
+          ultimoPuntaje = Number(evalRows[0].puntaje_fatiga); penultimoPuntaje = Number(evalRows[1].puntaje_fatiga);
+          const diff = ultimoPuntaje - penultimoPuntaje;
+          tendencia = diff <= -5 ? 'mejorando' : diff >= 5 ? 'empeorando' : 'estable';
+        } else if (evalRows.length === 1) { ultimoPuntaje = Number(evalRows[0].puntaje_fatiga); }
+        setStats({ evaluaciones, ejercicios, racha, tendencia, ultimoPuntaje, penultimoPuntaje });
+
+        // Semana: Lun-Dom
+        const diasLabels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+        const scoreMap: Record<string,number> = {};
+        weekRows.forEach((r:any) => { scoreMap[String(r.dia).slice(0,10)] = Math.round(Number(r.avg_score)); });
+        const today = new Date();
+        const week: WeekDay[] = diasLabels.map((label, i) => {
+          const d = new Date(today); d.setDate(d.getDate() - (today.getDay()===0?6:today.getDay()-1) + i);
+          const dk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          const score = scoreMap[dk] ?? null;
+          return { label, score, active: score !== null, dateKey: dk };
+        });
+        setWeekData(week);
+
+        // Últimos diagnósticos
+        const diags: DiagEntry[] = (diagRows as any[]).map((r:any) => {
+          const d = new Date(r.created_at);
+          const score = Math.round(Number(r.score_final));
+          const info  = getDiagColor(score);
+          return {
+            fecha: d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}),
+            nivel: info.label, score, color: info.text,
+          };
+        });
+        if (diags.length === 0 && evalRows.length > 0) {
+          // Fallback: usar últimas evaluaciones del cuestionario
+          const fb = await sql`SELECT puntaje_fatiga, created_at FROM respuestas_cuestionario WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 3`;
+          fb.forEach((r:any) => {
+            const d = new Date(r.created_at), score = Math.round(Number(r.puntaje_fatiga));
+            const info = getDiagColor(score);
+            diags.push({ fecha: d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}), nivel: info.label, score, color: info.text });
+          });
+        }
+        setDiagList(diags);
+      } catch(e) { console.error('[Dashboard]',e); }
+      finally { setLoadingStats(false); }
+    };
+    fetch();
+  }, [user?.id]);
+
+  // ── Sidebar nav items ──────────────────────────────────────────────────────
+  const navItems = [
+    { icon: Home,         label: 'Inicio',           page: null as Page|null,           active: true  },
+    { icon: Activity,     label: 'Ejercicios',        page: 'exercises' as Page,          active: false },
+    { icon: Camera,       label: 'Captura de imagen', page: 'image-capture' as Page,      active: false },
+    { icon: Glasses,      label: 'Prueba de visión',  page: 'vision-test' as Page,        active: false },
+    { icon: History,      label: 'Historial',         page: 'history' as Page,            active: false },
+    { icon: HeartPulse,   label: 'Salud Visual',      page: 'visual-health' as Page,      active: false },
+    { icon: ScanEye,      label: 'Diagnóstico',       page: 'diagnostico-completo' as Page, active: false },
+    { icon: ClipboardList,label: 'Cuestionario',      page: 'questionnaire' as Page,      active: false },
+    { icon: Settings,     label: 'Mi cuenta',         page: 'profile' as Page,            active: false },
   ];
 
-  // ── Íconos y colores de tendencia ─────────────────────────────────────────────
-  const TrendIcon = () => {
-    if (!stats.tendencia) return null;
-    if (stats.tendencia === 'mejorando')   return <TrendingDown className="w-4 h-4 text-green-600" />;
-    if (stats.tendencia === 'empeorando')  return <TrendingUp   className="w-4 h-4 text-red-500"   />;
-    return <Minus className="w-4 h-4 text-yellow-500" />;
-  };
+  const fatiga      = getFatigaInfo(stats.ultimoPuntaje);
+  const screenHH    = String(Math.floor(screenTimeMs/3600000)).padStart(2,'0');
+  const screenMM    = String(Math.floor((screenTimeMs%3600000)/60000)).padStart(2,'0');
+  const screenSS    = String(Math.floor((screenTimeMs%60000)/1000)).padStart(2,'0');
 
-  const getTendenciaLabel = (tendencia: string) => {
-    const labelMap: Record<string, { cls: string }> = {
-      mejorando:  { cls: 'text-green-600 bg-green-50 border-green-200' },
-      empeorando: { cls: 'text-red-600   bg-red-50   border-red-200'   },
-      estable:    { cls: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
-    };
-    return labelMap[tendencia] || labelMap.estable;
+  // Recomendación basada en nivel de fatiga
+  const getRecomendacion = () => {
+    const s = stats.ultimoPuntaje;
+    if (s === null) return { titulo:'Completa tu primera evaluación', desc:'Responde el cuestionario para comenzar el seguimiento', icon:'📋', page:'questionnaire' as Page };
+    if (s < 25)    return { titulo:'¡Excelente! Mantén el ritmo',    desc:'Continúa con tus ejercicios visuales diarios', icon:'🌟', page:'exercises' as Page };
+    if (s < 50)    return { titulo:'Ejercicios de relajación',        desc:'Ideal para reducir la fatiga acumulada', icon:'🧘', page:'exercises' as Page };
+    if (s < 75)    return { titulo:'Realiza el diagnóstico completo', desc:'Tu nivel de fatiga requiere atención pronto', icon:'🔍', page:'diagnostico-completo' as Page };
+    return           { titulo:'Consulta urgente recomendada',          desc:'Nivel severo — considera ver a un especialista', icon:'⚠️', page:'diagnostico-completo' as Page };
   };
+  const rec = getRecomendacion();
+
+  // Días de la semana para la racha
+  const rachaWeek = (() => {
+    const dias = ['L','M','M','J','V','S','D'];
+    return dias.map((d, i) => {
+      const date = new Date(); date.setDate(date.getDate() - (date.getDay()===0?6:date.getDay()-1) + i);
+      const dk = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+      const active = weekData.find(w=>w.dateKey===dk)?.active ?? false;
+      return { d, active, today: dk === new Date().toISOString().slice(0,10) };
+    });
+  })();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* ── Modal de confirmación: Cerrar sesión ── */}
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+
+      {/* ── Modal logout ── */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4 flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <LogOut className="w-5 h-5 text-red-600" />
+                <LogOut className="w-5 h-5 text-red-600"/>
               </div>
-              <h2 className="text-lg font-bold text-gray-800">{t('common', 'confirmLogoutTitle')}</h2>
+              <h2 className="text-lg font-bold text-gray-800">{t('common','confirmLogoutTitle')}</h2>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed">{t('common', 'confirmLogoutMsg')}</p>
-            <div className="flex gap-3 justify-end mt-1">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
-              >
-                {t('visualHealth', 'confirmNo')}
-              </button>
-              <button
-                onClick={() => { setShowLogoutConfirm(false); logout(); onNavigate('login'); }}
-                className="px-5 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow"
-              >
-                {t('common', 'confirmLogoutYes')}
-              </button>
+            <p className="text-sm text-gray-600 leading-relaxed">{t('common','confirmLogoutMsg')}</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={()=>setShowLogoutConfirm(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition">Cancelar</button>
+              <button onClick={()=>{setShowLogoutConfirm(false);logout();onNavigate('login');}} className="px-5 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow">Cerrar sesión</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-600 rounded-lg">
-              <Eye className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-800">Therapheye</h1>
+      {/* ════════════════════ SIDEBAR ════════════════════ */}
+      <aside className="w-60 flex-shrink-0 bg-[#1a2236] flex flex-col h-full overflow-hidden">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
+          <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Eye className="w-5 h-5 text-white"/>
           </div>
-
-          {/* User dropdown */}
-          <div className="relative" ref={userMenuRef}>
-            <button
-              onClick={() => setShowUserMenu(v => !v)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition"
-            >
-              {/* Avatar */}
-              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
-                {user?.foto_perfil
-                  ? <img src={user.foto_perfil} alt="avatar" className="w-full h-full object-cover" />
-                  : <span>{user?.nombre?.charAt(0).toUpperCase() ?? '?'}</span>
-                }
-              </div>
-              <span className="hidden sm:block text-sm font-medium text-gray-700 max-w-[140px] truncate">
-                {user?.nombre?.split(' ').slice(0, 2).join(' ')}
-              </span>
-              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Dropdown panel */}
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
-                {/* Info usuario */}
-                <div className="px-4 py-2 border-b border-gray-100 mb-1">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{user?.nombre}</p>
-                  <p className="text-xs text-gray-400 truncate">{user?.email}</p>
-                </div>
-                {/* Cambiar contraseña */}
-                <button
-                  onClick={() => { setShowUserMenu(false); onNavigate('profile'); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                >
-                  <KeyRound className="w-4 h-4 text-gray-500" />
-                  {lang === 'es' ? 'Mi cuenta' : 'My account'}
-                </button>
-                {/* Cerrar sesión */}
-                <button
-                  onClick={() => { setShowUserMenu(false); setShowLogoutConfirm(true); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
-                >
-                  <LogOut className="w-4 h-4" />
-                  {t('common', 'logout')}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Welcome */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">
-            {t('dashboard', 'welcome')} {user?.nombre?.split(' ').slice(0, 3).join(' ')}!
-          </h2>
-          <p className="text-gray-600">{t('dashboard', 'selectModule')}</p>
+          <span className="text-white font-bold text-base leading-tight">Salud Visual</span>
         </div>
 
-        {/* Extension Banner — hidden on mobile (< md breakpoint = 768px) */}
-        {!extensionDismissed && !extensionInstalled && (
-          <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 hidden md:flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-lg">🧩</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-indigo-900">{lang === 'es' ? 'Extensión de navegador' : 'Browser Extension'}</p>
-                <p className="text-xs text-indigo-600 truncate">
-                  {lang === 'es' ? 'Monitorea tu tiempo en pantalla sin tener la página abierta' : 'Track screen time without keeping the page open'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <a
-                href={extensionUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition whitespace-nowrap"
-              >
-                {lang === 'es' ? 'Agregar extensión' : 'Add Extension'}
-              </a>
-              <button
-                onClick={() => { localStorage.setItem('therapheye_ext_banner_dismissed', 'true'); setExtensionDismissed(true); }}
-                className="text-indigo-400 hover:text-indigo-600 text-lg leading-none"
-                title="Dismiss"
-              >×</button>
-            </div>
-          </div>
-        )}
-
-        {/* Modules Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {modules.map((module, index) => (
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+          {navItems.map((item) => (
             <button
-              key={index}
-              onClick={module.action}
-              className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 text-left"
+              key={item.label}
+              onClick={() => item.page ? onNavigate(item.page) : undefined}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
+                ${item.active
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
+                  : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}
             >
-              <div className={`${module.color} w-14 h-14 rounded-lg flex items-center justify-center mb-4`}>
-                <module.icon className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">{module.title}</h3>
-              <p className="text-gray-600">{module.description}</p>
+              <item.icon className="w-4.5 h-4.5 flex-shrink-0" style={{width:'18px',height:'18px'}}/>
+              {item.label}
             </button>
           ))}
-        </div>
+        </nav>
 
-        {/* Stats Section */}
-        <div className="mt-8 bg-white rounded-xl p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-xl font-semibold text-gray-800">{t('dashboard', 'progressSummary')}</h3>
-            {loadingStats && (
-              <span className="text-xs text-gray-400 animate-pulse">{t('dashboard', 'loadingData')}</span>
-            )}
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-4">
-            {/* Evaluaciones */}
-            <div className="flex flex-col items-center p-5 bg-blue-50 rounded-xl border border-blue-100">
-              <p className={`text-4xl font-black text-blue-600 transition-all ${loadingStats ? 'opacity-30' : 'opacity-100'}`}>
-                {stats.evaluaciones}
+        {/* User footer */}
+        <div className="border-t border-white/10 px-4 py-4">
+          <button
+            onClick={()=>onNavigate('profile')}
+            className="w-full flex items-center gap-3 hover:bg-white/10 rounded-xl px-2 py-2 transition"
+          >
+            <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
+              {user?.foto_perfil
+                ? <img src={user.foto_perfil} alt="avatar" className="w-full h-full object-cover"/>
+                : <span>{user?.nombre?.charAt(0).toUpperCase()??'?'}</span>}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-white text-sm font-semibold truncate">{user?.nombre?.split(' ').slice(0,2).join(' ')}</p>
+              <p className="text-gray-400 text-xs truncate flex items-center gap-1">
+                <KeyRound className="w-3 h-3"/> Ver perfil
               </p>
-              <p className="text-gray-600 mt-1 text-sm font-medium">{t('dashboard', 'evaluationsCompleted')}</p>
-              {stats.tendencia && (
-                <div className={`mt-2 flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-semibold ${getTendenciaLabel(stats.tendencia).cls}`}>
-                  <TrendIcon />
-                  {t('dashboard', stats.tendencia === 'mejorando' ? 'improving' : stats.tendencia === 'empeorando' ? 'worsening' : 'stable')}
+            </div>
+          </button>
+          <button
+            onClick={()=>setShowLogoutConfirm(true)}
+            className="w-full mt-2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition"
+          >
+            <LogOut className="w-3.5 h-3.5"/> Cerrar sesión
+          </button>
+        </div>
+      </aside>
+
+      {/* ════════════════════ MAIN CONTENT ════════════════════ */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">
+              ¡Bienvenido de nuevo, {user?.nombre?.split(' ')[0]}! 👋
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">Cuida tu vista, mejora tu día a día.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Extensión badge */}
+            {!extensionInstalled && !extensionDismissed && (
+              <a href={extensionUrl} target="_blank" rel="noopener noreferrer"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition">
+                🧩 Agregar extensión
+              </a>
+            )}
+            {/* Bell */}
+            <div className="relative" ref={notifRef}>
+              <button onClick={()=>setShowNotif(v=>!v)}
+                className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition relative">
+                <Bell className="w-4.5 h-4.5 text-gray-500" style={{width:'18px',height:'18px'}}/>
+                {stats.ultimoPuntaje !== null && stats.ultimoPuntaje >= 50 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500"/>
+                )}
+              </button>
+              {showNotif && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50">
+                  <p className="text-sm font-bold text-gray-800 mb-3">Notificaciones</p>
+                  {stats.ultimoPuntaje !== null && stats.ultimoPuntaje >= 50
+                    ? <div className="flex gap-2 text-sm text-orange-700 bg-orange-50 rounded-lg p-3">
+                        <span>⚠️</span>
+                        <span>Tu nivel de fatiga es alto ({stats.ultimoPuntaje}%). Considera hacer ejercicios visuales.</span>
+                      </div>
+                    : <p className="text-xs text-gray-400 text-center py-4">Sin notificaciones nuevas</p>}
                 </div>
               )}
-              {stats.ultimoPuntaje !== null && (
-                <p className="text-xs text-gray-400 mt-1">
-                  {t('dashboard', 'lastScore')}: <span className="font-semibold text-gray-600">{stats.ultimoPuntaje}%</span>
-                  {stats.penultimoPuntaje !== null && (
-                    <span> ({t('dashboard', 'before')}: {stats.penultimoPuntaje}%)</span>
-                  )}
-                </p>
-              )}
             </div>
+          </div>
+        </header>
 
-            {/* Ejercicios */}
-            <div className="flex flex-col items-center p-5 bg-green-50 rounded-xl border border-green-100">
-              <p className={`text-4xl font-black text-green-600 transition-all ${loadingStats ? 'opacity-30' : 'opacity-100'}`}>
-                {stats.ejercicios}
-              </p>
-              <p className="text-gray-600 mt-1 text-sm font-medium">{t('dashboard', 'exercisesCompleted')}</p>
-              {stats.ejercicios > 0 && (
-                <p className="text-xs text-gray-400 mt-2">
-                  {stats.ejercicios === 1 ? t('dashboard', 'goodStart') : stats.ejercicios < 10 ? t('dashboard', 'keepGoing') : t('dashboard', 'greatConsistency')}
+        {/* Scrollable body */}
+        <main className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {/* ── Fila 1: Estado de fatiga + Racha + Recomendación ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+            {/* Tarjeta fatiga — ocupa 1.5 columnas */}
+            <div className={`lg:col-span-1 bg-gradient-to-br ${fatiga.bg} rounded-2xl p-5 flex flex-col justify-between min-h-[160px] shadow-lg relative overflow-hidden`}>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8"/>
+              <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-6 -translate-x-6"/>
+              <div>
+                <p className="text-white/80 text-xs font-semibold uppercase tracking-wide mb-1">Estado actual de tu fatiga visual</p>
+                <p className="text-white text-2xl font-black">{fatiga.label}</p>
+                <p className="text-white/70 text-xs mt-1 leading-snug">
+                  {stats.ultimoPuntaje === null
+                    ? 'Aún no tienes evaluaciones registradas.'
+                    : stats.ultimoPuntaje < 25 ? 'Tu vista muestra signos de bienestar.'
+                    : stats.ultimoPuntaje < 50 ? 'Tu vista muestra signos de cansancio. Es buen momento para descansar.'
+                    : stats.ultimoPuntaje < 75 ? 'Fatiga considerable detectada. Toma acción pronto.'
+                    : 'Fatiga severa. Tu salud visual requiere atención.'}
                 </p>
-              )}
+              </div>
+              <div className="flex items-center justify-between mt-3">
+                <button
+                  onClick={()=>onNavigate('questionnaire')}
+                  className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition backdrop-blur-sm"
+                >
+                  Iniciar diagnóstico <ChevronRight className="w-3.5 h-3.5"/>
+                </button>
+                {stats.ultimoPuntaje !== null && <FatigaGauge score={stats.ultimoPuntaje}/>}
+              </div>
             </div>
 
             {/* Racha */}
-            <div className="flex flex-col items-center p-5 bg-purple-50 rounded-xl border border-purple-100">
-              <div className={`flex items-center gap-2 transition-all ${loadingStats ? 'opacity-30' : 'opacity-100'}`}>
-                {stats.racha > 0 && <Flame className="w-7 h-7 text-orange-500" />}
-                <p className="text-4xl font-black text-purple-600">{stats.racha}</p>
-              </div>
-              <p className="text-gray-600 mt-1 text-sm font-medium">
-                {stats.racha === 1 ? t('dashboard', 'streakSingular') : t('dashboard', 'streak')}
-              </p>
-              <p className="text-xs text-gray-400 mt-2 text-center">
-                {stats.racha === 0
-                  ? t('dashboard', 'doActivityToday')
-                  : stats.racha < 3
-                  ? t('dashboard', 'buildStreak')
-                  : stats.racha < 7
-                  ? t('dashboard', 'goingWell')
-                  : t('dashboard', 'incredibleConsistency')}
-              </p>
-            </div>
-
-            {/* Screen Time Chronometer — clickeable para ir a Salud Visual */}
-            <div
-              onClick={() => onNavigate('visual-health')}
-              className="flex flex-col items-center p-5 bg-orange-50 rounded-xl border border-orange-100 cursor-pointer hover:bg-orange-100 hover:shadow-md transition-all"
-            >
-              <div className={`flex items-center gap-2 transition-all ${loadingStats ? 'opacity-30' : 'opacity-100'}`}>
-                <span
-                  className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                    screenTimeRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-                  }`}
-                />
-                <p className="text-4xl font-black text-orange-600 font-mono">
-                  {String(Math.floor(screenTimeMs / 3600000)).padStart(2, '0')}:
-                  {String(Math.floor((screenTimeMs % 3600000) / 60000)).padStart(2, '0')}:
-                  {String(Math.floor((screenTimeMs % 60000) / 1000)).padStart(2, '0')}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                  Racha de cuidado <Flame className="w-4 h-4 text-orange-500"/>
                 </p>
               </div>
-              <p className="text-gray-600 mt-1 text-sm font-medium">{t('dashboard', 'screenTimeToday')}</p>
-              <p className="text-xs text-gray-400 mt-2">
-                {screenTimeRunning ? t('dashboard', 'screenTimeRunning') : t('dashboard', 'screenTimePaused')}
-              </p>
-              <div className="flex gap-2 mt-3 flex-wrap justify-center">
-                <button
-                  onClick={handleTimerToggle}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition ${
-                    screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'
-                  }`}
-                >
-                  {screenTimeRunning
-                    ? <><Pause className="w-3.5 h-3.5" /> {t('common', 'pause')}</>
-                    : <><Play  className="w-3.5 h-3.5" /> {t('common', 'start')}</>
-                  }
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onNavigate('visual-health'); }}
-                  className="px-3 py-1.5 bg-orange-500 text-white text-xs font-semibold rounded-lg hover:bg-orange-600 transition"
-                >
-                  {t('dashboard', 'goToVisualHealth')}
-                </button>
+              <div>
+                <p className="text-4xl font-black text-gray-800">{stats.racha} <span className="text-base font-semibold text-gray-400">días</span></p>
+                <p className="text-xs text-green-600 font-semibold mt-0.5">
+                  {stats.racha === 0 ? '¡Empieza hoy!' : stats.racha < 3 ? '¡Sigue así!' : stats.racha < 7 ? '¡Vas muy bien!' : '¡Increíble consistencia!'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1">
+                {rachaWeek.map((d, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all
+                      ${d.active ? 'bg-green-500 border-green-500 text-white' : d.today ? 'border-indigo-400 text-indigo-500 bg-indigo-50' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
+                      {d.d}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+
+            {/* Próxima recomendación */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+              <div>
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Próxima recomendación</p>
+                <p className="text-lg font-bold text-gray-800 leading-snug">{rec.titulo}</p>
+                <p className="text-xs text-gray-400 mt-1">{rec.desc}</p>
+              </div>
+              <button
+                onClick={()=>onNavigate(rec.page)}
+                className="mt-4 flex items-center justify-between px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-semibold transition"
+              >
+                <span className="flex items-center gap-2"><span className="text-lg">{rec.icon}</span> Ir ahora</span>
+                <ChevronRight className="w-4 h-4"/>
+              </button>
+            </div>
           </div>
-        </div>
-      </main>
+
+          {/* ── Acciones rápidas ── */}
+          <div>
+            <p className="text-sm font-bold text-gray-700 mb-3">Acciones rápidas</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { icon: Activity,   color: 'bg-violet-100', iconColor: 'text-violet-600', title: 'Ejercicios visuales',  desc: 'Reduce la fatiga con ejercicios guiados', page: 'exercises' as Page },
+                { icon: Camera,     color: 'bg-rose-100',   iconColor: 'text-rose-600',   title: 'Captura de imagen',    desc: 'Toma una imagen para análisis visual', page: 'image-capture' as Page },
+                { icon: Glasses,    color: 'bg-teal-100',   iconColor: 'text-teal-600',   title: 'Prueba de visión',     desc: 'Valida tu agudeza visual con Snellen', page: 'vision-test' as Page },
+                { icon: HeartPulse, color: 'bg-amber-100',  iconColor: 'text-amber-600',  title: 'Salud Visual',         desc: 'Monitorea tu tiempo en pantalla', page: 'visual-health' as Page },
+              ].map((item) => (
+                <button
+                  key={item.title}
+                  onClick={()=>onNavigate(item.page)}
+                  className="bg-white rounded-xl p-4 text-left shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all group"
+                >
+                  <div className={`w-10 h-10 ${item.color} rounded-xl flex items-center justify-center mb-3`}>
+                    <item.icon className={`w-5 h-5 ${item.iconColor}`}/>
+                  </div>
+                  <p className="text-sm font-bold text-gray-800 leading-tight">{item.title}</p>
+                  <p className="text-xs text-gray-400 mt-1 leading-snug">{item.desc}</p>
+                  <div className="flex items-center gap-1 mt-2 text-indigo-500 text-xs font-semibold group-hover:gap-2 transition-all">
+                    Ir <ChevronRight className="w-3 h-3"/>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Fila 3: Progreso semanal + Últimos diagnósticos ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* Progreso semanal */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-bold text-gray-800">Tu progreso semanal</p>
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  {stats.tendencia === 'mejorando'  && <><TrendingDown className="w-3.5 h-3.5 text-green-500"/> Mejorando</>}
+                  {stats.tendencia === 'empeorando' && <><TrendingUp   className="w-3.5 h-3.5 text-red-500"/>   Empeorando</>}
+                  {stats.tendencia === 'estable'    && <><Minus         className="w-3.5 h-3.5 text-yellow-500"/> Estable</>}
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mb-3">Nivel de fatiga diario (cuestionario)</p>
+              {loadingStats
+                ? <div className="h-24 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent"/></div>
+                : <WeeklyChart data={weekData}/>}
+            </div>
+
+            {/* Últimos diagnósticos */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col">
+              <p className="text-sm font-bold text-gray-800 mb-3">Últimos diagnósticos</p>
+              {loadingStats
+                ? <div className="flex-1 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent"/></div>
+                : diagList.length === 0
+                  ? <div className="flex-1 flex flex-col items-center justify-center text-gray-300 text-sm gap-2">
+                      <ScanEye className="w-8 h-8 opacity-40"/>
+                      <span>Sin diagnósticos registrados</span>
+                    </div>
+                  : <div className="space-y-2 flex-1">
+                      {diagList.map((d, i) => (
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700">{d.fecha}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold ${d.color}`}>{d.nivel}</span>
+                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getDiagColor(d.score).dot}`}/>
+                          </div>
+                        </div>
+                      ))}
+                    </div>}
+              <button
+                onClick={()=>onNavigate('history')}
+                className="mt-3 text-xs text-indigo-600 font-semibold hover:underline flex items-center gap-1 self-end"
+              >
+                Ver historial completo <ChevronRight className="w-3 h-3"/>
+              </button>
+            </div>
+          </div>
+
+          {/* ── Timer pantalla (compacto) ── */}
+          <div
+            onClick={()=>onNavigate('visual-health')}
+            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${screenTimeRunning ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <span className={`w-3 h-3 rounded-full ${screenTimeRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}/>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-800">Tiempo en pantalla hoy</p>
+                <p className="text-xs text-gray-400">{screenTimeRunning ? 'Cronómetro activo' : 'Cronómetro pausado'} · Toca para ver detalles</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <p className="text-2xl font-black text-gray-700 font-mono tabular-nums">{screenHH}:{screenMM}:{screenSS}</p>
+              <button
+                onClick={handleTimerToggle}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition ${screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
+              >
+                {screenTimeRunning ? <><Pause className="w-3.5 h-3.5"/> Pausar</> : <><Play className="w-3.5 h-3.5"/> Iniciar</>}
+              </button>
+            </div>
+          </div>
+
+        </main>
+      </div>
     </div>
   );
 };
