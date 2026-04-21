@@ -319,7 +319,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   })();
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
 
         {/* Top bar */}
         <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
