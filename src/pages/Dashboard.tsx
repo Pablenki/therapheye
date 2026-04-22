@@ -339,10 +339,10 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   })();
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-blue-50">
 
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+        <header className="bg-white/90 backdrop-blur-sm border-b border-blue-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-xl font-bold text-gray-800">
               {es ? `¡Bienvenido de nuevo, ${user?.nombre?.split(' ')[0]}! 👋` : `Welcome back, ${user?.nombre?.split(' ')[0]}! 👋`}
@@ -367,7 +367,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 )}
               </button>
               {showNotif && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50">
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-blue-100 p-4 z-50">
                   <p className="text-sm font-bold text-gray-800 mb-3">{es ? 'Notificaciones' : 'Notifications'}</p>
                   {stats.ultimoPuntaje !== null && stats.ultimoPuntaje >= 50
                     ? <div className="flex gap-2 text-sm text-orange-700 bg-orange-50 rounded-lg p-3">
@@ -415,7 +415,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Racha */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-blue-100 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
                   {es ? 'Racha de cuidado' : 'Care streak'} <Flame className="w-4 h-4 text-orange-500"/>
@@ -440,7 +440,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Próxima recomendación */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-blue-100 flex flex-col justify-between">
               <div>
                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">{es ? 'Próxima recomendación' : 'Next recommendation'}</p>
                 <p className="text-lg font-bold text-gray-800 leading-snug">{rec.titulo}</p>
@@ -469,7 +469,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 <button
                   key={item.title}
                   onClick={()=>onNavigate(item.page)}
-                  className="bg-white rounded-xl p-4 text-left shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all group"
+                  className="bg-white rounded-xl p-4 text-left shadow-sm border border-blue-100 hover:shadow-md hover:-translate-y-0.5 transition-all group"
                 >
                   <div className={`w-10 h-10 ${item.color} rounded-xl flex items-center justify-center mb-3`}>
                     <item.icon className={`w-5 h-5 ${item.iconColor}`}/>
@@ -488,7 +488,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Progreso semanal */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-blue-100">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-bold text-gray-800">{es ? 'Tu progreso semanal' : 'Your weekly progress'}</p>
                 <div className="flex items-center gap-1.5 text-xs text-gray-400">
@@ -504,7 +504,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Últimos diagnósticos */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-blue-100 flex flex-col">
               <p className="text-sm font-bold text-gray-800 mb-3">{es ? 'Últimos diagnósticos' : 'Latest diagnostics'}</p>
               {loadingStats
                 ? <div className="flex-1 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent"/></div>
@@ -538,7 +538,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {/* ── Timer pantalla (compacto) ── */}
           <div
             onClick={()=>onNavigate('visual-health')}
-            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition"
+            className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100 flex items-center justify-between cursor-pointer hover:shadow-md transition"
           >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${screenTimeRunning ? 'bg-green-100' : 'bg-gray-100'}`}>
@@ -569,7 +569,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             return (
               <div className="rounded-2xl overflow-hidden shadow-md">
                 {/* Encabezado */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-white border border-b-0 border-gray-100 rounded-t-2xl">
+                <div className="flex items-center justify-between px-4 py-2.5 bg-white border border-b-0 border-blue-100 rounded-t-2xl">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-indigo-500"/>
                     <p className="text-sm font-bold text-gray-800">{es ? 'Artículo del día' : 'Article of the day'}</p>
