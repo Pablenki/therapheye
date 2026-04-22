@@ -45,15 +45,15 @@ body.text-large button { font-size: 1.1rem !important; }
 body.text-large input { font-size: 1.1rem !important; }
 
 /* ========== INVERSIÓN DE COLORES (en #root) ========== */
-/* invert(0.85) en lugar de invert(1): blancos → gris oscuro azulado (no negro puro).
-   saturate(1.25): refuerza los tonos azules para que el resultado sea "azulito", no gris. */
+/* invert(1) hue-rotate(180deg): inversión limpia y nítida sin niebla.
+   brightness(1.08): sube ligeramente el brillo para que los dark-cards no sean negro puro. */
 #root.invert-colors {
-  filter: invert(0.85) hue-rotate(180deg) saturate(1.25) !important;
+  filter: invert(1) hue-rotate(180deg) brightness(1.08) !important;
 }
 
 #root.invert-colors img,
 #root.invert-colors video {
-  filter: invert(0.85) hue-rotate(180deg) saturate(1.25) !important;
+  filter: invert(1) hue-rotate(180deg) brightness(1.08) !important;
 }
 
 /* La Prueba de visión NO tiene excepción: respeta el mismo modo invertido/oscuro
