@@ -38,53 +38,53 @@ export const ARTICLES: Article[] = [
     category: 'ciencia',
     titleEs: 'Fatiga Visual Digital: lo que le pasa a tus ojos frente a pantallas',
     titleEn: 'Digital Eye Strain: what really happens to your eyes on screens',
-    summaryEs: 'El Síndrome Visual Informático afecta al 90% de quienes pasan más de 2 horas diarias frente a dispositivos. Conoce la ciencia detrás del cansancio ocular.',
-    summaryEn: 'Computer Vision Syndrome affects 90% of those who spend more than 2 hours a day on devices. Learn the science behind eye fatigue.',
+    summaryEs: 'El Síndrome Visual Informático afecta al 64–90% de usuarios de computadora según Rosenfield (2011) y ≥50% según Sheppard & Wolffsohn (2018). Conoce la ciencia detrás del cansancio ocular.',
+    summaryEn: 'Computer Vision Syndrome affects 64–90% of computer users (Rosenfield 2011) and ≥50% according to Sheppard & Wolffsohn (2018). Learn the science behind digital eye strain.',
     readMinutes: 6,
     accentFrom: 'from-blue-500',
     accentTo: 'to-indigo-600',
     contentEs: [
       {
         heading: '¿Qué es el Síndrome Visual Informático?',
-        body: 'La fatiga visual digital, clínicamente conocida como Síndrome Visual Informático (SVI), es un conjunto de síntomas oculares y visuales que resulta del uso prolongado de pantallas. Según la American Optometric Association, afecta al 65–90 % de quienes trabajan o estudian frente a dispositivos más de dos horas al día. No es una enfermedad sino una respuesta acumulada al estrés visual repetitivo.'
+        body: 'La fatiga visual digital, clínicamente conocida como Síndrome Visual Informático (SVI) o Computer Vision Syndrome (CVS), es un conjunto de síntomas oculares y visuales que resultan del uso prolongado de pantallas. Rosenfield (Ophthalmic Physiol Opt, 2011) describió su presencia en el 64–90% de los usuarios de computadora, con síntomas oculares, visuales y musculoesqueléticos. Sheppard y Wolffsohn (BMJ Open Ophthalmol, 2018) estimaron una prevalencia ≥50% y propusieron la clasificación en dos grupos de síntomas que explica mejor la fisiopatología.'
       },
       {
-        heading: 'Lo que ocurre dentro de tu ojo',
-        body: 'Al leer en papel, parpadeas entre 15 y 20 veces por minuto. Frente a una pantalla, ese número cae a 5–7 veces. Menos parpadeo significa menor lubricación de la superficie ocular, lo que produce sequedad e irritación. Al mismo tiempo, el músculo ciliar —el que ajusta la curvatura del cristalino para enfocar— trabaja de forma constante e intensa, ya que la distancia y el brillo de las pantallas cambian continuamente.'
+        heading: 'Síntomas internos y externos: la clasificación de Sheppard & Wolffsohn',
+        body: 'Sheppard y Wolffsohn (2018) diferenciaron los síntomas del SVI en dos categorías. Los síntomas internos —astenopía, cefalea, visión borrosa— están vinculados a disfunción acomodativa y de vergencia: el músculo ciliar trabaja en "acomodación sostenida" forzando el cristalino a mantener el enfoque en una pantalla cercana. Los síntomas externos —ardor, sequedad, irritación, sensación de cuerpo extraño— derivan del ojo seco evaporativo: frente a pantallas parpadeas 5–7 veces por minuto en lugar de 15–20, y el parpadeo suele ser incompleto, dejando la córnea expuesta.'
       },
       {
-        heading: 'El papel de la resolución y el contraste',
-        body: 'Las letras impresas tienen bordes perfectamente definidos; los píxeles de una pantalla crean bordes difusos que el ojo intenta reenfocar de forma repetida e inconsciente. Este microesfuerzo, acumulado durante horas, agota el músculo ciliar. Además, el alto contraste luminoso —texto negro sobre fondo blanco brillante— obliga al iris a contraerse con mayor frecuencia, sumando más carga muscular.'
+        heading: 'Anomalías oculomotoras: el hallazgo de Rosenfield',
+        body: 'Rosenfield (2011) identificó como causas principales del SVI las anomalías acomodativas y de vergencia: las respuestas de enfoque frente a pantallas son similares a las del papel, pero las demandas sostenidas durante horas generan fatiga del músculo ciliar y de los músculos extraoculares. Las letras impresas tienen bordes perfectamente definidos; los píxeles crean bordes difusos que el ojo intenta reenfocar de forma repetida e inconsciente. Este microesfuerzo, acumulado durante horas, agota la musculatura ocular antes de que percibas el cansancio.'
       },
       {
-        heading: 'Síntomas más frecuentes',
-        body: 'El SVI se manifiesta como visión borrosa temporal, ojos secos o con sensación de ardor, cefalea frontal o en las sienes, dolor de cuello y hombros (tensión postural asociada), y dificultad para reenfocar al apartar la vista de la pantalla. Estos síntomas suelen aparecer después de 2–3 horas de exposición continua y desaparecen con descanso, aunque si se vuelven diarios es una señal de alerta.'
+        heading: 'Síntomas más frecuentes y cuándo aparecen',
+        body: 'El SVI se manifiesta como visión borrosa temporal, ojos secos o con sensación de ardor, cefalea frontal o en las sienes, dolor de cuello y hombros (tensión postural asociada), y dificultad para reenfocar al apartar la vista de la pantalla. Estos síntomas suelen aparecer después de 2–3 horas de exposición continua y desaparecen con descanso, aunque si se vuelven diarios es una señal de alerta. Rosenfield señaló que la eficacia de muchos tratamientos propuestos (filtros, lágrimas artificiales) permanecía sin demostrarse rigurosamente en 2011 — agenda que sigue vigente.'
       },
       {
-        heading: 'Por qué el daño es silencioso',
-        body: 'El sistema visual humano es extraordinariamente adaptable: los músculos extra-oculares y el músculo ciliar pueden sostener el esfuerzo durante horas antes de que sientas molestia. Para cuando el cansancio es evidente, el daño acumulado del día ya ha ocurrido. Esto hace que la prevención sistemática —descansos programados, ajuste del entorno— sea mucho más efectiva que reaccionar a los síntomas.'
+        heading: 'Por qué la prevención sistemática supera a la reacción',
+        body: 'El sistema visual humano es extraordinariamente adaptable: los músculos extraoculares y el músculo ciliar pueden sostener el esfuerzo durante horas antes de que sientas molestia. Para cuando el cansancio es evidente, el daño acumulado del día ya ha ocurrido. Sheppard y Wolffsohn (2018) recomiendan un abordaje multimodal: corrección refractiva precisa, manejo del ojo seco, pausas regulares con la regla 20-20-20 y ajustes ergonómicos. Estos elementos combinados tienen mucho mayor respaldo que cualquier gadget o filtro individual.'
       },
     ],
     contentEn: [
       {
         heading: 'What is Computer Vision Syndrome?',
-        body: 'Digital eye strain, clinically known as Computer Vision Syndrome (CVS), is a group of ocular and visual symptoms resulting from prolonged screen use. According to the American Optometric Association, it affects 65–90% of those who work or study in front of devices for more than two hours a day. It is not a disease but an accumulated response to repetitive visual stress.'
+        body: 'Digital eye strain, clinically known as Computer Vision Syndrome (CVS), is a group of ocular and visual symptoms resulting from prolonged screen use. Rosenfield (Ophthalmic Physiol Opt, 2011) described it in 64–90% of computer users, with ocular, visual, and musculoskeletal symptoms. Sheppard and Wolffsohn (BMJ Open Ophthalmol, 2018) estimated a prevalence of ≥50% and proposed a two-category symptom classification that better explains the pathophysiology.'
       },
       {
-        heading: 'What happens inside your eye',
-        body: 'When reading on paper, you blink 15–20 times per minute. In front of a screen, that number drops to 5–7. Less blinking means less lubrication of the ocular surface, leading to dryness and irritation. At the same time, the ciliary muscle — which adjusts the lens curvature to focus — works constantly because the distance and brightness of screens change continuously.'
+        heading: 'Internal and external symptoms: Sheppard & Wolffsohn\'s classification',
+        body: 'Sheppard and Wolffsohn (2018) divided CVS symptoms into two categories. Internal symptoms — asthenopia, headache, blurred vision — are linked to accommodative and vergence dysfunction: the ciliary muscle works in "sustained accommodation," forcing the lens to maintain focus on a close screen. External symptoms — burning, dryness, irritation, foreign body sensation — stem from evaporative dry eye: in front of screens you blink 5–7 times per minute instead of 15–20, and blinking is often incomplete, leaving the cornea exposed.'
       },
       {
-        heading: 'Resolution and contrast',
-        body: 'Printed letters have perfectly defined edges; screen pixels create blurred edges that the eye tries to refocus repeatedly and unconsciously. This micro-effort, accumulated over hours, exhausts the ciliary muscle. Additionally, high luminous contrast — black text on a bright white background — forces the iris to contract more frequently, adding more muscular load.'
+        heading: 'Oculomotor anomalies: Rosenfield\'s finding',
+        body: 'Rosenfield (2011) identified accommodative and vergence anomalies as the main causes of CVS: focusing responses to screens are similar to paper, but sustained demands for hours generate ciliary muscle and extra-ocular muscle fatigue. Printed letters have perfectly defined edges; pixels create blurred edges that the eye tries to refocus repeatedly and unconsciously. This micro-effort, accumulated over hours, exhausts the ocular musculature before you perceive the fatigue.'
       },
       {
-        heading: 'Most common symptoms',
-        body: 'CVS manifests as temporary blurred vision, dry or burning eyes, frontal headache or in the temples, neck and shoulder pain (associated postural tension), and difficulty refocusing when looking away from the screen. These symptoms usually appear after 2–3 hours of continuous exposure and disappear with rest, though if they become daily, it is a warning sign.'
+        heading: 'Most common symptoms and when they appear',
+        body: 'CVS manifests as temporary blurred vision, dry or burning eyes, frontal headache or in the temples, neck and shoulder pain (associated postural tension), and difficulty refocusing when looking away from the screen. Symptoms usually appear after 2–3 hours of continuous exposure and disappear with rest, though if they become daily, it is a warning sign. Rosenfield noted that the efficacy of many proposed treatments (filters, artificial tears) remained unproven as of 2011 — an agenda that remains active today.'
       },
       {
-        heading: 'Why the damage is silent',
-        body: 'The human visual system is extraordinarily adaptable: the extra-ocular muscles and the ciliary muscle can sustain effort for hours before you feel discomfort. By the time the fatigue is evident, the day\'s accumulated damage has already occurred. This makes systematic prevention — scheduled breaks, environment adjustments — far more effective than reacting to symptoms.'
+        heading: 'Why systematic prevention beats reaction',
+        body: 'The human visual system is extraordinarily adaptable: extra-ocular muscles and the ciliary muscle can sustain effort for hours before you feel discomfort. By the time the fatigue is evident, the day\'s accumulated damage has already occurred. Sheppard and Wolffsohn (2018) recommend a multimodal approach: precise refractive correction, dry eye management, regular breaks with the 20-20-20 rule, and ergonomic adjustments. These combined elements have far more clinical support than any single gadget or filter.'
       },
     ],
   },
@@ -505,7 +505,178 @@ export const ARTICLES: Article[] = [
     ],
   },
 
-  // ── 10. Por qué Therapheye ───────────────────────────────────────────────────
+  // ── 10. Glaucoma ─────────────────────────────────────────────────────────────
+  {
+    id: 'glaucoma-epidemiologia',
+    category: 'ciencia',
+    titleEs: 'Glaucoma: la epidemia silenciosa que afectará a 111 millones en 2040',
+    titleEn: 'Glaucoma: the silent epidemic that will affect 111 million by 2040',
+    summaryEs: 'Un metaanálisis bayesiano de 50 estudios poblacionales (Tham et al. 2014) proyecta 111,8 millones de afectados para 2040. El ensayo OHTS demostró que el tratamiento precoz reduce el riesgo en un 60%.',
+    summaryEn: 'A Bayesian meta-analysis of 50 population studies (Tham et al. 2014) projects 111.8 million affected by 2040. The OHTS trial showed early treatment reduces risk by 60%.',
+    readMinutes: 6,
+    accentFrom: 'from-violet-600',
+    accentTo: 'to-purple-800',
+    contentEs: [
+      {
+        heading: '64 millones hoy, 111 millones en 2040',
+        body: 'Tham et al. (Ophthalmology, 2014) realizaron una revisión sistemática y metaanálisis bayesiano de 50 estudios poblacionales —3.770 casos de GPAA entre 140.496 examinados y 786 de GPAC entre 112.398— proyectando la carga global en adultos de 40–80 años. La prevalencia global estimada es del 3,54% (IC credible 95%: 2,09–5,82). En términos absolutos: 64,3 millones afectados en 2013, 76,0 millones en 2020 y 111,8 millones proyectados para 2040. La carga crecerá desproporcionadamente en Asia y África.'
+      },
+      {
+        heading: 'GPAA y GPAC: dos enfermedades, dos geografías',
+        body: 'El glaucoma primario de ángulo abierto (GPAA) alcanza su mayor prevalencia en África (4,20%), impulsado por la alta susceptibilidad en poblaciones de ancestría africana (OR vs. europea: 2,80). El glaucoma primario de ángulo cerrado (GPAC) es más prevalente en Asia (1,09%). Para el GPAA, los hombres tienen mayor riesgo que las mujeres (OR 1,36) y los entornos urbanos presentan mayor prevalencia que los rurales (OR 1,58). Estos patrones geográficos orientan el diseño de tamizajes y estrategias de salud pública a nivel global.'
+      },
+      {
+        heading: 'El OHTS: el ensayo que validó el tratamiento precoz',
+        body: 'Kass et al. (Arch Ophthalmol, 2002) aleatorizaron 1.636 participantes de 40–80 años con hipertensión ocular (PIO 24–32 mmHg) a medicación hipotensora tópica versus observación, con seguimiento semestral de 60 meses. La incidencia acumulada de GPAA fue 4,4% en el grupo medicado vs. 9,5% en el grupo de observación (HR 0,40; IC95% 0,27–0,59; p<0,0001). El beneficio se mantuvo tras ajustar por todos los factores de riesgo (HR ajustado 0,34). Los datos a 20 años confirmaron la eficacia duradera del tratamiento precoz.'
+      },
+      {
+        heading: 'Los predictores clínicos que debes conocer',
+        body: 'El estudio acompañante de Gordon et al. (dentro del OHTS) identificó los predictores basales de conversión a GPAA: edad avanzada, PIO basal más alta, córnea más delgada —el grosor corneal central (CCT) es ahora un parámetro estándar en la estratificación del riesgo—, cociente copa-disco vertical mayor, y desviación estándar del patrón (PSD) elevada en la perimetría. Este modelo predictivo sigue siendo la base de la práctica clínica actual para decidir cuándo iniciar tratamiento en pacientes con hipertensión ocular.'
+      },
+      {
+        heading: 'Por qué la revisión periódica salva la visión',
+        body: 'El glaucoma es asintomático hasta que el daño del nervio óptico es avanzado, momento en el que la pérdida de campo visual puede ser irreversible. Tham et al. destacaron que la carga creciente —especialmente en regiones de bajos recursos— exige estrategias de tamizaje proactivo, no reactivo. Si tienes factores de riesgo (PIO elevada, antecedentes familiares, córnea delgada, ascendencia africana o asiática, o edad >50), la detección precoz es la única intervención que puede prevenir la ceguera: el tratamiento nunca recupera la visión perdida, pero sí detiene la progresión.'
+      },
+    ],
+    contentEn: [
+      {
+        heading: '64 million today, 111 million by 2040',
+        body: 'Tham et al. (Ophthalmology, 2014) performed a systematic review and Bayesian meta-analysis of 50 population studies — 3,770 POAG cases among 140,496 examined and 786 PACG cases among 112,398 — projecting the global burden in adults aged 40–80. The estimated global prevalence is 3.54% (95% credible interval: 2.09–5.82). In absolute terms: 64.3 million affected in 2013, 76.0 million in 2020, and 111.8 million projected for 2040. The burden will grow disproportionately in Asia and Africa.'
+      },
+      {
+        heading: 'POAG and PACG: two diseases, two geographies',
+        body: 'Primary open-angle glaucoma (POAG) reaches its highest prevalence in Africa (4.20%), driven by high susceptibility in populations of African ancestry (OR vs. European: 2.80). Primary angle-closure glaucoma (PACG) is most prevalent in Asia (1.09%). For POAG, men have higher risk than women (OR 1.36) and urban settings show higher prevalence than rural (OR 1.58). These geographic patterns guide the design of screening and public health strategies globally.'
+      },
+      {
+        heading: 'OHTS: the trial that validated early treatment',
+        body: 'Kass et al. (Arch Ophthalmol, 2002) randomized 1,636 participants aged 40–80 with ocular hypertension (IOP 24–32 mmHg) to topical hypotensive medication versus observation, with six-monthly follow-up over 60 months. Cumulative POAG incidence was 4.4% in the treated group vs. 9.5% in the observation group (HR 0.40; 95% CI 0.27–0.59; p<0.0001). The benefit was maintained after adjusting for all risk factors (adjusted HR 0.34). Twenty-year data confirmed the lasting efficacy of early treatment.'
+      },
+      {
+        heading: 'Clinical predictors you should know',
+        body: 'The companion Gordon et al. study (within OHTS) identified baseline predictors of conversion to POAG: older age, higher baseline IOP, thinner cornea — central corneal thickness (CCT) is now a standard parameter in risk stratification —, larger vertical cup-to-disc ratio, and higher pattern standard deviation (PSD) on perimetry. This predictive model remains the basis of current clinical practice for deciding when to initiate treatment in patients with ocular hypertension.'
+      },
+      {
+        heading: 'Why periodic check-ups save vision',
+        body: 'Glaucoma is asymptomatic until optic nerve damage is advanced, by which time visual field loss may be irreversible. Tham et al. highlighted that the growing burden — especially in low-resource regions — demands proactive rather than reactive screening strategies. If you have risk factors (elevated IOP, family history, thin cornea, African or Asian ancestry, or age >50), early detection is the only intervention that can prevent blindness: treatment never recovers lost vision, but it stops progression.'
+      },
+    ],
+  },
+
+  // ── 11. Miopía y Tiempo Exterior ──────────────────────────────────────────────
+  {
+    id: 'miopia-tiempo-exterior',
+    category: 'habitos',
+    titleEs: 'Miopía y Tiempo al Aire Libre: la intervención que recorta su incidencia a la mitad',
+    titleEn: 'Myopia and Outdoor Time: the intervention that halves its incidence',
+    summaryEs: 'He et al. (JAMA, 2015) y Wu et al. (Ophthalmology, 2013) demostraron que 40–80 minutos más al día al exterior reducen la incidencia de miopía entre un 23% y un 50% en niños escolares.',
+    summaryEn: 'He et al. (JAMA, 2015) and Wu et al. (Ophthalmology, 2013) showed that 40–80 extra minutes outdoors per day reduce myopia incidence by 23–50% in school-age children.',
+    readMinutes: 5,
+    accentFrom: 'from-green-500',
+    accentTo: 'to-emerald-700',
+    contentEs: [
+      {
+        heading: 'La epidemia de miopía: un problema creciente y prevenible',
+        body: 'La miopía es una de las condiciones refractivas más prevalentes del mundo y su incidencia ha aumentado aceleradamente en las últimas décadas, especialmente en poblaciones de Asia oriental donde puede afectar al 80–90% de los jóvenes urbanos. Más allá del inconveniente visual, la miopía elevada es un factor de riesgo independiente para desprendimiento de retina, glaucoma, cataratas y degeneración macular. La identificación de intervenciones simples, baratas y escalables para reducir su incidencia es una prioridad de salud pública global.'
+      },
+      {
+        heading: 'El ensayo de Guangzhou (He et al. 2015, JAMA)',
+        body: 'He et al. aleatorizaron 12 escuelas primarias de Guangzhou (6 intervención, n=952; 6 control, n=951) con seguimiento de 3 años (2010–2013). La intervención fue tan simple como añadir una clase adicional de 40 minutos al aire libre cada día, más promoción parental de actividad exterior. Resultado: incidencia acumulada de miopía a 3 años del 30,4% en el grupo intervención vs. 39,5% en el control (diferencia −9,1%; IC95% −14,1 a −4,1). El OR ajustado por miopía parental fue 0,73 (IC95% 0,57–0,92; p=0,01). Fue el primer ensayo clínico aleatorizado a gran escala que demostró que aumentar el tiempo al exterior reduce la incidencia de miopía en niños de alto riesgo.'
+      },
+      {
+        heading: 'El Programa ROC en Taiwán (Wu et al. 2013, Ophthalmology)',
+        body: 'Wu et al. implementaron el programa Recess Outside the Classroom (ROC) en dos escuelas suburbanas de Taiwán con 571 niños de 7–11 años. La intervención promovió actividad exterior durante los recreos (~80 minutos adicionales/día). La nueva incidencia de miopía a 1 año fue del 8,41% en el grupo ROC vs. 17,65% en el control — una reducción aproximada del 50%. El efecto fue especialmente marcado en niños no miopes al inicio. Este estudio fue el fundamento del programa nacional taiwanés "Tian-Tian 120" (120 minutos diarios al aire libre), que ha revertido la tendencia creciente de miopía en escolares taiwaneses.'
+      },
+      {
+        heading: 'Por qué el exterior protege: la ciencia detrás',
+        body: 'La luz solar de alta intensidad estimula la liberación de dopamina en la retina, un neurotransmisor que inhibe el alargamiento axial del ojo — el mecanismo central del desarrollo de la miopía. Además, el exterior obliga al sistema visual a trabajar con distancias largas y variables, reduciendo la carga de acomodación sostenida que impone la lectura y las pantallas. Ninguno de estos mecanismos opera de la misma forma bajo luz artificial, incluso con lámparas de alta intensidad: la calidad espectral y la intensidad de la luz solar no son reemplazables fácilmente en interiores.'
+      },
+      {
+        heading: 'Implicaciones prácticas para niños y adultos',
+        body: 'Para niños en edad escolar, la evidencia es clara: 40–80 minutos diarios adicionales al exterior — ya sean recreos, deportes o cualquier actividad — reducen significativamente la probabilidad de desarrollar miopía. Para adultos ya miopes, el tiempo exterior no revertirá la condición, pero puede frenar su progresión y reduce el riesgo de patologías asociadas. En el contexto del trabajo digital, alternar pantallas con salidas al exterior —aunque sean de 10–15 minutos— es la intervención más asequible y con mayor respaldo científico para la salud visual a largo plazo.'
+      },
+    ],
+    contentEn: [
+      {
+        heading: 'The myopia epidemic: a growing and preventable problem',
+        body: 'Myopia is one of the world\'s most prevalent refractive conditions, and its incidence has grown sharply in recent decades, especially in East Asian urban populations where it can affect 80–90% of young people. Beyond visual inconvenience, high myopia is an independent risk factor for retinal detachment, glaucoma, cataracts, and macular degeneration. Identifying simple, affordable, and scalable interventions to reduce its incidence is a global public health priority.'
+      },
+      {
+        heading: 'The Guangzhou trial (He et al. 2015, JAMA)',
+        body: 'He et al. randomized 12 primary schools in Guangzhou (6 intervention, n=952; 6 control, n=951) with 3-year follow-up (2010–2013). The intervention was as simple as adding one additional 40-minute outdoor class each day, plus parental promotion of outdoor activity. Result: cumulative 3-year myopia incidence of 30.4% in the intervention group vs. 39.5% in the control (difference −9.1%; 95%CI −14.1 to −4.1). The OR adjusted for parental myopia was 0.73 (95%CI 0.57–0.92; p=0.01). It was the first large-scale randomized clinical trial to demonstrate that increasing outdoor time reduces myopia incidence in high-risk children.'
+      },
+      {
+        heading: 'The ROC Program in Taiwan (Wu et al. 2013, Ophthalmology)',
+        body: 'Wu et al. implemented the Recess Outside the Classroom (ROC) program in two suburban Taiwanese schools with 571 children aged 7–11. The intervention promoted outdoor activity during recesses (~80 additional minutes/day). New myopia incidence at 1 year was 8.41% in the ROC group vs. 17.65% in the control — approximately a 50% reduction. The effect was especially marked in non-myopic children at baseline. This study was the foundation of Taiwan\'s national "Tian-Tian 120" program (120 daily minutes outdoors), which has reversed the rising trend of myopia in Taiwanese schoolchildren.'
+      },
+      {
+        heading: 'Why the outdoors protects: the science behind it',
+        body: 'High-intensity sunlight stimulates the release of dopamine in the retina, a neurotransmitter that inhibits axial elongation of the eye — the central mechanism in myopia development. Additionally, the outdoors forces the visual system to work with long and variable distances, reducing the sustained accommodation load imposed by reading and screens. Neither mechanism operates the same way under artificial light, even high-intensity lamps: the spectral quality and intensity of sunlight are not easily replicated indoors.'
+      },
+      {
+        heading: 'Practical implications for children and adults',
+        body: 'For school-age children, the evidence is clear: 40–80 additional daily minutes outdoors — whether recesses, sports, or any activity — significantly reduce the probability of developing myopia. For adults already with myopia, outdoor time will not reverse the condition, but can slow its progression and reduces the risk of associated pathologies. In the context of digital work, alternating screens with outdoor breaks — even 10–15 minutes — is the most affordable and scientifically supported intervention for long-term visual health.'
+      },
+    ],
+  },
+
+  // ── 12. Ojo Seco DEWS II ─────────────────────────────────────────────────────
+  {
+    id: 'ojo-seco-dews',
+    category: 'ciencia',
+    titleEs: 'Ojo Seco: el TFOS DEWS II y lo que la ciencia dice sobre el 5–50% de la población',
+    titleEn: 'Dry Eye: TFOS DEWS II and what science says about 5–50% of the population',
+    summaryEs: 'Stapleton et al. (2017) establecieron que el ojo seco afecta al 5–50% de la población mundial. Jones et al. (2017) propusieron el algoritmo terapéutico escalonado que guía el tratamiento actual.',
+    summaryEn: 'Stapleton et al. (2017) established dry eye affects 5–50% of the world population. Jones et al. (2017) proposed the stepwise therapeutic algorithm guiding current treatment.',
+    readMinutes: 6,
+    accentFrom: 'from-sky-500',
+    accentTo: 'to-blue-700',
+    contentEs: [
+      {
+        heading: '5–50%: por qué el rango es tan amplio',
+        body: 'Stapleton et al. (Ocul Surf, 2017) publicaron el informe de epidemiología del segundo Dry Eye Workshop de TFOS (DEWS II), un metaanálisis de datos globales publicados. La prevalencia del ojo seco varía del 5% al 50% según el criterio diagnóstico utilizado: si solo se consideran síntomas subjetivos, la prevalencia es menor; si se incluyen también signos objetivos (tasa de parpadeo, osmolaridad lagrimal, tinción corneal), puede llegar al 75% en ciertas cohortes. Un metaanálisis bayesiano posterior (2021) acotó la estimación global al 11,59% sintomático y al 29,5% aplicando los criterios diagnósticos DEWS II completos.'
+      },
+      {
+        heading: '¿Quién tiene mayor riesgo?',
+        body: 'Stapleton et al. identificaron como factores de riesgo no modificables: la edad (incremento marcado a partir de los 50 años), el sexo femenino (las diferencias se hacen significativas con la edad, relacionadas con cambios hormonales) y la etnia asiática (factor de riesgo consistente en múltiples estudios). Los factores modificables incluyen el uso intensivo de pantallas (que reduce el parpadeo completo), las lentes de contacto, ciertos medicamentos sistémicos (antihistamínicos, antidepresivos, diuréticos) y el ambiente seco o con corrientes de aire. El estudio señaló la escasez de datos en el hemisferio sur y en poblaciones jóvenes, donde la exposición digital creciente es una preocupación emergente.'
+      },
+      {
+        heading: 'El impacto económico: equiparable a la angina inestable',
+        body: 'El DEWS II destacó que el impacto económico del ojo seco es sustancial y está dominado por la pérdida de productividad, no por los costes directos de tratamiento. En casos severos, el impacto en la calidad de vida —medido con instrumentos como el SF-36 y el NEI-VFQ— es comparable al de enfermedades como la angina inestable o la EPOC. Este dato contextualiza la importancia de abordar el ojo seco no como una molestia menor sino como una condición crónica que afecta el rendimiento laboral, el bienestar y la capacidad de usar dispositivos digitales de forma sostenida.'
+      },
+      {
+        heading: 'El algoritmo terapéutico DEWS II (Jones et al. 2017)',
+        body: 'Jones et al. (Ocul Surf, 2017) publicaron el informe de manejo del DEWS II, revisando el armamentario terapéutico disponible y proponiendo un algoritmo escalonado por severidad y subtipo. El paso 1 incluye lubricantes, modificaciones del entorno y del estilo de vida, y pausas ante pantallas. El paso 2 incorpora antiinflamatorios tópicos (ciclosporina, corticoides de corta duración) y tratamiento de la disfunción de glándulas de Meibomio. Los pasos 3 y 4 contemplan oclusión de puntos lagrimales, suero autólogo y abordajes quirúrgicos. Los autores reconocen que muchas terapias carecen de evidencia de nivel 1, y que la estrategia debe individualizarse según el subtipo (acuodeficiente vs. evaporativo/MGD).'
+      },
+      {
+        heading: 'La convergencia con el entorno digital: DEWS III en el horizonte',
+        body: 'El TFOS Lifestyle Report (2023) integró la evidencia acumulada sobre cómo el entorno digital afecta la superficie ocular: la reducción del parpadeo ante pantallas, el parpadeo incompleto que deja la córnea expuesta, y la mayor exposición corneal por la posición elevada de la mirada ante el monitor contribuyen directamente al ojo seco evaporativo. Esta es la frontera emergente que ya integran los reportes más recientes y que anticipa los contenidos del DEWS III. El ojo seco digital ya no es solo una condición clínica: es el resultado previsible de un estilo de vida moderno, y su manejo requiere tanto tratamiento médico como cambios de comportamiento ante pantallas.'
+      },
+    ],
+    contentEn: [
+      {
+        heading: '5–50%: why the range is so wide',
+        body: 'Stapleton et al. (Ocul Surf, 2017) published the epidemiology report for the second TFOS Dry Eye Workshop (DEWS II), a meta-analysis of global published data. Dry eye prevalence ranges from 5% to 50% depending on the diagnostic criterion used: considering only subjective symptoms yields lower prevalence; including objective signs (blink rate, tear osmolarity, corneal staining) can reach 75% in certain cohorts. A subsequent Bayesian meta-analysis (2021) narrowed the global estimate to 11.59% symptomatic and 29.5% applying full DEWS II diagnostic criteria.'
+      },
+      {
+        heading: 'Who is at highest risk?',
+        body: 'Stapleton et al. identified non-modifiable risk factors: age (marked increase after age 50), female sex (differences become significant with age, related to hormonal changes), and Asian ethnicity (a consistent risk factor across multiple studies). Modifiable factors include intensive screen use (which reduces complete blinking), contact lenses, certain systemic medications (antihistamines, antidepressants, diuretics), and dry or drafty environments. The study noted a shortage of data in the Southern Hemisphere and in young populations, where growing digital exposure is an emerging concern.'
+      },
+      {
+        heading: 'Economic impact: comparable to unstable angina',
+        body: 'DEWS II highlighted that the economic impact of dry eye is substantial and dominated by productivity loss, not direct treatment costs. In severe cases, the quality-of-life impact — measured with instruments such as the SF-36 and NEI-VFQ — is comparable to conditions like unstable angina or COPD. This contextualizes the importance of addressing dry eye not as a minor nuisance but as a chronic condition that affects work performance, well-being, and the ability to use digital devices sustainably.'
+      },
+      {
+        heading: 'The DEWS II therapeutic algorithm (Jones et al. 2017)',
+        body: 'Jones et al. (Ocul Surf, 2017) published the DEWS II management report, reviewing the therapeutic armamentarium and proposing a stepwise algorithm by severity and subtype. Step 1 includes lubricants, environmental and lifestyle modifications, and screen breaks. Step 2 incorporates topical anti-inflammatories (cyclosporine, short-term corticosteroids) and Meibomian gland dysfunction treatment. Steps 3 and 4 include punctal occlusion, autologous serum, and surgical approaches. The authors acknowledge many therapies lack Level 1 evidence, and the strategy should be individualized by subtype (aqueous-deficient vs. evaporative/MGD).'
+      },
+      {
+        heading: 'Convergence with the digital environment: DEWS III on the horizon',
+        body: 'The TFOS Lifestyle Report (2023) integrated accumulated evidence on how the digital environment affects the ocular surface: reduced blinking in front of screens, incomplete blinking that leaves the cornea exposed, and greater corneal exposure due to the elevated gaze position at the monitor all directly contribute to evaporative dry eye. This is the emerging frontier already integrated in the most recent reports and anticipated in DEWS III content. Digital dry eye is no longer just a clinical condition: it is the predictable result of a modern lifestyle, and its management requires both medical treatment and behavioral changes around screen use.'
+      },
+    ],
+  },
+
+  // ── 13. Por qué Therapheye ───────────────────────────────────────────────────
   {
     id: 'por-que-therapheye',
     category: 'therapheye',

@@ -450,6 +450,167 @@ const IlluTherapheye = () => (
   </svg>
 );
 
+const IlluGlaucoma = () => (
+  <svg viewBox="0 0 240 160" className="w-full h-full" aria-hidden="true">
+    <defs>
+      <radialGradient id="gl-bg" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stopColor="#1e1b4b"/>
+        <stop offset="100%" stopColor="#0f0a1e"/>
+      </radialGradient>
+      <radialGradient id="gl-glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.5"/>
+        <stop offset="100%" stopColor="#7c3aed" stopOpacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="240" height="160" fill="url(#gl-bg)"/>
+    {/* Glow */}
+    <ellipse cx="80" cy="80" rx="50" ry="32" fill="url(#gl-glow)"/>
+    {/* Esclerótica */}
+    <ellipse cx="80" cy="80" rx="52" ry="33" fill="white" opacity="0.92"/>
+    {/* Iris */}
+    <circle cx="80" cy="80" r="22" fill="#6d28d9"/>
+    <circle cx="80" cy="80" r="20" fill="#4c1d95"/>
+    {/* Copa óptica agrandada — signo de daño */}
+    <circle cx="80" cy="80" r="13" fill="#2e1065" opacity="0.95"/>
+    <circle cx="80" cy="80" r="7" fill="#6d28d9" opacity="0.5"/>
+    {/* Brillo iris */}
+    <circle cx="72" cy="73" r="3" fill="white" opacity="0.25"/>
+    {/* Párpados */}
+    <path d="M 28 80 Q 80 48 132 80" fill="#0f0a1e" stroke="none"/>
+    <path d="M 28 80 Q 80 112 132 80" fill="#0f0a1e" stroke="none"/>
+    {/* Flechas de presión intraocular */}
+    {[0,60,120,180,240,300].map((deg, i) => {
+      const r = Math.PI * deg / 180;
+      const x1 = 80 + Math.cos(r) * 44, y1 = 80 + Math.sin(r) * 28;
+      const x2 = 80 + Math.cos(r) * 34, y2 = 80 + Math.sin(r) * 21;
+      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#f59e0b" strokeWidth="1.8" opacity="0.75" strokeLinecap="round"/>;
+    })}
+    {/* Label PIO */}
+    <rect x="132" y="14" width="64" height="20" rx="5" fill="#7c3aed" opacity="0.9"/>
+    <text x="164" y="28" textAnchor="middle" fontSize="8.5" fontWeight="bold" fill="white">PIO elevada</text>
+    {/* Gráfica de barras proyección */}
+    <rect x="152" y="46" width="78" height="82" rx="6" fill="#1e1b4b" stroke="#4c1d95" strokeWidth="1"/>
+    <text x="191" y="62" textAnchor="middle" fontSize="6.5" fill="#a78bfa">Millones afectados</text>
+    {/* Barra 2013 */}
+    <rect x="161" y="102" width="14" height="18" rx="2" fill="#6d28d9"/>
+    <text x="168" y="99" textAnchor="middle" fontSize="5.5" fill="#c4b5fd">64.3</text>
+    <text x="168" y="130" textAnchor="middle" fontSize="5.5" fill="#c4b5fd">2013</text>
+    {/* Barra 2020 */}
+    <rect x="181" y="96" width="14" height="24" rx="2" fill="#7c3aed"/>
+    <text x="188" y="93" textAnchor="middle" fontSize="5.5" fill="#c4b5fd">76.0</text>
+    <text x="188" y="130" textAnchor="middle" fontSize="5.5" fill="#c4b5fd">2020</text>
+    {/* Barra 2040 */}
+    <rect x="201" y="74" width="14" height="46" rx="2" fill="#a855f7"/>
+    <text x="208" y="71" textAnchor="middle" fontSize="5.5" fill="#e9d5ff">111.8</text>
+    <text x="208" y="130" textAnchor="middle" fontSize="5.5" fill="#e9d5ff">2040</text>
+    {/* Fuente */}
+    <text x="12" y="150" fontSize="6.5" fill="#7c3aed" opacity="0.8">Tham et al. Ophthalmology 2014 · 50 estudios</text>
+  </svg>
+);
+
+const IlluMiopia = () => (
+  <svg viewBox="0 0 240 160" className="w-full h-full" aria-hidden="true">
+    <rect width="240" height="160" fill="#f0fdf4"/>
+    {/* Divisor */}
+    <line x1="120" y1="10" x2="120" y2="150" stroke="#d1d5db" strokeWidth="1.5" strokeDasharray="5 3"/>
+    {/* === Lado exterior (izquierdo) === */}
+    {/* Sol */}
+    <circle cx="55" cy="34" r="14" fill="#fbbf24" opacity="0.9"/>
+    {[0,45,90,135,180,225,270,315].map((a, i) => {
+      const r = a * Math.PI / 180;
+      return <line key={i} x1={55+Math.cos(r)*16} y1={34+Math.sin(r)*16} x2={55+Math.cos(r)*24} y2={34+Math.sin(r)*24} stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"/>;
+    })}
+    {/* Árbol */}
+    <rect x="44" y="82" width="7" height="28" rx="2" fill="#92400e"/>
+    <ellipse cx="47" cy="74" rx="16" ry="14" fill="#16a34a"/>
+    {/* Niño exterior */}
+    <circle cx="95" cy="90" r="10" fill="#fde68a" stroke="#d97706" strokeWidth="1.2"/>
+    <circle cx="92" cy="88" r="2" fill="#0f172a"/>
+    <circle cx="98" cy="88" r="2" fill="#0f172a"/>
+    <path d="M 92 95 Q 95 98 98 95" stroke="#0f172a" strokeWidth="1" fill="none"/>
+    <rect x="91" y="100" width="8" height="15" rx="3" fill="#16a34a"/>
+    {/* Ojo sano encima del niño */}
+    <ellipse cx="95" cy="68" rx="10" ry="6" fill="white" stroke="#16a34a" strokeWidth="1.2"/>
+    <circle cx="95" cy="68" r="4" fill="#16a34a"/>
+    <circle cx="95" cy="68" r="2" fill="#0f172a"/>
+    <text x="95" y="56" textAnchor="middle" fontSize="7" fill="#15803d" fontWeight="bold">Sano</text>
+    {/* === Lado pantalla (derecho) === */}
+    {/* Monitor */}
+    <rect x="148" y="46" width="62" height="42" rx="4" fill="#1e293b"/>
+    <rect x="152" y="50" width="54" height="34" rx="3" fill="#0f172a"/>
+    <rect x="156" y="54" width="32" height="3" rx="1" fill="#60a5fa" opacity="0.7"/>
+    <rect x="156" y="61" width="24" height="2" rx="1" fill="#60a5fa" opacity="0.4"/>
+    <rect x="156" y="67" width="28" height="2" rx="1" fill="#60a5fa" opacity="0.4"/>
+    <rect x="175" y="88" width="10" height="4" rx="1" fill="#334155"/>
+    {/* Niño con gafas */}
+    <circle cx="140" cy="90" r="10" fill="#fde68a" stroke="#d97706" strokeWidth="1.2"/>
+    <rect x="134" y="86" width="12" height="6" rx="2" fill="none" stroke="#1d4ed8" strokeWidth="1.3"/>
+    <line x1="134" y1="89" x2="130" y2="89" stroke="#1d4ed8" strokeWidth="1"/>
+    <line x1="146" y1="89" x2="150" y2="89" stroke="#1d4ed8" strokeWidth="1"/>
+    <path d="M 136 95 Q 140 98 143 95" stroke="#0f172a" strokeWidth="1" fill="none"/>
+    <rect x="136" y="100" width="8" height="15" rx="3" fill="#1d4ed8"/>
+    {/* Badge reducción */}
+    <rect x="128" y="14" width="82" height="22" rx="7" fill="#16a34a"/>
+    <text x="169" y="29" textAnchor="middle" fontSize="11" fontWeight="bold" fill="white">−50% miopía</text>
+    {/* Etiquetas */}
+    <text x="62" y="148" textAnchor="middle" fontSize="7" fill="#15803d" fontWeight="600">80 min/día exterior</text>
+    <text x="175" y="148" textAnchor="middle" fontSize="7" fill="#dc2626" fontWeight="600">Solo pantallas</text>
+    {/* Fuentes */}
+    <text x="12" y="10" fontSize="6" fill="#6b7280">He et al. JAMA 2015 · Wu et al. Ophthalmology 2013</text>
+  </svg>
+);
+
+const IlluOjoSeco = () => (
+  <svg viewBox="0 0 240 160" className="w-full h-full" aria-hidden="true">
+    <rect width="240" height="160" fill="#eff6ff"/>
+    {/* Ojo central */}
+    <ellipse cx="110" cy="85" rx="65" ry="42" fill="white" stroke="#bfdbfe" strokeWidth="1.5"/>
+    {/* Capa lipídica (exterior) */}
+    <ellipse cx="110" cy="85" rx="56" ry="35" fill="#dbeafe" opacity="0.45"/>
+    {/* Capa acuosa */}
+    <ellipse cx="110" cy="85" rx="46" ry="28" fill="#bfdbfe" opacity="0.45"/>
+    {/* Iris */}
+    <circle cx="110" cy="85" r="18" fill="#3b82f6" opacity="0.85"/>
+    <circle cx="110" cy="85" r="12" fill="#1e40af"/>
+    <circle cx="110" cy="85" r="7" fill="#0f172a"/>
+    <circle cx="103" cy="79" r="3" fill="white" opacity="0.45"/>
+    {/* Párpados */}
+    <path d="M 45 85 Q 110 52 175 85" fill="#eff6ff" stroke="none"/>
+    <path d="M 45 85 Q 110 118 175 85" fill="#eff6ff" stroke="none"/>
+    <path d="M 45 85 Q 110 52 175 85" fill="none" stroke="#93c5fd" strokeWidth="1.5"/>
+    <path d="M 45 85 Q 110 118 175 85" fill="none" stroke="#93c5fd" strokeWidth="1.5"/>
+    {/* Flechas de evaporación */}
+    {[70,93,116,139,162].map((x, i) => (
+      <g key={i}>
+        <line x1={x} y1={58} x2={x} y2={38} stroke="#f87171" strokeWidth="1.3" strokeDasharray="3 2" opacity="0.75"/>
+        <polygon points={`${x},36 ${x-4},46 ${x+4},46`} fill="#f87171" opacity="0.75"/>
+      </g>
+    ))}
+    <text x="110" y="26" textAnchor="middle" fontSize="7.5" fill="#dc2626" fontWeight="600">Evaporación ↑</text>
+    {/* Badge prevalencia */}
+    <rect x="178" y="12" width="52" height="22" rx="6" fill="#3b82f6" opacity="0.9"/>
+    <text x="204" y="27" textAnchor="middle" fontSize="9" fontWeight="bold" fill="white">5–50%</text>
+    {/* Leyenda capas */}
+    <rect x="10" y="40" width="8" height="8" rx="2" fill="#bfdbfe" stroke="#93c5fd" strokeWidth="0.8"/>
+    <text x="23" y="48" fontSize="6.5" fill="#1d4ed8">Capa lipídica</text>
+    <rect x="10" y="52" width="8" height="8" rx="2" fill="#93c5fd" stroke="#60a5fa" strokeWidth="0.8"/>
+    <text x="23" y="60" fontSize="6.5" fill="#1d4ed8">Capa acuosa</text>
+    <rect x="10" y="64" width="8" height="8" rx="2" fill="#60a5fa" opacity="0.5"/>
+    <text x="23" y="72" fontSize="6.5" fill="#1d4ed8">Capa mucosa</text>
+    {/* Escalones terapéuticos DEWS II */}
+    <text x="196" y="58" textAnchor="middle" fontSize="6.5" fill="#1d4ed8" fontWeight="600">DEWS II</text>
+    {[0,1,2,3].map(i => (
+      <rect key={i} x={178+i*9} y={118-i*10} width="9" height={42+i*10} rx="2" fill="#3b82f6" opacity={0.35+i*0.18}/>
+    ))}
+    <text x="198" y="148" textAnchor="middle" fontSize="6" fill="#1d4ed8">Escalones terapéuticos</text>
+    {/* Badge DEWS II */}
+    <rect x="10" y="130" width="62" height="16" rx="4" fill="#1d4ed8" opacity="0.85"/>
+    <text x="41" y="141" textAnchor="middle" fontSize="7" fontWeight="bold" fill="white">TFOS DEWS II 2017</text>
+    {/* Fuente */}
+    <text x="10" y="156" fontSize="6" fill="#6b7280">Stapleton et al. · Jones et al. Ocul Surf 2017</text>
+  </svg>
+);
+
 // ─── Mapa ilustración ID → componente ─────────────────────────────────────────
 
 const ILLUSTRATIONS: Record<string, () => ReactElement> = {
@@ -462,6 +623,9 @@ const ILLUSTRATIONS: Record<string, () => ReactElement> = {
   'nutricion-ojos':          IlluNutricion,
   'cuando-especialista':     IlluEspecialista,
   'impacto-trabajo-remoto':  IlluTrabajoRemoto,
+  'glaucoma-epidemiologia':  IlluGlaucoma,
+  'miopia-tiempo-exterior':  IlluMiopia,
+  'ojo-seco-dews':           IlluOjoSeco,
   'por-que-therapheye':      IlluTherapheye,
 };
 
