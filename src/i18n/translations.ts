@@ -177,10 +177,10 @@ const translations = {
     // Voice announcements
     voiceMinute: { es: 'minuto', en: 'minute' },
     voiceMinutes: { es: 'minutos', en: 'minutes' },
-    voice25: { es: 'Un cuarto completado', en: 'One quarter done' },
+    voice1min: { es: 'Falta un minuto', en: 'One minute left' },
     voice50: { es: 'Llevas la mitad', en: 'Halfway there' },
-    voice75: { es: 'Ya casi terminas', en: 'Almost done, keep going' },
     voice30sec: { es: 'Faltan 30 segundos', en: '30 seconds left' },
+    voice15sec: { es: 'Ya casi terminas', en: 'Almost done' },
     voiceComplete: { es: '¡Ejercicio completado!', en: 'Exercise complete!' },
     voiceStartsIn: { es: 'El ejercicio comienza en', en: 'Exercise starts in' },
     // Steps for each exercise

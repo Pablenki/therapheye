@@ -185,13 +185,21 @@ class AmbientMusic {
     } catch { /* noop */ }
   }
 
-  /** Ajusta el volumen del gainNode principal a fraction (0–1) de MUSIC_VOLUME_DEFAULT */
-  setVolumeFraction(fraction: number) {
+  /** Baja el volumen antes de que el narrador hable (fade-down ~1s) */
+  duckForSpeech() {
     if (!this.isPlaying || !this.gainNode || !this.ctx) return;
-    const target = Math.max(0, Math.min(1, fraction)) * MUSIC_VOLUME_DEFAULT;
     try {
       this.gainNode.gain.cancelScheduledValues(this.ctx.currentTime);
-      this.gainNode.gain.setTargetAtTime(target, this.ctx.currentTime, 0.5);
+      this.gainNode.gain.linearRampToValueAtTime(0.03, this.ctx.currentTime + 1.0);
+    } catch { /* noop */ }
+  }
+
+  /** Restaura el volumen tras el narrador (fade-up ~2s) */
+  restoreVolume() {
+    if (!this.isPlaying || !this.gainNode || !this.ctx) return;
+    try {
+      this.gainNode.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.gainNode.gain.linearRampToValueAtTime(MUSIC_VOLUME_DEFAULT, this.ctx.currentTime + 2.0);
     } catch { /* noop */ }
   }
 
@@ -540,8 +548,15 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   timeLeftRef.current = timeLeft;
 
   const speakIfUnmuted = useCallback((text: string, spkLang: 'es' | 'en' = 'es', onEnd?: () => void) => {
-    if (!mutedRef.current) speakText(text, spkLang, onEnd);
-    else onEnd?.();
+    if (!mutedRef.current) {
+      ambientMusic.duckForSpeech();
+      speakText(text, spkLang, () => {
+        ambientMusic.restoreVolume();
+        onEnd?.();
+      });
+    } else {
+      onEnd?.();
+    }
   }, []);
 
   const playIfUnmuted = useCallback((fn: () => void) => {
@@ -596,19 +611,6 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     } catch { /* noop */ }
   }, [exerciseId, currentExercise.defaultDuration]);
 
-  // ── Quartile milestones pre-computed ──────────────────────────────────────
-  const milestones = useRef(new Set<number>());
-  useEffect(() => {
-    const d = selectedDuration;
-    const m = new Set<number>();
-    // 25%, 50%, 75% marks (as seconds remaining)
-    if (d > 20) {
-      m.add(Math.floor(d * 0.75)); // 25% elapsed = 75% remaining
-      m.add(Math.floor(d * 0.50)); // 50% elapsed = 50% remaining (halfway)
-      m.add(Math.floor(d * 0.25)); // 75% elapsed = 25% remaining
-    }
-    milestones.current = m;
-  }, [selectedDuration]);
 
   // ── Temporizador basado en timestamp (una sola fuente de verdad) ──────────
   // Antes: setInterval(() => prev - 1) acumulaba drift y ponía el audio/voz y el
@@ -638,49 +640,37 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
         // ceil para que en t=0.3s restante sigamos mostrando "1" hasta llegar a 0
         const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
         const d = selectedDuration;
-        const elapsed = d - remaining;
 
         // Actualizar UI (React evita re-render si el valor no cambió)
         setTimeLeft(remaining);
 
-        // Fade-out de música en los últimos 30 segundos
-        if (d > 30) {
-          const fadeSeconds = Math.min(30, d * 0.15); // 15% del tiempo o 30s, lo menor
-          if (remaining <= fadeSeconds) {
-            const fraction = remaining / fadeSeconds;
-            ambientMusic.setVolumeFraction(fraction);
-          }
-        }
-
         // Disparar avisos SOLO cuando el segundo visible cambia.
         // Esto garantiza que la voz se sincronice con el cambio visual.
         if (lastAnnouncedSecondRef.current !== remaining) {
-          const prevRemaining = lastAnnouncedSecondRef.current;
           lastAnnouncedSecondRef.current = remaining;
 
-          // Minuto completo transcurrido
-          if (remaining > 0 && elapsed > 0 && elapsed % 60 === 0 && prevRemaining !== null) {
-            const mins = Math.floor(elapsed / 60);
-            const minStr = lang === 'es' ? 'minuto' : 'minute';
-            const minPluralStr = lang === 'es' ? 'minutos' : 'minutes';
-            speakIfUnmuted(`${mins} ${mins > 1 ? minPluralStr : minStr}`, lang);
+          // 1 minuto restante (solo ejercicios >= 90s)
+          if (remaining === 60 && d >= 90) {
+            speakIfUnmuted(t('exerciseSession', 'voice1min'), lang);
           }
 
-          // Cuartiles 25/50/75
-          if (milestones.current.has(remaining) && remaining > 5) {
-            const pct = Math.round(((d - remaining) / d) * 100);
-            if (pct === 25) speakIfUnmuted(t('exerciseSession', 'voice25'), lang);
-            else if (pct === 50) speakIfUnmuted(t('exerciseSession', 'voice50'), lang);
-            else if (pct === 75) speakIfUnmuted(t('exerciseSession', 'voice75'), lang);
+          // Mitad del ejercicio (solo si > 60s y la mitad no coincide con el aviso de 1min)
+          const halfwaySecond = Math.floor(d / 2);
+          if (remaining === halfwaySecond && d > 60 && halfwaySecond > 60) {
+            speakIfUnmuted(t('exerciseSession', 'voice50'), lang);
           }
 
-          // Aviso "faltan 30s" (solo para ejercicios > 60s)
+          // Faltan 30 segundos (solo ejercicios > 60s)
           if (remaining === 30 && d > 60) {
             speakIfUnmuted(t('exerciseSession', 'voice30sec'), lang);
           }
 
-          // Countdown final (5..1): se dispara en el MISMO tick que se muestra,
-          // eliminando el desfase voz/UI.
+          // Faltan 15 segundos / ya casi terminas (solo ejercicios > 20s)
+          if (remaining === 15 && d > 20) {
+            speakIfUnmuted(t('exerciseSession', 'voice15sec'), lang);
+          }
+
+          // Countdown final (5..1)
           if (remaining <= 5 && remaining > 0) {
             if (lastSpokenCountdownRef.current !== remaining) {
               lastSpokenCountdownRef.current = remaining;

@@ -290,6 +290,8 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   /** Banner "timer activo en otra ventana/extensión" */
   const [foreignSessionMs, setForeignSessionMs]     = useState<number | null>(null);
   const foreignSessionDismissedRef                  = useRef(false);
+  /** Modal: la extensión estaba corriendo al iniciar sesión */
+  const [showExtActivePrompt, setShowExtActivePrompt] = useState<{ accMs: number } | null>(null);
 
   useEffect(() => {
     const handler = () => setIsMobile(isMobileDevice());
@@ -478,13 +480,14 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         // Si ya finalizó hoy → no preguntar nada
         if (baseState.finalized) return;
 
-        // Siempre preguntar si el usuario quiere iniciar el timer al entrar.
-        if (!isMobileDevice()) {
-          if (user?.id) {
-            syncPrefsFromDB(user.id).then(() => setShowStartPrompt(true));
-          } else {
-            setShowStartPrompt(true);
-          }
+        // Solo preguntar si el usuario tiene activa esa preferencia
+        if (user?.id) {
+          syncPrefsFromDB(user.id).then(prefs => {
+            if (prefs.notifyOnLogin && !isMobileDevice()) setShowStartPrompt(true);
+          });
+        } else {
+          const localPrefs = loadTimerPrefs();
+          if (localPrefs.notifyOnLogin && !isMobileDevice()) setShowStartPrompt(true);
         }
       };
 
@@ -496,6 +499,21 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           if (dbState) {
             // BD tiene datos para hoy → SIEMPRE usar BD (no comparar con localStorage)
             persistState({ ...dbState, userId: user.id });
+
+            // Extensión activa al momento del login → preguntar si adoptar en vez de "¿iniciar?"
+            if (dbState._source?.startsWith('ext:') && dbState.isRunning && !dbState.finalized) {
+              const pausedDb: PersistedTimerState = {
+                ...dbState, isRunning: false, startTimestamp: null, userId: user!.id,
+              };
+              persistState(pausedDb);
+              setElapsedSeconds(Math.floor(dbState.accumulatedMs / 1000));
+              setIsRunning(false);
+              lastDbSyncRef.current = 0;
+              saveTimerToDB(user!.id, pausedDb, getWebSourceId());
+              setShowExtActivePrompt({ accMs: dbState.accumulatedMs });
+              return;
+            }
+
             handleLoginTimer(dbState);
           } else {
             // No hay datos en BD para hoy → nueva sesión del día
@@ -688,6 +706,32 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     setShowStartPrompt(false);
   };
 
+  // ── Handlers para extensión activa al login ───────────────────────────────
+
+  const handleExtActiveAdopt = () => {
+    if (!showExtActivePrompt || !user?.id) { setShowExtActivePrompt(null); return; }
+    const st = loadState();
+    const now = Date.now();
+    const started: PersistedTimerState = {
+      ...st,
+      isRunning: true,
+      startTimestamp: now,
+      sessionStartTimestamp: st.sessionStartTimestamp ?? now,
+      finalized: false,
+      stateDate: todayLocalDate(),
+      userId: user.id,
+    };
+    persistState(started);
+    setIsRunning(true);
+    lastDbSyncRef.current = 0;
+    saveTimerToDB(user.id, started, getWebSourceId());
+    setShowExtActivePrompt(null);
+  };
+
+  const handleExtActiveSkip = () => {
+    setShowExtActivePrompt(null);
+  };
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -785,6 +829,37 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         </div>
       )}
 
+      {/* ── Modal: extensión activa al login ── */}
+      {showExtActivePrompt !== null && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                <Monitor className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-800">Timer corriendo en la extensión</h2>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Tu extensión tiene {formatDuration(Math.floor(showExtActivePrompt.accMs / 1000))} acumulados. ¿Quieres continuar desde aquí?
+            </p>
+            <div className="flex gap-3 justify-end mt-1">
+              <button
+                onClick={handleExtActiveSkip}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
+              >
+                No, después
+              </button>
+              <button
+                onClick={handleExtActiveAdopt}
+                className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow"
+              >
+                Sí, continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Banner: timer activo en otra ventana/extensión ── */}
       {foreignSessionMs !== null && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 bg-indigo-600 text-white rounded-2xl shadow-2xl border border-indigo-500 font-semibold text-sm max-w-sm w-full mx-4">
@@ -798,10 +873,9 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           </button>
           <button
             onClick={() => { setForeignSessionMs(null); foreignSessionDismissedRef.current = true; }}
-            className="p-1 rounded-lg hover:bg-indigo-500 transition"
-            title="Cerrar"
+            className="px-3 py-1 rounded-lg bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-400 transition"
           >
-            <X className="w-4 h-4" />
+            No
           </button>
         </div>
       )}
