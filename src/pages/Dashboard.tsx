@@ -239,7 +239,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const prevArticle = () => goToArticle((articleIdx - 1 + ARTICLES.length) % ARTICLES.length);
 
   useEffect(() => {
-    articleIntervalRef.current = setInterval(nextArticle, 25_000);
+    articleIntervalRef.current = setInterval(nextArticle, 18_000);
     return () => { if (articleIntervalRef.current) clearInterval(articleIntervalRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleIdx]);
@@ -630,7 +630,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                     <div
                       key={articleIdx}
                       className="h-full bg-white/70 origin-left"
-                      style={{ animation: 'articleBarProgress 25s linear forwards' }}
+                      style={{ animation: 'articleBarProgress 18s linear forwards' }}
                     />
                   </div>
                 </div>

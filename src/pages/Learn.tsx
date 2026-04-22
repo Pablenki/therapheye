@@ -663,13 +663,13 @@ const Learn = ({ onBack }: LearnProps) => {
     window.scrollTo(0, 0);
   };
 
-  const categories: { id: Category; labelEs: string; labelEn: string }[] = [
-    { id: 'all',        labelEs: 'Todos',       labelEn: 'All'        },
-    { id: 'ciencia',    labelEs: 'Ciencia',     labelEn: 'Science'    },
-    { id: 'habitos',    labelEs: 'Hábitos',     labelEn: 'Habits'     },
-    { id: 'sintomas',   labelEs: 'Síntomas',    labelEn: 'Symptoms'   },
-    { id: 'ejercicios', labelEs: 'Ejercicios',  labelEn: 'Exercises'  },
-    { id: 'therapheye', labelEs: 'Therapheye',  labelEn: 'Therapheye' },
+  const categories: { id: Category; labelEs: string; labelEn: string; emoji: string; activeClass: string }[] = [
+    { id: 'all',        labelEs: 'Todos',       labelEn: 'All',        emoji: '🔍', activeClass: 'bg-white text-indigo-700'           },
+    { id: 'ciencia',    labelEs: 'Ciencia',     labelEn: 'Science',    emoji: '🔬', activeClass: 'bg-blue-500 text-white'             },
+    { id: 'habitos',    labelEs: 'Hábitos',     labelEn: 'Habits',     emoji: '🌿', activeClass: 'bg-green-500 text-white'            },
+    { id: 'sintomas',   labelEs: 'Síntomas',    labelEn: 'Symptoms',   emoji: '⚠️', activeClass: 'bg-red-500 text-white'              },
+    { id: 'ejercicios', labelEs: 'Ejercicios',  labelEn: 'Exercises',  emoji: '👁️', activeClass: 'bg-violet-500 text-white'           },
+    { id: 'therapheye', labelEs: 'Therapheye',  labelEn: 'Therapheye', emoji: '✨', activeClass: 'bg-indigo-500 text-white'           },
   ];
 
   // ── Vista de detalle ────────────────────────────────────────────────────────
@@ -795,26 +795,30 @@ const Learn = ({ onBack }: LearnProps) => {
             className="w-full pl-9 pr-4 py-2.5 bg-white/10 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-400 focus:bg-white/15 transition"
           />
         </div>
-      </div>
 
-      {/* Filtros de categoría */}
-      <div className="bg-white border-b border-gray-100 px-6 py-3 flex gap-2 overflow-x-auto">
-        {categories.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition flex-shrink-0 ${
-              activeCategory === cat.id
-                ? 'bg-indigo-600 text-white shadow'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {es ? cat.labelEs : cat.labelEn}
-          </button>
-        ))}
-        <span className="ml-auto text-xs text-gray-400 self-center flex-shrink-0 pl-4">
-          {filteredArticles.length} {es ? 'artículos' : 'articles'}
-        </span>
+        {/* Filtros de categoría — dentro del banner */}
+        <div className="mt-5 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {categories.map(cat => {
+            const active = activeCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                  active
+                    ? cat.activeClass + ' shadow-lg scale-105'
+                    : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+                }`}
+              >
+                <span>{cat.emoji}</span>
+                {es ? cat.labelEs : cat.labelEn}
+              </button>
+            );
+          })}
+          <span className="ml-2 text-xs text-gray-500 self-center flex-shrink-0 pl-2 whitespace-nowrap">
+            {filteredArticles.length} {es ? 'artículos' : 'articles'}
+          </span>
+        </div>
       </div>
 
       {/* Grid de artículos */}
