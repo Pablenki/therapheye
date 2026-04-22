@@ -169,7 +169,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [screenTimeMs, setScreenTimeMs]     = useState(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
-  const [articleIdx, setArticleIdx] = useState(() => Math.floor(Math.random() * ARTICLES.length));
+  const [articleIdx, setArticleIdx]     = useState(() => Math.floor(Math.random() * ARTICLES.length));
+  const [articleFading, setArticleFading] = useState(false);
+  const articleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [extensionInstalled, setExtensionInstalled] = useState(false);
   const extensionDismissed = localStorage.getItem('therapheye_ext_banner_dismissed') === 'true';
   const notifRef = useRef<HTMLDivElement>(null);
@@ -228,11 +230,19 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
     load(); const iv = setInterval(load, 1000); return () => clearInterval(iv);
   }, []);
 
-  // Rotar artículo cada 60 segundos
+  // Rotar artículo cada 25 segundos con fade
+  const goToArticle = (idx: number) => {
+    setArticleFading(true);
+    setTimeout(() => { setArticleIdx(idx); setArticleFading(false); }, 320);
+  };
+  const nextArticle = () => goToArticle((articleIdx + 1) % ARTICLES.length);
+  const prevArticle = () => goToArticle((articleIdx - 1 + ARTICLES.length) % ARTICLES.length);
+
   useEffect(() => {
-    const iv = setInterval(() => setArticleIdx(i => (i + 1) % ARTICLES.length), 60_000);
-    return () => clearInterval(iv);
-  }, []);
+    articleIntervalRef.current = setInterval(nextArticle, 25_000);
+    return () => { if (articleIntervalRef.current) clearInterval(articleIntervalRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articleIdx]);
 
   // ── Stats + datos semanales + últimos diagnósticos ─────────────────────────
   useEffect(() => {
@@ -557,51 +567,71 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             const title   = es ? article.titleEs   : article.titleEn;
             const summary = es ? article.summaryEs : article.summaryEn;
             return (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-50">
+              <div className="rounded-2xl overflow-hidden shadow-md">
+                {/* Encabezado */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-white border border-b-0 border-gray-100 rounded-t-2xl">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-indigo-500"/>
                     <p className="text-sm font-bold text-gray-800">{es ? 'Artículo del día' : 'Article of the day'}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setArticleIdx(i => (i - 1 + ARTICLES.length) % ARTICLES.length)}
-                      className="p-1 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700"
-                    >
+                    <button onClick={prevArticle} className="p-1 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700">
                       <ChevronLeft className="w-4 h-4"/>
                     </button>
                     <span className="text-[10px] text-gray-400 font-medium tabular-nums">{articleIdx + 1}/{ARTICLES.length}</span>
-                    <button
-                      onClick={() => setArticleIdx(i => (i + 1) % ARTICLES.length)}
-                      className="p-1 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700"
-                    >
+                    <button onClick={nextArticle} className="p-1 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700">
                       <ChevronRight className="w-4 h-4"/>
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-0">
-                  {/* Barra de acento */}
-                  <div className={`w-1 bg-gradient-to-b ${article.accentFrom} ${article.accentTo} flex-shrink-0`}/>
-                  <div className="flex flex-1 gap-4 px-5 py-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${catMeta.bg} ${catMeta.color}`}>
-                          {es ? catMeta.labelEs : catMeta.labelEn}
-                        </span>
-                        <span className="flex items-center gap-1 text-[10px] text-gray-400">
-                          <Clock className="w-3 h-3"/>
-                          {article.readMinutes} min
-                        </span>
-                      </div>
-                      <h3 className="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2">{title}</h3>
-                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{summary}</p>
-                      <button
-                        onClick={() => onNavigate('learn')}
-                        className="mt-3 flex items-center gap-1 text-indigo-600 text-xs font-semibold hover:gap-2 transition-all"
-                      >
+
+                {/* Tarjeta visual */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onNavigate('learn')}
+                  onKeyDown={e => e.key === 'Enter' && onNavigate('learn')}
+                  className={`relative h-52 bg-gradient-to-br ${article.accentFrom} ${article.accentTo} cursor-pointer transition-opacity duration-300 ${articleFading ? 'opacity-0' : 'opacity-100'}`}
+                >
+                  {/* Fondo decorativo */}
+                  <svg className="absolute inset-0 w-full h-full opacity-10 pointer-events-none" viewBox="0 0 420 208" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                    <circle cx="370" cy="-20" r="110" fill="white"/>
+                    <circle cx="30"  cy="210" r="90"  fill="white"/>
+                    <circle cx="210" cy="104" r="55"  fill="white" opacity="0.5"/>
+                    <ellipse cx="210" cy="104" rx="140" ry="88" fill="none" stroke="white" strokeWidth="2.5"/>
+                    <circle  cx="210" cy="104" r="30"  fill="none" stroke="white" strokeWidth="2"/>
+                    <circle  cx="210" cy="104" r="12"  fill="white" opacity="0.8"/>
+                  </svg>
+
+                  {/* Contenido sobre el gradiente */}
+                  <div className="absolute inset-0 flex flex-col justify-end p-5">
+                    <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-white/25 text-white backdrop-blur-sm mb-2 w-fit">
+                      {es ? catMeta.labelEs : catMeta.labelEn}
+                    </span>
+                    <h3 className="text-white font-black text-lg leading-tight mb-1.5 line-clamp-2 drop-shadow">
+                      {title}
+                    </h3>
+                    <p className="text-white/80 text-xs leading-relaxed line-clamp-2 mb-4">
+                      {summary}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1 text-white/70 text-xs">
+                        <Clock className="w-3 h-3"/>
+                        {article.readMinutes} min
+                      </span>
+                      <span className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-white/30 transition">
                         {es ? 'Leer artículo' : 'Read article'} <ChevronRight className="w-3.5 h-3.5"/>
-                      </button>
+                      </span>
                     </div>
+                  </div>
+
+                  {/* Barra de progreso auto-slide */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 overflow-hidden">
+                    <div
+                      key={articleIdx}
+                      className="h-full bg-white/70 origin-left"
+                      style={{ animation: 'articleBarProgress 25s linear forwards' }}
+                    />
                   </div>
                 </div>
               </div>
