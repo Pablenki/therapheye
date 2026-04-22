@@ -478,14 +478,14 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         // Si ya finalizó hoy → no preguntar nada
         if (baseState.finalized) return;
 
-        // Cargar prefs desde BD (fuente de verdad por usuario).
-        // Esto evita que un usuario nuevo herede prefs de otra cuenta guardadas en localStorage.
-        if (user?.id) {
-          syncPrefsFromDB(user.id).then(prefs => {
-            if (prefs.notifyOnLogin && !isMobileDevice()) setShowStartPrompt(true);
-          });
+        // Siempre preguntar si el usuario quiere iniciar el timer al entrar.
+        if (!isMobileDevice()) {
+          if (user?.id) {
+            syncPrefsFromDB(user.id).then(() => setShowStartPrompt(true));
+          } else {
+            setShowStartPrompt(true);
+          }
         }
-        // Si NO activó → no preguntar, no arrancar. El usuario lo inicia manualmente.
       };
 
       // Cargar desde BD para sincronización cross-browser.
@@ -593,6 +593,16 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
             foreignSessionDismissedRef.current = false;
           }
 
+          // Si BD tiene source='reset' → aplicar reset local también
+          if (dbSource === 'reset' && localNow.accumulatedMs > 0) {
+            const resetLocal: PersistedTimerState = { ...dbState, userId: localNow.userId };
+            persistState(resetLocal);
+            setElapsedSeconds(0);
+            setIsRunning(false);
+            setNextBreakInMinutes(null);
+            return;
+          }
+
           // Adoptar estado de BD solo si tiene MÁS tiempo que local (extensión adelantada)
           // o si la extensión pausó (respetar pausa explícita).
           // No adoptar sesión de fuente externa cuando la propia ya está corriendo.
@@ -684,7 +694,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     e.stopPropagation();
     const st = loadState();
     if (st.isRunning) {
-      // PAUSE (not finalize — just pause, keep accumulated time, keep finalized=false)
+      // PAUSE — solo localmente, NO sincronizar a BD para que la extensión siga corriendo
       const ms = calcElapsedMs(st);
       const paused: PersistedTimerState = {
         ...st,
@@ -696,7 +706,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       persistState(paused);
       setIsRunning(false);
       setNextBreakInMinutes(null);
-      if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, paused, getWebSourceId()); }
+      // No llamar saveTimerToDB aquí — la extensión continúa en BD
     } else {
       // START (resume from accumulated time — even if finalized, user explicitly clicked "Iniciar")
       const now = Date.now();

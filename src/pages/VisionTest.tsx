@@ -535,6 +535,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   const [isSaving, setIsSaving]               = useState(false);
   const [showOptModal, setShowOptModal]       = useState(false);
   const [optMapUrl, setOptMapUrl]             = useState<string | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
 
   const inputRef        = useRef<HTMLInputElement>(null);
@@ -958,7 +959,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   // ─── INSTRUCCIONES ──────────────────────────────────────────────────────────
   if (phase === 'instructions') {
     return (
-      <div className="vision-test-root min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="vision-test-root min-h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
           <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
             <ArrowLeft className="w-4 h-4" /> {language === 'es' ? 'Volver' : 'Back'}
@@ -1085,6 +1086,37 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
             to   { transform: scaleY(1.0);  opacity: 1;   }
           }
         `}</style>
+        {/* ── Modal confirmación salir ── */}
+        {showExitConfirm && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+              <Home className="w-12 h-12 text-red-400 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-gray-800 mb-2">
+                {language === 'es' ? '¿Salir de la prueba?' : 'Exit the test?'}
+              </h3>
+              <p className="text-sm text-gray-600 mb-5">
+                {language === 'es'
+                  ? 'Si sales ahora, perderás el progreso de la prueba actual.'
+                  : 'If you exit now, your current test progress will be lost.'}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition"
+                >
+                  {language === 'es' ? 'Continuar prueba' : 'Continue test'}
+                </button>
+                <button
+                  onClick={() => { stopMic(); if ('speechSynthesis' in window) window.speechSynthesis.cancel(); onBack(); }}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition"
+                >
+                  {language === 'es' ? 'Sí, salir' : 'Yes, exit'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="vision-test-root min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4">
 
           {/* Banner navegador no soportado (durante test) */}
@@ -1101,7 +1133,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
 
           {/* Header */}
           <div className="w-full max-w-2xl mb-4 flex items-end gap-4">
-            <button onClick={() => { stopMic(); if ('speechSynthesis' in window) window.speechSynthesis.cancel(); onBack(); }}
+            <button onClick={() => setShowExitConfirm(true)}
               className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition px-3 py-1.5 rounded-lg border border-gray-700 hover:border-gray-400">
               <Home className="w-3.5 h-3.5" /> {ui.exitBtn}
             </button>
@@ -1312,7 +1344,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   };
 
   return (
-    <div className="vision-test-root min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="vision-test-root min-h-screen bg-white flex items-center justify-center p-4">
 
       {/* ── Modal: Buscar oftalmólogo ── */}
       {showOptModal && (

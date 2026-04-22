@@ -318,7 +318,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
     const exerciseIds = symptomInfo.exercises.map(e => e.id);
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
 
           {/* Encabezado */}
@@ -444,7 +444,7 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen bg-white p-4">
       <div className="max-w-2xl mx-auto pt-8">
         <button
           onClick={onBack}

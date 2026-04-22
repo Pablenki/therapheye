@@ -137,7 +137,7 @@ const VerifyEmail = ({ name, email, passwordHash, codigo, onBack, onVerified }: 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
 
         <button
@@ -216,6 +216,11 @@ const VerifyEmail = ({ name, email, passwordHash, codigo, onBack, onVerified }: 
           </button>
         </p>
 
+        <p className="text-center text-[10px] text-gray-400 mt-6">
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600 transition">
+            Política de Privacidad
+          </a>{' '}· © {new Date().getFullYear()} Therapheye
+        </p>
       </div>
     </div>
   );

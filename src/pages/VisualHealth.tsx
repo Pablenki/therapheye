@@ -751,9 +751,10 @@ const VisualHealth = ({ onBack }: Props) => {
     saveState(resetState);
     // Sincronizar a BD inmediatamente (no esperar el debounce de 30s)
     if (user?.id) {
+      // Incluir source='reset' para que la extensión detecte el reset explícito
       sql`
-        INSERT INTO timer_state (user_id, fecha, accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, updated_at)
-        VALUES (${user.id}, ${todayDate}, 0, false, NULL, NULL, NULL, false, NOW())
+        INSERT INTO timer_state (user_id, fecha, accumulated_ms, is_running, last_start_ts, session_start_ts, next_break_at_ms, finalized, source, updated_at)
+        VALUES (${user.id}, ${todayDate}, 0, false, NULL, NULL, NULL, false, 'reset', NOW())
         ON CONFLICT (user_id, fecha)
         DO UPDATE SET
           accumulated_ms   = 0,
@@ -762,6 +763,7 @@ const VisualHealth = ({ onBack }: Props) => {
           session_start_ts = NULL,
           next_break_at_ms = NULL,
           finalized        = false,
+          source           = 'reset',
           updated_at       = NOW()
       `.catch(err => console.warn('[VisualHealth] Error syncing reset to DB:', err));
     }
@@ -899,7 +901,7 @@ const VisualHealth = ({ onBack }: Props) => {
   const selectedDayObj = selectedDay ? dailyData.find(d => d.dateKey === selectedDay) ?? null : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-white">
 
       {/* ── Modal de confirmación: Reiniciar / Finalizar ── */}
       {(confirmAction === 'reset' || confirmAction === 'terminate') && (

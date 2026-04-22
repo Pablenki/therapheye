@@ -106,7 +106,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <button
           onClick={onBack}
@@ -253,6 +253,11 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
           <button onClick={onBack} className="text-indigo-600 font-semibold hover:text-indigo-700">
             {t('register', 'signIn')}
           </button>
+        </p>
+        <p className="text-center text-[10px] text-gray-400 mt-4">
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600 transition">
+            Política de Privacidad
+          </a>{' '}· © {new Date().getFullYear()} Therapheye
         </p>
       </div>
     </div>

@@ -298,11 +298,10 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
       const valorTiempo       = getValorTiempo(Number(timerRows[0].accumulated_ms ?? 0))
       const valorEjercicios   = getValorEjercicios(Number(ejerciciosRows[0]?.total ?? 0))
 
-      const resultadosVision = typeof visionRows[0].resultados_json === 'string'
-        ? JSON.parse(visionRows[0].resultados_json)
-        : (visionRows[0].resultados_json ?? [])
-      const errores    = resultadosVision.filter((r: any) => !r.canRead).length
-      const valorPruebas = Math.min(errores * 10, 100)
+      // Usar mejor_nivel inversamente: nivel 10 = 0% fatiga, nivel 0 = 100% fatiga
+      // Esto es más preciso que contar errores (que no reflejan dónde falló el usuario)
+      const mejorNivel = Number(visionRows[0].mejor_nivel ?? 0)
+      const valorPruebas = Math.max(0, (10 - mejorNivel) * 10)
 
       // Aportes reales
       const aporteImagen       = (valorImagen       / 100) * 30
@@ -361,7 +360,7 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
   // ── Loading inicial ──
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4" />
           <p className="text-gray-600">Cargando diagnóstico...</p>
@@ -380,7 +379,7 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
   const maxAporte = FACTORES_BAR.length ? Math.max(...FACTORES_BAR.map(f => f.aporte), 1) : 1
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-100">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">

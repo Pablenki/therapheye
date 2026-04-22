@@ -111,7 +111,7 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-8">
         <div className="text-center mb-8">
           <div className="inline-block p-3 bg-indigo-600 rounded-full mb-4">
@@ -181,6 +181,11 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
           <button onClick={onNavigateToRegister} className="text-indigo-600 font-semibold hover:text-indigo-700">
             {t('login', 'registerHere')}
           </button>
+        </p>
+        <p className="text-center text-[10px] text-gray-400 mt-4">
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600 transition">
+            Política de Privacidad
+          </a>{' '}· © {new Date().getFullYear()} Therapheye
         </p>
       </div>
     </div>

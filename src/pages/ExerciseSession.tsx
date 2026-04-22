@@ -185,6 +185,16 @@ class AmbientMusic {
     } catch { /* noop */ }
   }
 
+  /** Ajusta el volumen del gainNode principal a fraction (0–1) de MUSIC_VOLUME_DEFAULT */
+  setVolumeFraction(fraction: number) {
+    if (!this.isPlaying || !this.gainNode || !this.ctx) return;
+    const target = Math.max(0, Math.min(1, fraction)) * MUSIC_VOLUME_DEFAULT;
+    try {
+      this.gainNode.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.gainNode.gain.setTargetAtTime(target, this.ctx.currentTime, 0.5);
+    } catch { /* noop */ }
+  }
+
   // Detención inmediata: corta osciladores Y cierra el AudioContext para asegurar
   // que no queden instancias sonando (antes solo rampeaba volumen y dejaba ctx activo).
   stop() {
@@ -633,6 +643,15 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
         // Actualizar UI (React evita re-render si el valor no cambió)
         setTimeLeft(remaining);
 
+        // Fade-out de música en los últimos 30 segundos
+        if (d > 30) {
+          const fadeSeconds = Math.min(30, d * 0.15); // 15% del tiempo o 30s, lo menor
+          if (remaining <= fadeSeconds) {
+            const fraction = remaining / fadeSeconds;
+            ambientMusic.setVolumeFraction(fraction);
+          }
+        }
+
         // Disparar avisos SOLO cuando el segundo visible cambia.
         // Esto garantiza que la voz se sincronice con el cambio visual.
         if (lastAnnouncedSecondRef.current !== remaining) {
@@ -879,7 +898,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
 
   if (isComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8 text-center">
           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <span className="text-4xl text-white">✓</span>
@@ -927,7 +946,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

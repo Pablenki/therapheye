@@ -72,7 +72,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
 
       {/* ── Mobile overlay backdrop ─────────────────────────────────────── */}
       {isMobile && open && (
