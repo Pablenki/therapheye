@@ -1,17 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Flame, TrendingDown, TrendingUp, Minus, Bell,
-  ChevronRight, Play, Pause,
+  ChevronRight, ChevronLeft, Play, Pause, BookOpen, Clock,
   Activity, Camera, Glasses, HeartPulse, ScanEye,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
+import { ARTICLES, CATEGORY_META } from '../data/articles';
 
 type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
-  | 'visual-health' | 'profile' | 'diagnostico-completo';
+  | 'visual-health' | 'profile' | 'diagnostico-completo' | 'learn';
 
 interface Stats {
   evaluaciones: number;
@@ -168,6 +169,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [screenTimeMs, setScreenTimeMs]     = useState(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
+  const [articleIdx, setArticleIdx] = useState(() => Math.floor(Math.random() * ARTICLES.length));
   const [extensionInstalled, setExtensionInstalled] = useState(false);
   const extensionDismissed = localStorage.getItem('therapheye_ext_banner_dismissed') === 'true';
   const notifRef = useRef<HTMLDivElement>(null);
@@ -224,6 +226,12 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   useEffect(() => {
     const load = () => { const s = readTimerState(); setScreenTimeMs(calcTimerMs(s)); setScreenTimeRunning(s.isRunning); };
     load(); const iv = setInterval(load, 1000); return () => clearInterval(iv);
+  }, []);
+
+  // Rotar artículo cada 60 segundos
+  useEffect(() => {
+    const iv = setInterval(() => setArticleIdx(i => (i + 1) % ARTICLES.length), 60_000);
+    return () => clearInterval(iv);
   }, []);
 
   // ── Stats + datos semanales + últimos diagnósticos ─────────────────────────
@@ -541,6 +549,64 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
               </button>
             </div>
           </div>
+
+          {/* ── Artículo del día ── */}
+          {(() => {
+            const article = ARTICLES[articleIdx];
+            const catMeta = CATEGORY_META[article.category];
+            const title   = es ? article.titleEs   : article.titleEn;
+            const summary = es ? article.summaryEs : article.summaryEn;
+            return (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-indigo-500"/>
+                    <p className="text-sm font-bold text-gray-800">{es ? 'Artículo del día' : 'Article of the day'}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setArticleIdx(i => (i - 1 + ARTICLES.length) % ARTICLES.length)}
+                      className="p-1 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700"
+                    >
+                      <ChevronLeft className="w-4 h-4"/>
+                    </button>
+                    <span className="text-[10px] text-gray-400 font-medium tabular-nums">{articleIdx + 1}/{ARTICLES.length}</span>
+                    <button
+                      onClick={() => setArticleIdx(i => (i + 1) % ARTICLES.length)}
+                      className="p-1 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700"
+                    >
+                      <ChevronRight className="w-4 h-4"/>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-0">
+                  {/* Barra de acento */}
+                  <div className={`w-1 bg-gradient-to-b ${article.accentFrom} ${article.accentTo} flex-shrink-0`}/>
+                  <div className="flex flex-1 gap-4 px-5 py-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${catMeta.bg} ${catMeta.color}`}>
+                          {es ? catMeta.labelEs : catMeta.labelEn}
+                        </span>
+                        <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                          <Clock className="w-3 h-3"/>
+                          {article.readMinutes} min
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2">{title}</h3>
+                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{summary}</p>
+                      <button
+                        onClick={() => onNavigate('learn')}
+                        className="mt-3 flex items-center gap-1 text-indigo-600 text-xs font-semibold hover:gap-2 transition-all"
+                      >
+                        {es ? 'Leer artículo' : 'Read article'} <ChevronRight className="w-3.5 h-3.5"/>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
         </main>
     </div>

@@ -19,7 +19,8 @@ type Page =
   | 'vision-test'
   | 'visual-health'
   | 'profile'
-  | 'diagnostico-completo';
+  | 'diagnostico-completo'
+  | 'learn';
 
 type Props = {
   currentPage: Page;
