@@ -11,7 +11,7 @@
 
 /* ─── Accessibility: escalado SOLO de texto (no afecta iconos ni layout) ─── */
 /* --a11y-text-scale controla el multiplicador. 1 = sin cambio.              */
-:root { --a11y-text-scale: 1; }
+:root { --a11y-text-scale: 1.1; }
 
 /* Escala proporcional de cada clase de texto de Tailwind */
 .text-xs   { font-size: calc(0.75rem  * var(--a11y-text-scale)) !important;

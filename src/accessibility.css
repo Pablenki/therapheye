@@ -49,7 +49,7 @@ body.text-large input { font-size: 1.1rem !important; }
    saturate(1.4): sube la saturación para que los colores de botones y tarjetas brillen en dark mode.
    brightness(0.92): ajuste fino para que no se vea sobreexpuesto. */
 #root.invert-colors {
-  filter: invert(0.88) hue-rotate(180deg) saturate(1.4) brightness(0.92) !important;
+  filter: invert(0.88) hue-rotate(180deg) saturate(1.4) brightness(0.92) contrast(1.15) !important;
 }
 
 /* Imágenes y videos: contra-filtro para restaurar colores naturales */
