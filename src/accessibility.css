@@ -58,9 +58,10 @@ body.text-large input { font-size: 1.1rem !important; }
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-/* Sidebar: contra-filtro exacto → cancela la inversión del padre y
-   mantiene su color navy original (#1a2236), evitando el "gris rata" */
-#root.invert-colors aside {
+/* Sidebar y banners con fondo oscuro: contra-filtro → cancela la inversión
+   del padre y mantiene su color original, evitando que el dark se vea claro */
+#root.invert-colors aside,
+#root.invert-colors .invert-safe {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 

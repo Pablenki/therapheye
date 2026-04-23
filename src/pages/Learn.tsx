@@ -762,7 +762,7 @@ const Learn = ({ onBack }: LearnProps) => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Banner superior */}
-      <div className="bg-[#1a2236] px-6 py-8">
+      <div className="invert-safe bg-[#0e1f47] px-6 py-8">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition text-sm mb-4"

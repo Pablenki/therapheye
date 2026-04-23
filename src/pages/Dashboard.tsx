@@ -415,15 +415,16 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Racha */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-orange-200/60 flex flex-col gap-3">
+            <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl p-5 shadow-lg flex flex-col gap-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"/>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
-                  {es ? 'Racha de cuidado' : 'Care streak'} <Flame className="w-4 h-4 text-orange-500"/>
+                <p className="text-sm font-bold text-white flex items-center gap-1.5">
+                  {es ? 'Racha de cuidado' : 'Care streak'} <Flame className="w-4 h-4 text-white/80"/>
                 </p>
               </div>
               <div>
-                <p className="text-4xl font-black text-gray-800">{stats.racha} <span className="text-base font-semibold text-gray-400">{es ? 'días' : 'days'}</span></p>
-                <p className="text-xs text-green-600 font-semibold mt-0.5">
+                <p className="text-4xl font-black text-white">{stats.racha} <span className="text-base font-semibold text-white/70">{es ? 'días' : 'days'}</span></p>
+                <p className="text-xs text-white/80 font-semibold mt-0.5">
                   {stats.racha === 0 ? (es ? '¡Empieza hoy!' : 'Start today!') : stats.racha < 3 ? (es ? '¡Sigue así!' : 'Keep it up!') : stats.racha < 7 ? (es ? '¡Vas muy bien!' : 'Going great!') : (es ? '¡Increíble consistencia!' : 'Incredible consistency!')}
                 </p>
               </div>
@@ -431,7 +432,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 {rachaWeek.map((d, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all
-                      ${d.active ? 'bg-green-500 border-green-500 text-white' : d.today ? 'border-indigo-400 text-indigo-500 bg-indigo-50' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
+                      ${d.active ? 'bg-white/30 border-white text-white' : d.today ? 'border-white/60 text-white bg-white/20' : 'bg-white/10 border-white/20 text-white/60'}`}>
                       {d.d}
                     </div>
                   </div>
@@ -440,15 +441,16 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Próxima recomendación */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-indigo-200/60 flex flex-col justify-between">
+            <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"/>
               <div>
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">{es ? 'Próxima recomendación' : 'Next recommendation'}</p>
-                <p className="text-lg font-bold text-gray-800 leading-snug">{rec.titulo}</p>
-                <p className="text-xs text-gray-400 mt-1">{rec.desc}</p>
+                <p className="text-xs text-white/70 font-semibold uppercase tracking-wide mb-2">{es ? 'Próxima recomendación' : 'Next recommendation'}</p>
+                <p className="text-lg font-bold text-white leading-snug">{rec.titulo}</p>
+                <p className="text-xs text-white/60 mt-1">{rec.desc}</p>
               </div>
               <button
                 onClick={()=>onNavigate(rec.page)}
-                className="mt-4 flex items-center justify-between px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-semibold transition"
+                className="mt-4 flex items-center justify-between px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-semibold transition backdrop-blur-sm"
               >
                 <span className="flex items-center gap-2"><span className="text-lg">{rec.icon}</span> {es ? 'Ir ahora' : 'Go now'}</span>
                 <ChevronRight className="w-4 h-4"/>
@@ -489,39 +491,41 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Progreso semanal */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-indigo-200/60">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10"/>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-bold text-gray-800">{es ? 'Tu progreso semanal' : 'Your weekly progress'}</p>
-                <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                  {stats.tendencia === 'mejorando'  && <><TrendingDown className="w-3.5 h-3.5 text-green-500"/> {es ? 'Mejorando' : 'Improving'}</>}
-                  {stats.tendencia === 'empeorando' && <><TrendingUp   className="w-3.5 h-3.5 text-red-500"/>   {es ? 'Empeorando' : 'Worsening'}</>}
-                  {stats.tendencia === 'estable'    && <><Minus         className="w-3.5 h-3.5 text-yellow-500"/> {es ? 'Estable' : 'Stable'}</>}
+                <p className="text-sm font-bold text-white">{es ? 'Tu progreso semanal' : 'Your weekly progress'}</p>
+                <div className="flex items-center gap-1.5 text-xs text-white/70">
+                  {stats.tendencia === 'mejorando'  && <><TrendingDown className="w-3.5 h-3.5 text-green-300"/> {es ? 'Mejorando' : 'Improving'}</>}
+                  {stats.tendencia === 'empeorando' && <><TrendingUp   className="w-3.5 h-3.5 text-red-300"/>   {es ? 'Empeorando' : 'Worsening'}</>}
+                  {stats.tendencia === 'estable'    && <><Minus         className="w-3.5 h-3.5 text-yellow-300"/> {es ? 'Estable' : 'Stable'}</>}
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mb-3">{es ? 'Nivel de fatiga diario (cuestionario)' : 'Daily fatigue level (questionnaire)'}</p>
+              <p className="text-xs text-white/60 mb-3">{es ? 'Nivel de fatiga diario (cuestionario)' : 'Daily fatigue level (questionnaire)'}</p>
               {loadingStats
-                ? <div className="h-24 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent"/></div>
+                ? <div className="h-24 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-white border-t-transparent"/></div>
                 : <WeeklyChart data={weekData}/>}
             </div>
 
             {/* Últimos diagnósticos */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-violet-200/60 flex flex-col">
-              <p className="text-sm font-bold text-gray-800 mb-3">{es ? 'Últimos diagnósticos' : 'Latest diagnostics'}</p>
+            <div className="bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl p-5 shadow-lg flex flex-col relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10"/>
+              <p className="text-sm font-bold text-white mb-3">{es ? 'Últimos diagnósticos' : 'Latest diagnostics'}</p>
               {loadingStats
-                ? <div className="flex-1 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent"/></div>
+                ? <div className="flex-1 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-white border-t-transparent"/></div>
                 : diagList.length === 0
-                  ? <div className="flex-1 flex flex-col items-center justify-center text-gray-300 text-sm gap-2">
+                  ? <div className="flex-1 flex flex-col items-center justify-center text-white/50 text-sm gap-2">
                       <ScanEye className="w-8 h-8 opacity-40"/>
                       <span>{es ? 'Sin diagnósticos registrados' : 'No diagnostics recorded'}</span>
                     </div>
                   : <div className="space-y-2 flex-1">
                       {diagList.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-white/20 last:border-0">
                           <div>
-                            <p className="text-xs font-semibold text-gray-700">{d.fecha}</p>
+                            <p className="text-xs font-semibold text-white/90">{d.fecha}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`text-xs font-bold ${d.color}`}>{d.nivel}</span>
+                            <span className="text-xs font-bold text-white/80">{d.nivel}</span>
                             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getDiagColor(d.score).dot}`}/>
                           </div>
                         </div>
@@ -529,7 +533,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                     </div>}
               <button
                 onClick={()=>onNavigate('history')}
-                className="mt-3 text-xs text-indigo-600 font-semibold hover:underline flex items-center gap-1 self-end"
+                className="mt-3 text-xs text-white/80 font-semibold hover:text-white flex items-center gap-1 self-end transition"
               >
                 {es ? 'Ver historial completo' : 'View full history'} <ChevronRight className="w-3 h-3"/>
               </button>
@@ -539,19 +543,19 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {/* ── Timer pantalla (compacto) ── */}
           <div
             onClick={()=>onNavigate('visual-health')}
-            className="bg-white rounded-2xl p-4 shadow-md border border-teal-200/60 flex items-center justify-between cursor-pointer hover:shadow-lg transition"
+            className="bg-gradient-to-r from-teal-500 to-cyan-600 rounded-2xl p-4 shadow-lg flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
           >
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${screenTimeRunning ? 'bg-green-100' : 'bg-gray-100'}`}>
-                <span className={`w-3 h-3 rounded-full ${screenTimeRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}/>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${screenTimeRunning ? 'bg-white/30' : 'bg-white/20'}`}>
+                <span className={`w-3 h-3 rounded-full ${screenTimeRunning ? 'bg-white animate-pulse' : 'bg-white/60'}`}/>
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-800">{es ? 'Tiempo en pantalla hoy' : 'Screen time today'}</p>
-                <p className="text-xs text-gray-400">{screenTimeRunning ? (es ? 'Cronómetro activo' : 'Timer running') : (es ? 'Cronómetro pausado' : 'Timer paused')} · {es ? 'Toca para ver detalles' : 'Tap to view details'}</p>
+                <p className="text-sm font-bold text-white">{es ? 'Tiempo en pantalla hoy' : 'Screen time today'}</p>
+                <p className="text-xs text-white/70">{screenTimeRunning ? (es ? 'Cronómetro activo' : 'Timer running') : (es ? 'Cronómetro pausado' : 'Timer paused')} · {es ? 'Toca para ver detalles' : 'Tap to view details'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-2xl font-black text-gray-700 font-mono tabular-nums">{screenHH}:{screenMM}:{screenSS}</p>
+              <p className="text-2xl font-black text-white font-mono tabular-nums">{screenHH}:{screenMM}:{screenSS}</p>
               <button
                 onClick={handleTimerToggle}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition ${screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
