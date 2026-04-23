@@ -88,7 +88,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
       <aside
         style={{ width: sideW }}
         className={`
-          fixed top-0 left-0 h-screen z-40 bg-[#0f172a] flex flex-col
+          fixed top-0 left-0 h-screen z-40 bg-[#0e1f47] flex flex-col
           transition-all duration-300 ease-in-out flex-shrink-0
           ${isMobile ? (open ? 'translate-x-0 shadow-2xl' : '-translate-x-full') : 'translate-x-0'}
         `}
@@ -226,7 +226,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
         {isMobile && !open && (
           <button
             onClick={() => setOpen(true)}
-            className="fixed top-3 left-3 z-50 w-9 h-9 bg-[#0f172a] rounded-xl flex items-center justify-center text-white shadow-lg"
+            className="fixed top-3 left-3 z-50 w-9 h-9 bg-[#0e1f47] rounded-xl flex items-center justify-center text-white shadow-lg"
           >
             <Menu className="w-5 h-5"/>
           </button>

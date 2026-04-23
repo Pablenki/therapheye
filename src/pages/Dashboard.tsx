@@ -339,10 +339,10 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   })();
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-blue-100 via-indigo-50 to-violet-100">
 
         {/* Top bar */}
-        <header className="bg-white border-b border-blue-100 shadow-sm px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+        <header className="bg-white/80 backdrop-blur-md border-b border-blue-200 shadow-md px-6 py-3.5 flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-xl font-bold text-gray-800">
               {es ? `¡Bienvenido de nuevo, ${user?.nombre?.split(' ')[0]}! 👋` : `Welcome back, ${user?.nombre?.split(' ')[0]}! 👋`}
@@ -415,7 +415,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Racha */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-blue-100/60 flex flex-col gap-3">
+            <div className="bg-white rounded-2xl p-5 shadow-md border border-orange-200/60 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
                   {es ? 'Racha de cuidado' : 'Care streak'} <Flame className="w-4 h-4 text-orange-500"/>
@@ -440,7 +440,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Próxima recomendación */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-blue-100/60 flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 shadow-md border border-indigo-200/60 flex flex-col justify-between">
               <div>
                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">{es ? 'Próxima recomendación' : 'Next recommendation'}</p>
                 <p className="text-lg font-bold text-gray-800 leading-snug">{rec.titulo}</p>
@@ -461,22 +461,23 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             <p className="text-sm font-bold text-gray-700 mb-3">{es ? 'Acciones rápidas' : 'Quick actions'}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { icon: Activity,   color: 'bg-violet-100', iconColor: 'text-violet-600', title: es ? 'Ejercicios visuales' : 'Visual exercises',  desc: es ? 'Reduce la fatiga con ejercicios guiados' : 'Reduce fatigue with guided exercises', page: 'exercises' as Page },
-                { icon: Camera,     color: 'bg-rose-100',   iconColor: 'text-rose-600',   title: es ? 'Captura de imagen' : 'Image capture',    desc: es ? 'Toma una imagen para análisis visual' : 'Take an image for visual analysis', page: 'image-capture' as Page },
-                { icon: Glasses,    color: 'bg-teal-100',   iconColor: 'text-teal-600',   title: es ? 'Prueba de visión' : 'Vision test',     desc: es ? 'Valida tu agudeza visual con Snellen' : 'Validate your visual acuity with Snellen', page: 'vision-test' as Page },
-                { icon: HeartPulse, color: 'bg-amber-100',  iconColor: 'text-amber-600',  title: es ? 'Salud Visual' : 'Visual Health',         desc: es ? 'Monitorea tu tiempo en pantalla' : 'Monitor your screen time', page: 'visual-health' as Page },
+                { icon: Activity,   grad: 'from-violet-500 to-purple-600',   title: es ? 'Ejercicios visuales' : 'Visual exercises',  desc: es ? 'Reduce la fatiga con ejercicios guiados' : 'Reduce fatigue with guided exercises', page: 'exercises' as Page },
+                { icon: Camera,     grad: 'from-rose-500 to-pink-600',        title: es ? 'Captura de imagen' : 'Image capture',    desc: es ? 'Toma una imagen para análisis visual' : 'Take an image for visual analysis', page: 'image-capture' as Page },
+                { icon: Glasses,    grad: 'from-teal-500 to-cyan-600',        title: es ? 'Prueba de visión' : 'Vision test',     desc: es ? 'Valida tu agudeza visual con Snellen' : 'Validate your visual acuity with Snellen', page: 'vision-test' as Page },
+                { icon: HeartPulse, grad: 'from-amber-500 to-orange-500',     title: es ? 'Salud Visual' : 'Visual Health',         desc: es ? 'Monitorea tu tiempo en pantalla' : 'Monitor your screen time', page: 'visual-health' as Page },
               ].map((item) => (
                 <button
                   key={item.title}
                   onClick={()=>onNavigate(item.page)}
-                  className="bg-white rounded-xl p-4 text-left shadow-md border border-blue-100/60 hover:shadow-md hover:-translate-y-0.5 transition-all group"
+                  className={`bg-gradient-to-br ${item.grad} rounded-xl p-4 text-left shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all group relative overflow-hidden`}
                 >
-                  <div className={`w-10 h-10 ${item.color} rounded-xl flex items-center justify-center mb-3`}>
-                    <item.icon className={`w-5 h-5 ${item.iconColor}`}/>
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-6 translate-x-6"/>
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                    <item.icon className="w-5 h-5 text-white"/>
                   </div>
-                  <p className="text-sm font-bold text-gray-800 leading-tight">{item.title}</p>
-                  <p className="text-xs text-gray-400 mt-1 leading-snug">{item.desc}</p>
-                  <div className="flex items-center gap-1 mt-2 text-indigo-500 text-xs font-semibold group-hover:gap-2 transition-all">
+                  <p className="text-sm font-bold text-white leading-tight">{item.title}</p>
+                  <p className="text-xs text-white/70 mt-1 leading-snug">{item.desc}</p>
+                  <div className="flex items-center gap-1 mt-2 text-white/90 text-xs font-semibold group-hover:gap-2 transition-all">
                     {es ? 'Ir' : 'Go'} <ChevronRight className="w-3 h-3"/>
                   </div>
                 </button>
@@ -488,7 +489,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Progreso semanal */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-blue-100/60">
+            <div className="bg-white rounded-2xl p-5 shadow-md border border-indigo-200/60">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-bold text-gray-800">{es ? 'Tu progreso semanal' : 'Your weekly progress'}</p>
                 <div className="flex items-center gap-1.5 text-xs text-gray-400">
@@ -504,7 +505,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Últimos diagnósticos */}
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-blue-100/60 flex flex-col">
+            <div className="bg-white rounded-2xl p-5 shadow-md border border-violet-200/60 flex flex-col">
               <p className="text-sm font-bold text-gray-800 mb-3">{es ? 'Últimos diagnósticos' : 'Latest diagnostics'}</p>
               {loadingStats
                 ? <div className="flex-1 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent"/></div>
@@ -538,7 +539,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {/* ── Timer pantalla (compacto) ── */}
           <div
             onClick={()=>onNavigate('visual-health')}
-            className="bg-white rounded-2xl p-4 shadow-md border border-blue-100/60 flex items-center justify-between cursor-pointer hover:shadow-md transition"
+            className="bg-white rounded-2xl p-4 shadow-md border border-teal-200/60 flex items-center justify-between cursor-pointer hover:shadow-lg transition"
           >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${screenTimeRunning ? 'bg-green-100' : 'bg-gray-100'}`}>

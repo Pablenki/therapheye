@@ -46,10 +46,10 @@ body.text-large input { font-size: 1.1rem !important; }
 
 /* ========== INVERSIÓN DE COLORES (en #root) ========== */
 /* invert(0.88): blancos → gris oscuro (~#1e1e1e), NO negro puro — look tipo dark-mode suave.
-   saturate(0.85): desatura ligeramente para evitar colores chillones al invertir.
-   brightness(0.97): ajuste fino de luminosidad global. */
+   saturate(1.4): sube la saturación para que los colores de botones y tarjetas brillen en dark mode.
+   brightness(0.92): ajuste fino para que no se vea sobreexpuesto. */
 #root.invert-colors {
-  filter: invert(0.88) hue-rotate(180deg) saturate(0.85) brightness(0.97) !important;
+  filter: invert(0.88) hue-rotate(180deg) saturate(1.4) brightness(0.92) !important;
 }
 
 /* Imágenes y videos: contra-filtro para restaurar colores naturales */
