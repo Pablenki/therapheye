@@ -407,10 +407,35 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
         {/* Scrollable body */}
         <main className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
+          {/* ── Helpers de variante ── */}
+          {(() => {
+            const isFlat  = tc.cardVariant === 'flat';
+            const isGlass = tc.cardVariant === 'glass';
+
+            // Wrapper de card según variante
+            const cardCls = (grad: string, flat = '') =>
+              isFlat  ? `bg-white rounded-2xl shadow-md ${flat}`
+              : isGlass ? `bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl`
+              : `bg-gradient-to-br ${grad} rounded-2xl shadow-lg relative overflow-hidden`;
+
+            // Decoración circular (solo en gradient/glass/dark)
+            const Deco = () => isFlat ? null : <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8 pointer-events-none"/>;
+
+            // Dots de racha
+            const dotCls = (d: { active: boolean; today: boolean }) =>
+              d.active  ? (isFlat ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white/30 border-white text-white')
+              : d.today ? (isFlat ? 'border-indigo-400 text-indigo-500 bg-indigo-50' : 'border-white/60 text-white bg-white/20')
+                        : (isFlat ? 'bg-gray-100 border-gray-200 text-gray-400' : 'bg-white/10 border-white/20 text-white/60');
+
+            // Spinner
+            const spinCls = isFlat ? 'border-indigo-500' : 'border-white';
+
+            return (<>
+
           {/* ── Fila 1: Estado de fatiga + Racha + Recomendación ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-            {/* Tarjeta fatiga — ocupa 1.5 columnas */}
+            {/* Tarjeta fatiga — siempre con gradiente propio (color de fatiga) */}
             <div className={`lg:col-span-1 bg-gradient-to-br ${fatiga.bg} rounded-2xl p-5 flex flex-col justify-between min-h-[160px] shadow-lg relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8"/>
               <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-6 -translate-x-6"/>
@@ -438,42 +463,39 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Racha */}
-            <div className={`bg-gradient-to-br ${tc.racha} rounded-2xl p-5 shadow-lg flex flex-col gap-3 relative overflow-hidden`}>
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"/>
+            <div className={`${cardCls(tc.racha, `p-5 flex flex-col gap-3 ${tc.flatBorders.racha}`)} flex flex-col gap-3 p-5`}>
+              <Deco/>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                  {es ? 'Racha de cuidado' : 'Care streak'} <Flame className="w-4 h-4 text-white/80"/>
+                <p className={`text-sm font-bold ${tc.cardText} flex items-center gap-1.5`}>
+                  {es ? 'Racha de cuidado' : 'Care streak'} <Flame className="w-4 h-4 text-orange-400"/>
                 </p>
               </div>
               <div>
-                <p className="text-4xl font-black text-white">{stats.racha} <span className="text-base font-semibold text-white/70">{es ? 'días' : 'days'}</span></p>
-                <p className="text-xs text-white/80 font-semibold mt-0.5">
+                <p className={`text-4xl font-black ${tc.cardText}`}>{stats.racha} <span className={`text-base font-semibold ${tc.cardSubtext}`}>{es ? 'días' : 'days'}</span></p>
+                <p className={`text-xs font-semibold mt-0.5 ${isFlat ? 'text-green-600' : 'text-white/80'}`}>
                   {stats.racha === 0 ? (es ? '¡Empieza hoy!' : 'Start today!') : stats.racha < 3 ? (es ? '¡Sigue así!' : 'Keep it up!') : stats.racha < 7 ? (es ? '¡Vas muy bien!' : 'Going great!') : (es ? '¡Increíble consistencia!' : 'Incredible consistency!')}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 mt-1">
                 {rachaWeek.map((d, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all
-                      ${d.active ? 'bg-white/30 border-white text-white' : d.today ? 'border-white/60 text-white bg-white/20' : 'bg-white/10 border-white/20 text-white/60'}`}>
-                      {d.d}
-                    </div>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${dotCls(d)}`}>{d.d}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Próxima recomendación */}
-            <div className={`bg-gradient-to-br ${tc.recomendacion} rounded-2xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden`}>
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"/>
+            <div className={`${cardCls(tc.recomendacion, `p-5 flex flex-col justify-between ${tc.flatBorders.rec}`)} flex flex-col justify-between p-5`}>
+              <Deco/>
               <div>
-                <p className="text-xs text-white/70 font-semibold uppercase tracking-wide mb-2">{es ? 'Próxima recomendación' : 'Next recommendation'}</p>
-                <p className="text-lg font-bold text-white leading-snug">{rec.titulo}</p>
-                <p className="text-xs text-white/60 mt-1">{rec.desc}</p>
+                <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${tc.cardSubtext}`}>{es ? 'Próxima recomendación' : 'Next recommendation'}</p>
+                <p className={`text-lg font-bold leading-snug ${tc.cardText}`}>{rec.titulo}</p>
+                <p className={`text-xs mt-1 ${tc.cardSubtext}`}>{rec.desc}</p>
               </div>
               <button
                 onClick={()=>onNavigate(rec.page)}
-                className="mt-4 flex items-center justify-between px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-semibold transition backdrop-blur-sm"
+                className={`mt-4 flex items-center justify-between px-4 py-2.5 ${tc.cardBtnBg} ${tc.cardBtnText} rounded-xl text-sm font-semibold transition backdrop-blur-sm`}
               >
                 <span className="flex items-center gap-2"><span className="text-lg">{rec.icon}</span> {es ? 'Ir ahora' : 'Go now'}</span>
                 <ChevronRight className="w-4 h-4"/>
@@ -485,28 +507,32 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <div>
             <p className={`text-sm font-bold mb-3 ${tc.sectionLabel}`}>{es ? 'Acciones rápidas' : 'Quick actions'}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { icon: Activity,   grad: tc.quickActions[0], title: es ? 'Ejercicios visuales' : 'Visual exercises',  desc: es ? 'Reduce la fatiga con ejercicios guiados' : 'Reduce fatigue with guided exercises', page: 'exercises' as Page },
-                { icon: Camera,     grad: tc.quickActions[1], title: es ? 'Captura de imagen' : 'Image capture',    desc: es ? 'Toma una imagen para análisis visual' : 'Take an image for visual analysis', page: 'image-capture' as Page },
-                { icon: Glasses,    grad: tc.quickActions[2], title: es ? 'Prueba de visión' : 'Vision test',     desc: es ? 'Valida tu agudeza visual con Snellen' : 'Validate your visual acuity with Snellen', page: 'vision-test' as Page },
-                { icon: HeartPulse, grad: tc.quickActions[3], title: es ? 'Salud Visual' : 'Visual Health',         desc: es ? 'Monitorea tu tiempo en pantalla' : 'Monitor your screen time', page: 'visual-health' as Page },
-              ].map((item) => (
-                <button
-                  key={item.title}
-                  onClick={()=>onNavigate(item.page)}
-                  className={`bg-gradient-to-br ${item.grad} rounded-xl p-4 text-left shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all group relative overflow-hidden`}
-                >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-6 translate-x-6"/>
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
-                    <item.icon className="w-5 h-5 text-white"/>
-                  </div>
-                  <p className="text-sm font-bold text-white leading-tight">{item.title}</p>
-                  <p className="text-xs text-white/70 mt-1 leading-snug">{item.desc}</p>
-                  <div className="flex items-center gap-1 mt-2 text-white/90 text-xs font-semibold group-hover:gap-2 transition-all">
-                    {es ? 'Ir' : 'Go'} <ChevronRight className="w-3 h-3"/>
-                  </div>
-                </button>
-              ))}
+              {([
+                { icon: Activity,   idx: 0, title: es ? 'Ejercicios visuales' : 'Visual exercises',  desc: es ? 'Reduce la fatiga con ejercicios guiados' : 'Reduce fatigue with guided exercises', page: 'exercises' as Page },
+                { icon: Camera,     idx: 1, title: es ? 'Captura de imagen' : 'Image capture',       desc: es ? 'Toma una imagen para análisis visual' : 'Take an image for visual analysis', page: 'image-capture' as Page },
+                { icon: Glasses,    idx: 2, title: es ? 'Prueba de visión' : 'Vision test',          desc: es ? 'Valida tu agudeza visual con Snellen' : 'Validate your visual acuity with Snellen', page: 'vision-test' as Page },
+                { icon: HeartPulse, idx: 3, title: es ? 'Salud Visual' : 'Visual Health',            desc: es ? 'Monitorea tu tiempo en pantalla' : 'Monitor your screen time', page: 'visual-health' as Page },
+              ] as const).map((item) => {
+                const iconStyle = tc.qaIcons[item.idx];
+                const flatBorder = tc.flatBorders.qa[item.idx];
+                return (
+                  <button
+                    key={item.title}
+                    onClick={()=>onNavigate(item.page)}
+                    className={`${cardCls(tc.quickActionGrads[item.idx], `p-4 text-left ${flatBorder}`)} p-4 text-left hover:shadow-xl hover:-translate-y-0.5 transition-all group`}
+                  >
+                    {!isFlat && <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-6 translate-x-6 pointer-events-none"/>}
+                    <div className={`w-10 h-10 ${iconStyle.iconBg} rounded-xl flex items-center justify-center mb-3`}>
+                      <item.icon className={`w-5 h-5 ${iconStyle.iconColor}`}/>
+                    </div>
+                    <p className={`text-sm font-bold leading-tight ${tc.cardText}`}>{item.title}</p>
+                    <p className={`text-xs mt-1 leading-snug ${tc.cardSubtext}`}>{item.desc}</p>
+                    <div className={`flex items-center gap-1 mt-2 text-xs font-semibold group-hover:gap-2 transition-all ${isFlat ? 'text-indigo-500' : 'text-white/90'}`}>
+                      {es ? 'Ir' : 'Go'} <ChevronRight className="w-3 h-3"/>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -514,41 +540,39 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Progreso semanal */}
-            <div className={`bg-gradient-to-br ${tc.progreso} rounded-2xl p-5 shadow-lg relative overflow-hidden`}>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10"/>
+            <div className={`${cardCls(tc.progreso, `p-5 ${tc.flatBorders.prog}`)} p-5`}>
+              <Deco/>
               <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-bold text-white">{es ? 'Tu progreso semanal' : 'Your weekly progress'}</p>
-                <div className="flex items-center gap-1.5 text-xs text-white/70">
-                  {stats.tendencia === 'mejorando'  && <><TrendingDown className="w-3.5 h-3.5 text-green-300"/> {es ? 'Mejorando' : 'Improving'}</>}
-                  {stats.tendencia === 'empeorando' && <><TrendingUp   className="w-3.5 h-3.5 text-red-300"/>   {es ? 'Empeorando' : 'Worsening'}</>}
-                  {stats.tendencia === 'estable'    && <><Minus         className="w-3.5 h-3.5 text-yellow-300"/> {es ? 'Estable' : 'Stable'}</>}
+                <p className={`text-sm font-bold ${tc.cardText}`}>{es ? 'Tu progreso semanal' : 'Your weekly progress'}</p>
+                <div className={`flex items-center gap-1.5 text-xs ${tc.cardSubtext}`}>
+                  {stats.tendencia === 'mejorando'  && <><TrendingDown className="w-3.5 h-3.5 text-green-400"/> {es ? 'Mejorando' : 'Improving'}</>}
+                  {stats.tendencia === 'empeorando' && <><TrendingUp   className="w-3.5 h-3.5 text-red-400"/>   {es ? 'Empeorando' : 'Worsening'}</>}
+                  {stats.tendencia === 'estable'    && <><Minus         className="w-3.5 h-3.5 text-yellow-400"/> {es ? 'Estable' : 'Stable'}</>}
                 </div>
               </div>
-              <p className="text-xs text-white/60 mb-3">{es ? 'Nivel de fatiga diario (cuestionario)' : 'Daily fatigue level (questionnaire)'}</p>
+              <p className={`text-xs mb-3 ${tc.cardSubtext}`}>{es ? 'Nivel de fatiga diario (cuestionario)' : 'Daily fatigue level (questionnaire)'}</p>
               {loadingStats
-                ? <div className="h-24 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-white border-t-transparent"/></div>
+                ? <div className="h-24 flex items-center justify-center"><div className={`animate-spin w-5 h-5 rounded-full border-2 ${spinCls} border-t-transparent`}/></div>
                 : <WeeklyChart data={weekData}/>}
             </div>
 
             {/* Últimos diagnósticos */}
-            <div className={`bg-gradient-to-br ${tc.diagnosticos} rounded-2xl p-5 shadow-lg flex flex-col relative overflow-hidden`}>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10"/>
-              <p className="text-sm font-bold text-white mb-3">{es ? 'Últimos diagnósticos' : 'Latest diagnostics'}</p>
+            <div className={`${cardCls(tc.diagnosticos, `p-5 ${tc.flatBorders.diag}`)} p-5 flex flex-col`}>
+              <Deco/>
+              <p className={`text-sm font-bold mb-3 ${tc.cardText}`}>{es ? 'Últimos diagnósticos' : 'Latest diagnostics'}</p>
               {loadingStats
-                ? <div className="flex-1 flex items-center justify-center"><div className="animate-spin w-5 h-5 rounded-full border-2 border-white border-t-transparent"/></div>
+                ? <div className="flex-1 flex items-center justify-center"><div className={`animate-spin w-5 h-5 rounded-full border-2 ${spinCls} border-t-transparent`}/></div>
                 : diagList.length === 0
-                  ? <div className="flex-1 flex flex-col items-center justify-center text-white/50 text-sm gap-2">
+                  ? <div className={`flex-1 flex flex-col items-center justify-center text-sm gap-2 ${tc.cardSubtext}`}>
                       <ScanEye className="w-8 h-8 opacity-40"/>
                       <span>{es ? 'Sin diagnósticos registrados' : 'No diagnostics recorded'}</span>
                     </div>
                   : <div className="space-y-2 flex-1">
                       {diagList.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-white/20 last:border-0">
-                          <div>
-                            <p className="text-xs font-semibold text-white/90">{d.fecha}</p>
-                          </div>
+                        <div key={i} className={`flex items-center justify-between py-2 border-b last:border-0 ${isFlat ? 'border-gray-100' : 'border-white/20'}`}>
+                          <p className={`text-xs font-semibold ${tc.cardText}`}>{d.fecha}</p>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-white/80">{d.nivel}</span>
+                            <span className={`text-xs font-bold ${isFlat ? d.color : 'text-white/80'}`}>{d.nivel}</span>
                             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getDiagColor(d.score).dot}`}/>
                           </div>
                         </div>
@@ -556,7 +580,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                     </div>}
               <button
                 onClick={()=>onNavigate('history')}
-                className="mt-3 text-xs text-white/80 font-semibold hover:text-white flex items-center gap-1 self-end transition"
+                className={`mt-3 text-xs font-semibold flex items-center gap-1 self-end transition ${isFlat ? 'text-indigo-600 hover:text-indigo-800' : 'text-white/80 hover:text-white'}`}
               >
                 {es ? 'Ver historial completo' : 'View full history'} <ChevronRight className="w-3 h-3"/>
               </button>
@@ -566,19 +590,20 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {/* ── Timer pantalla (compacto) ── */}
           <div
             onClick={()=>onNavigate('visual-health')}
-            className={`bg-gradient-to-r ${tc.timer} rounded-2xl p-4 shadow-lg flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all`}
+            className={`${cardCls(tc.timer, `p-4 ${tc.flatBorders.timer}`)} p-4 flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all`}
           >
+            <Deco/>
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${screenTimeRunning ? 'bg-white/30' : 'bg-white/20'}`}>
-                <span className={`w-3 h-3 rounded-full ${screenTimeRunning ? 'bg-white animate-pulse' : 'bg-white/60'}`}/>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isFlat ? (screenTimeRunning ? 'bg-teal-100' : 'bg-gray-100') : (screenTimeRunning ? 'bg-white/30' : 'bg-white/20')}`}>
+                <span className={`w-3 h-3 rounded-full ${isFlat ? (screenTimeRunning ? 'bg-teal-500 animate-pulse' : 'bg-gray-400') : (screenTimeRunning ? 'bg-white animate-pulse' : 'bg-white/60')}`}/>
               </div>
               <div>
-                <p className="text-sm font-bold text-white">{es ? 'Tiempo en pantalla hoy' : 'Screen time today'}</p>
-                <p className="text-xs text-white/70">{screenTimeRunning ? (es ? 'Cronómetro activo' : 'Timer running') : (es ? 'Cronómetro pausado' : 'Timer paused')} · {es ? 'Toca para ver detalles' : 'Tap to view details'}</p>
+                <p className={`text-sm font-bold ${tc.cardText}`}>{es ? 'Tiempo en pantalla hoy' : 'Screen time today'}</p>
+                <p className={`text-xs ${tc.cardSubtext}`}>{screenTimeRunning ? (es ? 'Cronómetro activo' : 'Timer running') : (es ? 'Cronómetro pausado' : 'Timer paused')} · {es ? 'Toca para ver detalles' : 'Tap to view details'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-2xl font-black text-white font-mono tabular-nums">{screenHH}:{screenMM}:{screenSS}</p>
+              <p className={`text-2xl font-black font-mono tabular-nums ${tc.cardText}`}>{screenHH}:{screenMM}:{screenSS}</p>
               <button
                 onClick={handleTimerToggle}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition ${screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
@@ -587,6 +612,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
               </button>
             </div>
           </div>
+
+            </>);
+          })()}
 
           {/* ── Artículo del día ── */}
           {(() => {

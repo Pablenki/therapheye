@@ -38,7 +38,7 @@ export interface AccessibilitySettings {
 
 export const defaultSettings: AccessibilitySettings = {
   appLanguage: 'es',
-  theme: 'colorido',
+  theme: 'limpio',
   highContrast: false,
   fontSize: 100,
   fontFamily: 'default',
