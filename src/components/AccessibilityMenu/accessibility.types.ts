@@ -5,10 +5,14 @@
 export type FontFamily = 'default' | 'Arial, sans-serif' | 'Georgia, serif' | 'Courier New, monospace' | 'Comic Sans MS, cursive' | 'OpenDyslexic, sans-serif';
 export type ColorBlindMode = 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia' | 'achromatopsia';
 export type AppLanguage = 'es' | 'en';
+export type { Theme } from '../../themes';
 
 export interface AccessibilitySettings {
   // Idioma de la aplicación
   appLanguage: AppLanguage;
+
+  // Tema visual
+  theme: import('../../themes').Theme;
 
   // Visuales
   highContrast: boolean;
@@ -34,6 +38,7 @@ export interface AccessibilitySettings {
 
 export const defaultSettings: AccessibilitySettings = {
   appLanguage: 'es',
+  theme: 'colorido',
   highContrast: false,
   fontSize: 100,
   fontFamily: 'default',

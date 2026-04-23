@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AccessibilitySettings } from './accessibility.types';
 import { defaultSettings } from './accessibility.types';
+import { THEMES } from '../../themes';
 
 const STORAGE_KEY = 'therapeye_accessibility_settings';
 
@@ -90,7 +91,12 @@ export const useAccessibility = () => {
       }
     }
 
+    // Tema visual — CSS variable para el sidebar + evento para Dashboard
+    const themeConfig = THEMES[settings.theme] ?? THEMES.colorido;
+    document.documentElement.style.setProperty('--sidebar-bg', themeConfig.sidebarColor);
+
     saveSettings(settings);
+    window.dispatchEvent(new CustomEvent('therapheye-theme-changed'));
   }, [settings, saveSettings]);
 
   // ==================== FUNCIONES DE ACTUALIZACIÓN ====================
@@ -330,6 +336,10 @@ export const useAccessibility = () => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+
+    // Restaurar sidebar color por default
+    document.documentElement.style.setProperty('--sidebar-bg', THEMES.colorido.sidebarColor);
+    window.dispatchEvent(new CustomEvent('therapheye-theme-changed'));
 
     // Limpiar clases de #root al resetear
     const root = document.getElementById('root');

@@ -1,4 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { THEMES, DEFAULT_THEME } from '../themes';
+import type { Theme } from '../themes';
 import {
   Flame, TrendingDown, TrendingUp, Minus, Bell,
   ChevronRight, ChevronLeft, Play, Pause, BookOpen, Clock,
@@ -156,9 +158,30 @@ const FatigaGauge = ({ score }: { score: number }) => {
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
+// ── Hook local: lee el tema desde localStorage y se actualiza al cambiar ──────
+const useTheme = () => {
+  const read = useCallback((): Theme => {
+    try {
+      const s = localStorage.getItem('therapeye_accessibility_settings');
+      return s ? (JSON.parse(s).theme as Theme) || DEFAULT_THEME : DEFAULT_THEME;
+    } catch { return DEFAULT_THEME; }
+  }, []);
+
+  const [theme, setTheme] = useState<Theme>(read);
+
+  useEffect(() => {
+    const handler = () => setTheme(read());
+    window.addEventListener('therapheye-theme-changed', handler);
+    return () => window.removeEventListener('therapheye-theme-changed', handler);
+  }, [read]);
+
+  return THEMES[theme] ?? THEMES[DEFAULT_THEME];
+};
+
 const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const { user } = useUser();
   const { lang } = useLanguage();
+  const tc = useTheme(); // theme config
 
   const [stats, setStats] = useState<Stats>({
     evaluaciones: 0, ejercicios: 0, racha: 0,
@@ -339,15 +362,15 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   })();
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-blue-100 via-indigo-50 to-violet-100">
+    <div className={`flex flex-col h-screen overflow-hidden bg-gradient-to-br ${tc.dashBg}`}>
 
         {/* Top bar */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-blue-200 shadow-md px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+        <header className={`${tc.headerBg} px-6 py-3.5 flex items-center justify-between flex-shrink-0`}>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">
+            <h1 className={`text-xl font-bold ${tc.headerText}`}>
               {es ? `¡Bienvenido de nuevo, ${user?.nombre?.split(' ')[0]}! 👋` : `Welcome back, ${user?.nombre?.split(' ')[0]}! 👋`}
             </h1>
-            <p className="text-xs text-gray-400 mt-0.5">{es ? 'Cuida tu vista, mejora tu día a día.' : 'Take care of your vision, improve your day.'}</p>
+            <p className={`text-xs mt-0.5 ${tc.headerSubtext}`}>{es ? 'Cuida tu vista, mejora tu día a día.' : 'Take care of your vision, improve your day.'}</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Extensión badge */}
@@ -415,7 +438,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Racha */}
-            <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl p-5 shadow-lg flex flex-col gap-3 relative overflow-hidden">
+            <div className={`bg-gradient-to-br ${tc.racha} rounded-2xl p-5 shadow-lg flex flex-col gap-3 relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"/>
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-white flex items-center gap-1.5">
@@ -441,7 +464,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Próxima recomendación */}
-            <div className="bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden">
+            <div className={`bg-gradient-to-br ${tc.recomendacion} rounded-2xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8"/>
               <div>
                 <p className="text-xs text-white/70 font-semibold uppercase tracking-wide mb-2">{es ? 'Próxima recomendación' : 'Next recommendation'}</p>
@@ -460,13 +483,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
 
           {/* ── Acciones rápidas ── */}
           <div>
-            <p className="text-sm font-bold text-gray-700 mb-3">{es ? 'Acciones rápidas' : 'Quick actions'}</p>
+            <p className={`text-sm font-bold mb-3 ${tc.sectionLabel}`}>{es ? 'Acciones rápidas' : 'Quick actions'}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { icon: Activity,   grad: 'from-violet-500 to-purple-600',   title: es ? 'Ejercicios visuales' : 'Visual exercises',  desc: es ? 'Reduce la fatiga con ejercicios guiados' : 'Reduce fatigue with guided exercises', page: 'exercises' as Page },
-                { icon: Camera,     grad: 'from-rose-500 to-pink-600',        title: es ? 'Captura de imagen' : 'Image capture',    desc: es ? 'Toma una imagen para análisis visual' : 'Take an image for visual analysis', page: 'image-capture' as Page },
-                { icon: Glasses,    grad: 'from-teal-500 to-cyan-600',        title: es ? 'Prueba de visión' : 'Vision test',     desc: es ? 'Valida tu agudeza visual con Snellen' : 'Validate your visual acuity with Snellen', page: 'vision-test' as Page },
-                { icon: HeartPulse, grad: 'from-amber-500 to-orange-500',     title: es ? 'Salud Visual' : 'Visual Health',         desc: es ? 'Monitorea tu tiempo en pantalla' : 'Monitor your screen time', page: 'visual-health' as Page },
+                { icon: Activity,   grad: tc.quickActions[0], title: es ? 'Ejercicios visuales' : 'Visual exercises',  desc: es ? 'Reduce la fatiga con ejercicios guiados' : 'Reduce fatigue with guided exercises', page: 'exercises' as Page },
+                { icon: Camera,     grad: tc.quickActions[1], title: es ? 'Captura de imagen' : 'Image capture',    desc: es ? 'Toma una imagen para análisis visual' : 'Take an image for visual analysis', page: 'image-capture' as Page },
+                { icon: Glasses,    grad: tc.quickActions[2], title: es ? 'Prueba de visión' : 'Vision test',     desc: es ? 'Valida tu agudeza visual con Snellen' : 'Validate your visual acuity with Snellen', page: 'vision-test' as Page },
+                { icon: HeartPulse, grad: tc.quickActions[3], title: es ? 'Salud Visual' : 'Visual Health',         desc: es ? 'Monitorea tu tiempo en pantalla' : 'Monitor your screen time', page: 'visual-health' as Page },
               ].map((item) => (
                 <button
                   key={item.title}
@@ -491,7 +514,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Progreso semanal */}
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+            <div className={`bg-gradient-to-br ${tc.progreso} rounded-2xl p-5 shadow-lg relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10"/>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-sm font-bold text-white">{es ? 'Tu progreso semanal' : 'Your weekly progress'}</p>
@@ -508,7 +531,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
 
             {/* Últimos diagnósticos */}
-            <div className="bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl p-5 shadow-lg flex flex-col relative overflow-hidden">
+            <div className={`bg-gradient-to-br ${tc.diagnosticos} rounded-2xl p-5 shadow-lg flex flex-col relative overflow-hidden`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-10 translate-x-10"/>
               <p className="text-sm font-bold text-white mb-3">{es ? 'Últimos diagnósticos' : 'Latest diagnostics'}</p>
               {loadingStats
@@ -543,7 +566,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {/* ── Timer pantalla (compacto) ── */}
           <div
             onClick={()=>onNavigate('visual-health')}
-            className="bg-gradient-to-r from-teal-500 to-cyan-600 rounded-2xl p-4 shadow-lg flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            className={`bg-gradient-to-r ${tc.timer} rounded-2xl p-4 shadow-lg flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${screenTimeRunning ? 'bg-white/30' : 'bg-white/20'}`}>

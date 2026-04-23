@@ -86,9 +86,9 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
 
       {/* ══════════════════ SIDEBAR ══════════════════ */}
       <aside
-        style={{ width: sideW }}
+        style={{ width: sideW, backgroundColor: 'var(--sidebar-bg, #0e1f47)' }}
         className={`
-          fixed top-0 left-0 h-screen z-40 bg-[#0e1f47] flex flex-col
+          fixed top-0 left-0 h-screen z-40 flex flex-col
           transition-all duration-300 ease-in-out flex-shrink-0
           ${isMobile ? (open ? 'translate-x-0 shadow-2xl' : '-translate-x-full') : 'translate-x-0'}
         `}

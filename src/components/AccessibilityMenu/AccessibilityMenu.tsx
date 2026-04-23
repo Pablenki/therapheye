@@ -6,9 +6,11 @@
 
 import { useAccessibility } from './useAccessibility';
 import { createPortal } from 'react-dom';
-import { X, Settings, Eye, Volume2, MousePointer, Globe } from 'lucide-react';
+import { X, Settings, Eye, Volume2, MousePointer, Globe, Palette } from 'lucide-react';
 import { useLanguage } from '../../i18n';
 import type { FontFamily, ColorBlindMode, AppLanguage } from './accessibility.types';
+import { THEMES } from '../../themes';
+import type { Theme } from '../../themes';
 
 const AccessibilityMenu = () => {
   const {
@@ -90,7 +92,51 @@ const AccessibilityMenu = () => {
             </div>
           </div>
 
-          {/* ========== 1. VISUALES ========== */}
+          {/* ========== 1. TEMA VISUAL ========== */}
+          <div className="mb-6 pb-5 border-b-2 border-gray-200">
+            <h4 className="text-base font-bold text-[#1B396B] mb-4 flex items-center gap-2">
+              <Palette className="w-5 h-5" />
+              {settings.appLanguage === 'es' ? 'Tema Visual' : 'Visual Theme'}
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.entries(THEMES) as [Theme, typeof THEMES[Theme]][]).map(([key, cfg]) => {
+                const active = settings.theme === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => updateSetting('theme', key)}
+                    className={`relative rounded-xl p-3 text-left border-2 transition-all
+                      ${active
+                        ? 'border-[#1B396B] bg-[#1B396B]/5 shadow-md'
+                        : 'border-gray-200 hover:border-[#1B396B]/40 bg-white'}`}
+                  >
+                    {/* Swatches de color */}
+                    <div className="flex gap-1 mb-2">
+                      {cfg.previewColors.map((color, i) => (
+                        <div
+                          key={i}
+                          className="w-5 h-5 rounded-full flex-shrink-0 shadow-sm"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs font-bold text-gray-800 leading-tight">
+                      {cfg.emoji} {settings.appLanguage === 'es' ? cfg.labelEs : cfg.labelEn}
+                    </p>
+                    {active && (
+                      <div className="absolute top-2 right-2 w-4 h-4 bg-[#1B396B] rounded-full flex items-center justify-center">
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========== 2. VISUALES ========== */}
           <div className="mb-6 pb-5 border-b-2 border-gray-200">
             <h4 className="text-base font-bold text-[#1B396B] mb-4 flex items-center gap-2">
               <Eye className="w-5 h-5" />
@@ -234,7 +280,7 @@ const AccessibilityMenu = () => {
             </div>
           </div>
 
-          {/* ========== 2. LECTURA Y NAVEGACIÓN ========== */}
+          {/* ========== 3. LECTURA Y NAVEGACIÓN ========== */}
           <div className="mb-6 pb-5 border-b-2 border-gray-200">
             <h4 className="text-base font-bold text-[#1B396B] mb-4 flex items-center gap-2">
               <Volume2 className="w-5 h-5" />
@@ -296,7 +342,7 @@ const AccessibilityMenu = () => {
             </div>
           </div>
 
-          {/* ========== 3. MOTORAS Y FÍSICAS ========== */}
+          {/* ========== 4. MOTORAS Y FÍSICAS ========== */}
           <div className="mb-6 pb-5 border-b-2 border-gray-200">
             <h4 className="text-base font-bold text-[#1B396B] mb-4 flex items-center gap-2">
               <MousePointer className="w-5 h-5" />
