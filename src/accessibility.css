@@ -45,15 +45,23 @@ body.text-large button { font-size: 1.1rem !important; }
 body.text-large input { font-size: 1.1rem !important; }
 
 /* ========== INVERSIÓN DE COLORES (en #root) ========== */
-/* invert(1) hue-rotate(180deg): inversión limpia y nítida sin niebla.
-   brightness(1.08): sube ligeramente el brillo para que los dark-cards no sean negro puro. */
+/* invert(0.88): blancos → gris oscuro (~#1e1e1e), NO negro puro — look tipo dark-mode suave.
+   saturate(0.85): desatura ligeramente para evitar colores chillones al invertir.
+   brightness(0.97): ajuste fino de luminosidad global. */
 #root.invert-colors {
-  filter: invert(1) hue-rotate(180deg) brightness(1.08) !important;
+  filter: invert(0.88) hue-rotate(180deg) saturate(0.85) brightness(0.97) !important;
 }
 
+/* Imágenes y videos: contra-filtro para restaurar colores naturales */
 #root.invert-colors img,
 #root.invert-colors video {
-  filter: invert(1) hue-rotate(180deg) brightness(1.08) !important;
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Sidebar: contra-filtro exacto → cancela la inversión del padre y
+   mantiene su color navy original (#1a2236), evitando el "gris rata" */
+#root.invert-colors aside {
+  filter: invert(1) hue-rotate(180deg) !important;
 }
 
 /* La Prueba de visión NO tiene excepción: respeta el mismo modo invertido/oscuro
