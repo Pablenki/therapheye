@@ -20,6 +20,7 @@ import Profile from './pages/Profile'
 import DiagnosticoCompleto from './pages/DiagnosticoCompleto'
 import Learn from './pages/Learn'
 import BlinkDetector from './pages/BlinkDetector'
+import LecturaVisual from './pages/LecturaVisual'
 
 type Page =
   | 'login'
@@ -36,7 +37,8 @@ type Page =
   | 'profile'
   | 'diagnostico-completo'
   | 'learn'
-  | 'blink-detector';
+  | 'blink-detector'
+  | 'reading-test';
 
 interface PendingUser {
   name: string;
@@ -178,6 +180,8 @@ function AppContent() {
         return <Learn onBack={() => handleNavigate('dashboard')} />
       case 'blink-detector':
         return <BlinkDetector onBack={() => handleNavigate('dashboard')} />
+      case 'reading-test':
+        return <LecturaVisual onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login

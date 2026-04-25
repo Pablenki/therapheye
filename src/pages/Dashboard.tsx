@@ -14,7 +14,8 @@ import { ARTICLES, CATEGORY_META } from '../data/articles';
 type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
-  | 'visual-health' | 'profile' | 'diagnostico-completo' | 'learn';
+  | 'visual-health' | 'profile' | 'diagnostico-completo' | 'learn'
+  | 'blink-detector' | 'reading-test';
 
 interface Stats {
   evaluaciones: number;

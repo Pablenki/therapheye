@@ -21,7 +21,8 @@ type Page =
   | 'profile'
   | 'diagnostico-completo'
   | 'learn'
-  | 'blink-detector';
+  | 'blink-detector'
+  | 'reading-test';
 
 type Props = {
   currentPage: Page;
