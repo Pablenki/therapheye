@@ -22,7 +22,8 @@ type Page =
   | 'diagnostico-completo'
   | 'learn'
   | 'blink-detector'
-  | 'reading-test';
+  | 'reading-test'
+  | 'chat-sintomas';
 
 type Props = {
   currentPage: Page;

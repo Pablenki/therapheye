@@ -21,6 +21,7 @@ import DiagnosticoCompleto from './pages/DiagnosticoCompleto'
 import Learn from './pages/Learn'
 import BlinkDetector from './pages/BlinkDetector'
 import LecturaVisual from './pages/LecturaVisual'
+import ChatSintomas from './pages/ChatSintomas'
 
 type Page =
   | 'login'
@@ -38,7 +39,8 @@ type Page =
   | 'diagnostico-completo'
   | 'learn'
   | 'blink-detector'
-  | 'reading-test';
+  | 'reading-test'
+  | 'chat-sintomas';
 
 interface PendingUser {
   name: string;
@@ -182,6 +184,8 @@ function AppContent() {
         return <BlinkDetector onBack={() => handleNavigate('dashboard')} />
       case 'reading-test':
         return <LecturaVisual onBack={() => handleNavigate('dashboard')} />
+      case 'chat-sintomas':
+        return <ChatSintomas onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login
