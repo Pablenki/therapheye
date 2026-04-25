@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera } from 'lucide-react';
+import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera, Bell, BellOff, BellRing } from 'lucide-react';
 import bcrypt from 'bcryptjs';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
 import { generarCodigo, enviarCorreoEliminacion } from '../utils/emailService';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
-type Tab = 'perfil' | 'password' | 'account';
+type Tab = 'perfil' | 'password' | 'account' | 'notificaciones';
 
 interface Props {
   onBack: () => void;
@@ -57,6 +58,7 @@ export default function Profile({ onBack, onLogout }: Props) {
   const { lang } = useLanguage();
 
   const [tab, setTab] = useState<Tab>('perfil');
+  const push = usePushNotifications(user?.id);
 
   // ── Estado tab Perfil ──────────────────────────────────────────────────────
   const [nombre,          setNombre]        = useState(user?.nombre ?? '');
@@ -210,6 +212,7 @@ export default function Profile({ onBack, onLogout }: Props) {
           <aside className="w-44 flex-shrink-0 flex flex-col gap-1">
             <SideTab active={tab === 'perfil'}   icon={<UserCircle2 className="w-4 h-4" />} label={es ? 'Perfil'      : 'Profile'}  onClick={() => { setTab('perfil');    setPerfilMsg(null); }} />
             <SideTab active={tab === 'password'} icon={<KeyRound    className="w-4 h-4" />} label={es ? 'Contraseña' : 'Password'} onClick={() => { setTab('password');  setPwdMsg(null); }} />
+            <SideTab active={tab === 'notificaciones'} icon={<Bell className="w-4 h-4" />} label={es ? 'Notificaciones' : 'Notifications'} onClick={() => setTab('notificaciones')} />
             <SideTab active={tab === 'account'}  icon={<Trash2      className="w-4 h-4" />} label={es ? 'Cuenta'     : 'Account'}  danger onClick={() => { setTab('account'); setDeleteStep('confirm'); setDeleteMsg(null); setInputCode(''); }} />
           </aside>
 
@@ -423,6 +426,108 @@ export default function Profile({ onBack, onLogout }: Props) {
                         {deleteLoading ? (es ? 'Eliminando…' : 'Deleting…') : (es ? 'Eliminar cuenta' : 'Delete account')}
                       </button>
                     </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ── Tab: Notificaciones ── */}
+            {tab === 'notificaciones' && (
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <Bell className="w-5 h-5 text-indigo-500" />
+                  <h2 className="text-base font-bold text-gray-800">{es ? 'Notificaciones Push' : 'Push Notifications'}</h2>
+                </div>
+
+                {!push.supported && (
+                  <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    {es ? 'Tu navegador no soporta notificaciones push. Prueba con Chrome o Edge.' : 'Your browser does not support push notifications. Try Chrome or Edge.'}
+                  </div>
+                )}
+
+                {push.supported && push.permission === 'denied' && (
+                  <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                    <BellOff className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    {es ? 'Bloqueaste las notificaciones en este navegador. Habilítalas desde la configuración del sitio.' : 'You blocked notifications in this browser. Enable them in site settings.'}
+                  </div>
+                )}
+
+                {push.supported && push.permission !== 'denied' && (
+                  <>
+                    {/* Toggle principal */}
+                    <div className={`rounded-2xl border-2 p-4 flex items-center justify-between gap-4 transition-all ${push.subscribed ? 'border-indigo-200 bg-indigo-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        {push.subscribed
+                          ? <BellRing className="w-6 h-6 text-indigo-600" />
+                          : <BellOff  className="w-6 h-6 text-gray-400" />}
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">
+                            {push.subscribed
+                              ? (es ? 'Notificaciones activadas' : 'Notifications enabled')
+                              : (es ? 'Notificaciones desactivadas' : 'Notifications disabled')}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {push.subscribed
+                              ? (es ? 'Recibirás recordatorios en este dispositivo' : 'You will receive reminders on this device')
+                              : (es ? 'Activa para recibir recordatorios personalizados' : 'Enable to receive personalized reminders')}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => push.subscribed ? push.unsubscribe() : push.subscribe()}
+                        disabled={push.loading}
+                        className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 ${
+                          push.subscribed
+                            ? 'bg-white border border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-500'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        } disabled:opacity-50`}
+                      >
+                        {push.loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        {push.subscribed ? (es ? 'Desactivar' : 'Disable') : (es ? 'Activar' : 'Enable')}
+                      </button>
+                    </div>
+
+                    {/* Preferencias (solo si está suscrito) */}
+                    {push.subscribed && (
+                      <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col gap-3">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          {es ? 'Qué recordatorios recibir' : 'Which reminders to receive'}
+                        </p>
+                        {([
+                          { key: 'exercises',     icon: '🏋️', label: es ? 'Ejercicios diarios'          : 'Daily exercises',     desc: es ? 'Si no hiciste ejercicios hoy (2pm)' : "If you haven't exercised today (2pm)" },
+                          { key: 'questionnaire', icon: '📊', label: es ? 'Cuestionario semanal'        : 'Weekly questionnaire', desc: es ? 'Los lunes si no evaluaste la semana'  : 'Mondays if you missed the weekly check' },
+                          { key: 'streak',        icon: '🔥', label: es ? 'Racha en riesgo'             : 'Streak at risk',       desc: es ? 'Cuando tu racha pueda romperse hoy'  : 'When your streak may break today' },
+                        ] as const).map(({ key, icon, label, desc }) => (
+                          <div key={key} className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2.5">
+                              <span className="text-lg flex-shrink-0">{icon}</span>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-700">{label}</p>
+                                <p className="text-xs text-gray-400">{desc}</p>
+                              </div>
+                            </div>
+                            <label className="relative inline-block w-[44px] h-[24px] cursor-pointer flex-shrink-0 mt-0.5">
+                              <input
+                                type="checkbox"
+                                checked={push.prefs[key]}
+                                onChange={() => push.updatePrefs({ ...push.prefs, [key]: !push.prefs[key] })}
+                                className="sr-only peer"
+                              />
+                              <div className="w-full h-full bg-gray-200 rounded-full peer-checked:bg-indigo-600 transition-colors">
+                                <div className="absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow-sm" />
+                              </div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-400">
+                      {es
+                        ? '💡 Las notificaciones se envían automáticamente desde el servidor — funcionan aunque la app esté cerrada.'
+                        : '💡 Notifications are sent automatically from the server — they work even when the app is closed.'}
+                    </p>
                   </>
                 )}
               </div>
