@@ -327,6 +327,11 @@ export const useAccessibility = () => {
     };
   }, [settings.readingGuide]);
 
+  // ==================== APLICAR CONFIGURACIÓN EN BULK ====================
+  const applyBulkSettings = useCallback((partial: Partial<AccessibilitySettings>) => {
+    setSettings(prev => ({ ...prev, ...partial }));
+  }, []);
+
   // ==================== RESETEAR ====================
   const resetSettings = useCallback(() => {
     setSettings(defaultSettings);
@@ -366,5 +371,6 @@ export const useAccessibility = () => {
     zoomReset,
     setFontSize,
     resetSettings,
+    applyBulkSettings,
   };
 };

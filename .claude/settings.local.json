@@ -37,7 +37,12 @@
       "Bash(grep:*)",
       "Bash(npx vite:*)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('summary',{}\\)\\)\")",
-      "Bash(node seed-fake-data.mjs)"
+      "Bash(node seed-fake-data.mjs)",
+      "Bash(git commit:*)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__list_projects",
+      "Bash(npm install:*)"
     ]
   }
 }

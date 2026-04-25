@@ -72,6 +72,7 @@ const getExerciseDisplayName = (raw: string, lang: 'es' | 'en'): string => {
 };
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import { PDFDownloadButton } from '../components/ReportePDF';
 
 interface ImageCaptura {
   id: string;
@@ -959,11 +960,14 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
           {t('common', 'backToDashboard')}
         </button>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">
-            {t('history', 'title')} {user?.nombre}
-          </h1>
-          <p className="text-gray-600">{t('history', 'subtitle')}</p>
+        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-1">
+              {t('history', 'title')} {user?.nombre}
+            </h1>
+            <p className="text-gray-600">{t('history', 'subtitle')}</p>
+          </div>
+          <PDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} lang={lang} />
         </div>
 
         {/* Stats */}

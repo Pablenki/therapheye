@@ -4,13 +4,15 @@
 // Usa React Portal → renderiza en #a11y-portal fuera de #root
 // =========================================
 
+import { useState } from 'react';
 import { useAccessibility } from './useAccessibility';
 import { createPortal } from 'react-dom';
-import { X, Settings, Eye, Volume2, MousePointer, Globe, Palette } from 'lucide-react';
+import { X, Settings, Eye, Volume2, MousePointer, Globe, Palette, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../i18n';
 import type { FontFamily, ColorBlindMode, AppLanguage } from './accessibility.types';
 import { THEMES } from '../../themes';
 import type { Theme } from '../../themes';
+import AIConfigWizard from './AIConfigWizard';
 
 const AccessibilityMenu = () => {
   const {
@@ -24,13 +26,15 @@ const AccessibilityMenu = () => {
     zoomReset,
     setFontSize,
     resetSettings,
+    applyBulkSettings,
   } = useAccessibility();
   const { t } = useLanguage();
+  const [showWizard, setShowWizard] = useState(false);
 
   const portalTarget = document.getElementById('a11y-portal') || document.body;
 
-  return createPortal(
-    <div 
+  const menu = createPortal(
+    <div
       className="accessibility-menu fixed bottom-5 right-5 z-[9999]"
       style={settings.invertColors ? { filter: 'invert(1) hue-rotate(180deg)' } : undefined}
     >
@@ -69,6 +73,15 @@ const AccessibilityMenu = () => {
 
         {/* Contenido */}
         <div className="p-5">
+
+          {/* ========== BOTÓN IA ========== */}
+          <button
+            onClick={() => setShowWizard(true)}
+            className="w-full mb-5 py-3 px-4 bg-gradient-to-r from-[#1B396B] to-[#4f46e5] text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md"
+          >
+            <Sparkles className="w-4 h-4 text-yellow-300" />
+            {settings.appLanguage === 'es' ? 'Configurar con IA' : 'Configure with AI'}
+          </button>
 
           {/* ========== 0. IDIOMA ========== */}
           <div className="mb-6 pb-5 border-b-2 border-gray-200">
@@ -416,6 +429,22 @@ const AccessibilityMenu = () => {
       </div>
     </div>,
     portalTarget
+  );
+
+  return (
+    <>
+      {menu}
+      {showWizard && (
+        <AIConfigWizard
+          lang={settings.appLanguage}
+          onApply={(partial) => {
+            applyBulkSettings(partial);
+            setShowWizard(false);
+          }}
+          onClose={() => setShowWizard(false)}
+        />
+      )}
+    </>
   );
 };
 

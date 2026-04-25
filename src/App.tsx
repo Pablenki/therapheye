@@ -19,6 +19,7 @@ import VisualHealth from './pages/VisualHealth'
 import Profile from './pages/Profile'
 import DiagnosticoCompleto from './pages/DiagnosticoCompleto'
 import Learn from './pages/Learn'
+import BlinkDetector from './pages/BlinkDetector'
 
 type Page =
   | 'login'
@@ -34,7 +35,8 @@ type Page =
   | 'visual-health'
   | 'profile'
   | 'diagnostico-completo'
-  | 'learn';
+  | 'learn'
+  | 'blink-detector';
 
 interface PendingUser {
   name: string;
@@ -174,6 +176,8 @@ function AppContent() {
         return <DiagnosticoCompleto onBack={() => handleNavigate('dashboard')} />
       case 'learn':
         return <Learn onBack={() => handleNavigate('dashboard')} />
+      case 'blink-detector':
+        return <BlinkDetector onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login

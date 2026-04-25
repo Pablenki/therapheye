@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
-  KeyRound, Menu, X, ChevronLeft,
+  KeyRound, Menu, X, ChevronLeft, ScanFace,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -10,7 +10,8 @@ import { useLanguage } from '../i18n';
 type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
-  | 'visual-health' | 'profile' | 'diagnostico-completo' | 'verify-email' | 'learn';
+  | 'visual-health' | 'profile' | 'diagnostico-completo' | 'verify-email' | 'learn'
+  | 'blink-detector';
 
 interface Props {
   currentPage: Page;
@@ -29,6 +30,7 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: ScanEye,       label: 'Diagnóstico',       page: 'diagnostico-completo'},
   { icon: ClipboardList, label: 'Cuestionario',      page: 'questionnaire'       },
   { icon: BookOpen,      label: 'Aprende',           page: 'learn'               },
+  { icon: ScanFace,      label: 'Parpadeo',          page: 'blink-detector'      },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded

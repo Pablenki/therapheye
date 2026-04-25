@@ -20,7 +20,8 @@ type Page =
   | 'visual-health'
   | 'profile'
   | 'diagnostico-completo'
-  | 'learn';
+  | 'learn'
+  | 'blink-detector';
 
 type Props = {
   currentPage: Page;
