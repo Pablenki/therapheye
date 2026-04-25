@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, type ReactElement } from 'react';
 import { ArrowLeft, Play, Pause, RotateCcw, Volume2, VolumeX, SkipForward, Music2, X } from 'lucide-react';
+import FatigaModal from '../components/FatigaModal';
 import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -532,6 +533,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const [timeLeft, setTimeLeft]     = useState(currentExercise.defaultDuration);
   const [isRunning, setIsRunning]   = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [showFatiga, setShowFatiga] = useState(false);
   const [isSaving, setIsSaving]     = useState(false);
   const [muted, setMuted]           = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
@@ -764,12 +766,13 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
       if (status === 'completed') {
         clearResumeState(exerciseId);
         setIsComplete(true);
+        setShowFatiga(true);
       } else if (status === 'incomplete' && timeLeftRef.current > 0 && timeLeftRef.current < selectedDuration) {
         saveResumeState(exerciseId, selectedDuration, timeLeftRef.current);
       }
     } catch (error) {
       console.error('Error al guardar ejercicio:', error);
-      if (status === 'completed') setIsComplete(true);
+      if (status === 'completed') { setIsComplete(true); setShowFatiga(true); }
     } finally {
       setIsSaving(false);
     }
@@ -889,6 +892,13 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   if (isComplete) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        {showFatiga && user?.id && (
+          <FatigaModal
+            userId={user.id}
+            exerciseId={exerciseId}
+            onClose={() => setShowFatiga(false)}
+          />
+        )}
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8 text-center">
           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <span className="text-4xl text-white">✓</span>

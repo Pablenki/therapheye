@@ -327,6 +327,32 @@ export const useAccessibility = () => {
     };
   }, [settings.readingGuide]);
 
+  // ==================== MODO NOCTURNO PROGRAMADO ====================
+  useEffect(() => {
+    if (!settings.darkScheduleEnabled) return;
+
+    const checkSchedule = () => {
+      const now   = new Date();
+      const hhmm  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const from  = settings.darkScheduleFrom;
+      const to    = settings.darkScheduleTo;
+      // Handles overnight range (e.g. 21:00 → 07:00)
+      const isNight = from > to
+        ? hhmm >= from || hhmm < to
+        : hhmm >= from && hhmm < to;
+      setSettings(prev => {
+        const wantsDark = isNight;
+        if (wantsDark && prev.theme !== 'oscuro')  return { ...prev, theme: 'oscuro' };
+        if (!wantsDark && prev.theme === 'oscuro') return { ...prev, theme: 'limpio' };
+        return prev;
+      });
+    };
+
+    checkSchedule();
+    const id = setInterval(checkSchedule, 60_000);
+    return () => clearInterval(id);
+  }, [settings.darkScheduleEnabled, settings.darkScheduleFrom, settings.darkScheduleTo]);
+
   // ==================== APLICAR CONFIGURACIÓN EN BULK ====================
   const applyBulkSettings = useCallback((partial: Partial<AccessibilitySettings>) => {
     setSettings(prev => ({ ...prev, ...partial }));

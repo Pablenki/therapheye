@@ -22,6 +22,7 @@ import Learn from './pages/Learn'
 import BlinkDetector from './pages/BlinkDetector'
 import LecturaVisual from './pages/LecturaVisual'
 import ChatSintomas from './pages/ChatSintomas'
+import MapaOftalmologos from './pages/MapaOftalmologos'
 
 type Page =
   | 'login'
@@ -40,7 +41,8 @@ type Page =
   | 'learn'
   | 'blink-detector'
   | 'reading-test'
-  | 'chat-sintomas';
+  | 'chat-sintomas'
+  | 'mapa-oftalmologos';
 
 interface PendingUser {
   name: string;
@@ -186,6 +188,8 @@ function AppContent() {
         return <LecturaVisual onBack={() => handleNavigate('dashboard')} />
       case 'chat-sintomas':
         return <ChatSintomas onBack={() => handleNavigate('dashboard')} />
+      case 'mapa-oftalmologos':
+        return <MapaOftalmologos onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login

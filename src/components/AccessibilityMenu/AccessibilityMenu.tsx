@@ -417,6 +417,47 @@ const AccessibilityMenu = () => {
             </div>
           </div>
 
+          {/* ── Modo nocturno programado ───────────────────────────────────── */}
+          <div className="border-t pt-4">
+            <p className="text-xs font-bold uppercase text-gray-500 tracking-wider mb-3">🌙 Modo Nocturno Automático</p>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-gray-700">Activar programación</span>
+              <label className="relative inline-block w-14 h-7 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.darkScheduleEnabled}
+                  onChange={() => toggleSetting('darkScheduleEnabled')}
+                  className="sr-only peer"
+                />
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300">
+                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"/>
+                </div>
+              </label>
+            </div>
+            {settings.darkScheduleEnabled && (
+              <div className="flex gap-3 text-sm">
+                <label className="flex-1">
+                  <span className="text-xs text-gray-500 block mb-1">Oscurecer desde</span>
+                  <input
+                    type="time"
+                    value={settings.darkScheduleFrom}
+                    onChange={e => updateSetting('darkScheduleFrom', e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                  />
+                </label>
+                <label className="flex-1">
+                  <span className="text-xs text-gray-500 block mb-1">Aclarar desde</span>
+                  <input
+                    type="time"
+                    value={settings.darkScheduleTo}
+                    onChange={e => updateSetting('darkScheduleTo', e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
           {/* Botón Resetear */}
           <button
             onClick={resetSettings}

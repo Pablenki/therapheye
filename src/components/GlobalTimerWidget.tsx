@@ -23,7 +23,8 @@ type Page =
   | 'learn'
   | 'blink-detector'
   | 'reading-test'
-  | 'chat-sintomas';
+  | 'chat-sintomas'
+  | 'mapa-oftalmologos';
 
 type Props = {
   currentPage: Page;

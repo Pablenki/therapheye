@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Calendar, TrendingUp, Eye, CheckCircle2, XCircle, ChevronDown, ChevronUp, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { ArrowLeft, Calendar, TrendingUp, Eye, CheckCircle2, XCircle, ChevronDown, ChevronUp, Play, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import translations from '../i18n/translations';
 
@@ -790,6 +790,30 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
   const [captPage, setCaptPage]       = useState(0);
 
   const { user } = useUser();
+  const shareCardRef = useRef<HTMLDivElement>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    if (!shareCardRef.current) return;
+    setSharing(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(shareCardRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      canvas.toBlob(async blob => {
+        if (!blob) return;
+        const file = new File([blob], 'therapheye-resumen.png', { type: 'image/png' });
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ title: 'Mi progreso visual — Therapheye', files: [file] });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'therapheye-resumen.png'; a.click();
+          URL.revokeObjectURL(url);
+        }
+        setSharing(false);
+      }, 'image/png');
+    } catch { setSharing(false); }
+  }, []);
 
   useEffect(() => { loadHistoryData(); }, []);
 
@@ -967,7 +991,47 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </h1>
             <p className="text-gray-600">{t('history', 'subtitle')}</p>
           </div>
-          <PDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} lang={lang} />
+          <div className="flex items-center gap-2">
+            <PDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} lang={lang} />
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="flex items-center gap-2 bg-violet-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-violet-700 transition disabled:opacity-50"
+            >
+              <Share2 className="w-4 h-4"/>
+              {sharing ? 'Generando…' : 'Compartir'}
+            </button>
+          </div>
+        </div>
+
+        {/* Hidden share card */}
+        <div
+          ref={shareCardRef}
+          style={{ position: 'fixed', left: '-9999px', top: 0, width: '480px', background: '#fff', padding: '32px', fontFamily: 'sans-serif' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 48, height: 48, background: '#4f46e5', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>👁</div>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 18, color: '#1e1b4b', margin: 0 }}>Therapheye</p>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>Resumen de salud visual — {user?.nombre}</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            {[
+              { label: 'Evaluaciones', value: evaluations.length, color: '#4f46e5' },
+              { label: 'Ejercicios', value: exercises.length, color: '#059669' },
+              { label: 'Pruebas de visión', value: visionTests.length, color: '#0891b2' },
+              { label: 'Capturas IA', value: imageCapturas.length, color: '#7c3aed' },
+            ].map(s => (
+              <div key={s.label} style={{ background: '#f8fafc', borderRadius: 12, padding: '12px 16px', borderLeft: `4px solid ${s.color}` }}>
+                <p style={{ fontSize: 24, fontWeight: 800, color: s.color, margin: 0 }}>{s.value}</p>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 8 }}>
+            therapheye.netlify.app · {new Date().toLocaleDateString('es-MX', { year:'numeric', month:'long', day:'numeric' })}
+          </p>
         </div>
 
         {/* Stats */}

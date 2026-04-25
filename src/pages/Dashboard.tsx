@@ -15,7 +15,7 @@ type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'learn'
-  | 'blink-detector' | 'reading-test' | 'chat-sintomas';
+  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos';
 
 interface Stats {
   evaluaciones: number;

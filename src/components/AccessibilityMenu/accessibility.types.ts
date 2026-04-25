@@ -34,6 +34,11 @@ export interface AccessibilitySettings {
   highlightLinks: boolean;
   focusMode: boolean;
   simplifiedMenus: boolean;
+
+  // Modo nocturno programado
+  darkScheduleEnabled: boolean;
+  darkScheduleFrom: string;  // "HH:MM"
+  darkScheduleTo: string;    // "HH:MM"
 }
 
 export const defaultSettings: AccessibilitySettings = {
@@ -54,4 +59,7 @@ export const defaultSettings: AccessibilitySettings = {
   highlightLinks: false,
   focusMode: false,
   simplifiedMenus: false,
+  darkScheduleEnabled: false,
+  darkScheduleFrom: '21:00',
+  darkScheduleTo: '07:00',
 };
