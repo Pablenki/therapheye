@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
-  KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart,
+  KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
+
+const PUSH_BANNER_KEY = 'therapheye_push_banner_dismissed';
 
 type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
@@ -47,6 +49,24 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
   const [collapsed, setCollapsed] = useState(false); // desktop icon-only mode
   const [showLogout, setShowLogout] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Push notification banner
+  const [showPushBanner, setShowPushBanner] = useState(false);
+  useEffect(() => {
+    const dismissed = localStorage.getItem(PUSH_BANNER_KEY);
+    if (dismissed) return;
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    if (!supported) return;
+    if (Notification.permission === 'granted') return;
+    // Show after 3 seconds so the page settles first
+    const t = setTimeout(() => setShowPushBanner(true), 3000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const dismissBanner = (permanent: boolean) => {
+    if (permanent) localStorage.setItem(PUSH_BANNER_KEY, '1');
+    setShowPushBanner(false);
+  };
 
   // Track viewport for responsive behaviour
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -238,6 +258,44 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
 
         {children}
       </div>
+
+      {/* ── Push notification banner ────────────────────────────────────── */}
+      {showPushBanner && (
+        <div className="fixed top-4 right-4 z-[9999] max-w-xs w-full animate-[slideInRight_0.4s_ease]">
+          <div className="bg-white rounded-2xl shadow-2xl border border-indigo-100 overflow-hidden">
+            <div className="bg-indigo-600 px-4 py-2 flex items-center gap-2">
+              <Bell className="w-4 h-4 text-white animate-[pulse_2s_infinite]"/>
+              <span className="text-white text-xs font-semibold">Mantén tu salud visual al día</span>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-gray-700 text-sm leading-snug">
+                Activa las <b>notificaciones push</b> para recibir recordatorios de ejercicios y seguimiento de tu racha.
+              </p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => { onNavigate('profile'); dismissBanner(false); }}
+                  className="flex-1 bg-indigo-600 text-white text-xs font-semibold rounded-xl py-1.5 hover:bg-indigo-700 transition"
+                >
+                  Activar ahora
+                </button>
+                <button
+                  onClick={() => dismissBanner(false)}
+                  className="px-3 text-xs text-gray-500 hover:text-gray-700 transition"
+                >
+                  Luego
+                </button>
+                <button
+                  onClick={() => dismissBanner(true)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                  title="No mostrar de nuevo"
+                >
+                  <X className="w-4 h-4"/>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Logout confirm modal ────────────────────────────────────────── */}
       {showLogout && (
