@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera, Bell, BellOff, BellRing } from 'lucide-react';
+import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera, Bell, BellOff, BellRing, Download } from 'lucide-react';
 import bcrypt from 'bcryptjs';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -7,7 +7,7 @@ import { sql } from '../neonCliente';
 import { generarCodigo, enviarCorreoEliminacion } from '../utils/emailService';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
-type Tab = 'perfil' | 'password' | 'account' | 'notificaciones';
+type Tab = 'perfil' | 'password' | 'account' | 'notificaciones' | 'exportar';
 
 interface Props {
   onBack: () => void;
@@ -213,6 +213,7 @@ export default function Profile({ onBack, onLogout }: Props) {
             <SideTab active={tab === 'perfil'}   icon={<UserCircle2 className="w-4 h-4" />} label={es ? 'Perfil'      : 'Profile'}  onClick={() => { setTab('perfil');    setPerfilMsg(null); }} />
             <SideTab active={tab === 'password'} icon={<KeyRound    className="w-4 h-4" />} label={es ? 'Contraseña' : 'Password'} onClick={() => { setTab('password');  setPwdMsg(null); }} />
             <SideTab active={tab === 'notificaciones'} icon={<Bell className="w-4 h-4" />} label={es ? 'Notificaciones' : 'Notifications'} onClick={() => setTab('notificaciones')} />
+            <SideTab active={tab === 'exportar'} icon={<Download    className="w-4 h-4" />} label={es ? 'Exportar datos' : 'Export data'} onClick={() => setTab('exportar')} />
             <SideTab active={tab === 'account'}  icon={<Trash2      className="w-4 h-4" />} label={es ? 'Cuenta'     : 'Account'}  danger onClick={() => { setTab('account'); setDeleteStep('confirm'); setDeleteMsg(null); setInputCode(''); }} />
           </aside>
 
@@ -533,6 +534,11 @@ export default function Profile({ onBack, onLogout }: Props) {
               </div>
             )}
 
+            {/* ── Tab: Exportar datos ── */}
+            {tab === 'exportar' && user?.id && (
+              <ExportarDatos userId={user.id} />
+            )}
+
           </div>
         </div>
       </div>
@@ -557,4 +563,134 @@ function SideTab({ active, icon, label, danger = false, onClick }: {
       {label}
     </button>
   );
+}
+
+// ─── ExportarDatos ────────────────────────────────────────────────────────────
+function ExportarDatos({ userId }: { userId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const exportar = async (formato: 'json' | 'csv') => {
+    setLoading(true);
+    setError(null);
+    setDone(false);
+    try {
+      // Fetch all tables in parallel
+      const [evaluaciones, ejercicios, diario, rutinas, pomodoro, contraste, zenSessions] = await Promise.all([
+        sql`SELECT * FROM respuestas_cuestionario WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 500`,
+        sql`SELECT * FROM sesiones_ejercicio WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 500`.catch(() => []),
+        sql`SELECT id, texto, clasificacion, sintomas_detectados, estado_animo_visual, created_at FROM diario_visual WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 500`.catch(() => []),
+        sql`SELECT id, objetivo, consejos, created_at FROM rutinas_personalizadas WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 100`.catch(() => []),
+        sql`SELECT * FROM pomodoro_sessions WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 500`.catch(() => []),
+        sql`SELECT nivel_final, created_at FROM contrast_tests WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 200`.catch(() => []),
+        sql`SELECT rutina_id, rutina_nombre, created_at FROM modo_zen_sessions WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 200`.catch(() => []),
+      ]);
+
+      const allData = {
+        evaluaciones,
+        ejercicios,
+        diario_visual: diario,
+        rutinas_ia: rutinas,
+        pomodoro_sessions: pomodoro,
+        contrast_tests: contraste,
+        modo_zen: zenSessions,
+        exportado_en: new Date().toISOString(),
+        usuario_id: userId,
+      };
+
+      if (formato === 'json') {
+        const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+        downloadBlob(blob, `therapheye_datos_${new Date().toISOString().slice(0, 10)}.json`);
+      } else {
+        // CSV: one sheet per table, separated by blank lines
+        const sections: string[] = [];
+        for (const [key, rows] of Object.entries(allData)) {
+          if (!Array.isArray(rows) || rows.length === 0) continue;
+          const headers = Object.keys(rows[0]).join(',');
+          const csvRows = (rows as Record<string, unknown>[]).map(row =>
+            Object.values(row).map(v => {
+              const s = v === null || v === undefined ? '' : String(v);
+              return s.includes(',') || s.includes('"') || s.includes('\n')
+                ? `"${s.replace(/"/g, '""')}"` : s;
+            }).join(',')
+          );
+          sections.push(`### ${key}\n${headers}\n${csvRows.join('\n')}`);
+        }
+        const blob = new Blob([sections.join('\n\n')], { type: 'text/csv;charset=utf-8;' });
+        downloadBlob(blob, `therapheye_datos_${new Date().toISOString().slice(0, 10)}.csv`);
+      }
+      setDone(true);
+    } catch (e) {
+      setError('Error al exportar. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Download className="w-5 h-5 text-indigo-500"/>
+        <h2 className="text-lg font-bold text-gray-800">Exportar mis datos</h2>
+      </div>
+
+      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-700 leading-relaxed">
+        Descarga todos tus datos de Therapheye: evaluaciones, ejercicios, diario visual, rutinas con IA, sesiones Pomodoro y más.
+        Los datos son solo tuyos y puedes compartirlos con tu oftalmólogo.
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-2xl divide-y divide-gray-50">
+        {[
+          { key: 'evaluaciones', label: 'Evaluaciones / cuestionarios', icon: '📋' },
+          { key: 'ejercicios', label: 'Sesiones de ejercicio', icon: '🏃' },
+          { key: 'diario_visual', label: 'Entradas del diario visual', icon: '📓' },
+          { key: 'rutinas_ia', label: 'Rutinas generadas con IA', icon: '🤖' },
+          { key: 'pomodoro', label: 'Sesiones Pomodoro Visual', icon: '⏱' },
+          { key: 'contraste', label: 'Tests de sensibilidad al contraste', icon: '🔲' },
+          { key: 'modo_zen', label: 'Sesiones Modo Zen', icon: '🧘' },
+        ].map(({ label, icon }) => (
+          <div key={label} className="flex items-center gap-3 px-4 py-3">
+            <span className="text-lg">{icon}</span>
+            <span className="text-sm text-gray-700">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {done && <p className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle className="w-4 h-4"/> Descarga iniciada</p>}
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => exportar('json')}
+          disabled={loading}
+          className="py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4"/>}
+          Descargar JSON
+        </button>
+        <button
+          onClick={() => exportar('csv')}
+          disabled={loading}
+          className="py-3 rounded-xl bg-gray-800 text-white font-semibold text-sm hover:bg-gray-900 transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4"/>}
+          Descargar CSV
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-400 text-center">
+        Los archivos se descargan localmente. Ningún dato se envía a terceros.
+      </p>
+    </div>
+  );
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

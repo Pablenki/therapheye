@@ -28,7 +28,10 @@ type Page =
   | 'juegos-visuales'
   | 'rutinas-ia'
   | 'diario-visual'
-  | 'pomodoro-visual';
+  | 'pomodoro-visual'
+  | 'campo-visual'
+  | 'modo-zen'
+  | 'contrast-test';
 
 type Props = {
   currentPage: Page;

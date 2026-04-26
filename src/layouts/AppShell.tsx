@@ -4,7 +4,7 @@ import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
-  Sparkles, BookMarked, Zap, MoreHorizontal,
+  Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -16,7 +16,8 @@ type Page =
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'verify-email' | 'learn'
   | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales'
-  | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual';
+  | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual'
+  | 'campo-visual' | 'modo-zen' | 'contrast-test';
 
 interface Props {
   currentPage: Page;
@@ -43,6 +44,9 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'          },
   { icon: BookMarked,         label: 'Diario Visual',     page: 'diario-visual'       },
   { icon: Zap,                label: 'Pomodoro Visual',   page: 'pomodoro-visual'     },
+  { icon: Crosshair,          label: 'Campo Visual',      page: 'campo-visual'        },
+  { icon: EarOff,             label: 'Modo Zen',          page: 'modo-zen'            },
+  { icon: Contrast,           label: 'Test Contraste',    page: 'contrast-test'       },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded

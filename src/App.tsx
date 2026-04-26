@@ -7,6 +7,8 @@ import SessionGuard from './components/SessionGuard'
 import AppShell from './layouts/AppShell'
 import Onboarding, { isOnboardingDone } from './components/Onboarding'
 import PresenceDetector from './components/PresenceDetector'
+import BuenosDias, { shouldShowBuenosDias } from './components/BuenosDias'
+import { useReporteSemanal } from './hooks/useReporteSemanal'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
@@ -29,6 +31,9 @@ import JuegosVisuales from './pages/JuegosVisuales'
 import RutinasIA from './pages/RutinasIA'
 import DiarioVisual from './pages/DiarioVisual'
 import PomodoroVisual from './pages/PomodoroVisual'
+import CampoVisual from './pages/CampoVisual'
+import ModoZen from './pages/ModoZen'
+import ContrastTest from './pages/ContrastTest'
 
 type Page =
   | 'login'
@@ -52,7 +57,10 @@ type Page =
   | 'juegos-visuales'
   | 'rutinas-ia'
   | 'diario-visual'
-  | 'pomodoro-visual';
+  | 'pomodoro-visual'
+  | 'campo-visual'
+  | 'modo-zen'
+  | 'contrast-test';
 
 interface PendingUser {
   name: string;
@@ -70,6 +78,8 @@ function AppContent() {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
   const [exerciseQueue, setExerciseQueue] = useState<string[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showBuenosDias, setShowBuenosDias] = useState(false)
+  useReporteSemanal()
 
   // Cuando se restaura la sesión, ir al dashboard
   useEffect(() => {
@@ -77,6 +87,7 @@ function AppContent() {
       setCurrentPage('dashboard')
       // Mostrar onboarding si es primera vez
       if (!isOnboardingDone()) setShowOnboarding(true)
+      else if (shouldShowBuenosDias()) setShowBuenosDias(true)
     }
   }, [isRestoringSession, isAuthenticated, currentPage])
 
@@ -213,6 +224,12 @@ function AppContent() {
         return <DiarioVisual onBack={() => handleNavigate('dashboard')} />
       case 'pomodoro-visual':
         return <PomodoroVisual onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
+      case 'campo-visual':
+        return <CampoVisual onBack={() => handleNavigate('dashboard')} />
+      case 'modo-zen':
+        return <ModoZen onBack={() => handleNavigate('dashboard')} />
+      case 'contrast-test':
+        return <ContrastTest onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login
@@ -255,6 +272,12 @@ function AppContent() {
       <AccessibilityMenu />
       <PresenceDetector />
       {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
+      {showBuenosDias && !showOnboarding && (
+        <BuenosDias
+          onStartExercise={(id) => { setShowBuenosDias(false); handleStartExercise(id); }}
+          onNavigate={(page) => { setShowBuenosDias(false); handleNavigate(page as Page); }}
+        />
+      )}
     </>
   )
 }
