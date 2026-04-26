@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { UserProvider, useUser } from './context/UserContext'
 import { LanguageProvider } from './i18n'
 import { AccessibilityMenu } from './components/AccessibilityMenu'
@@ -9,44 +9,60 @@ import Onboarding, { isOnboardingDone } from './components/Onboarding'
 import PresenceDetector from './components/PresenceDetector'
 import BuenosDias, { shouldShowBuenosDias } from './components/BuenosDias'
 import { useReporteSemanal } from './hooks/useReporteSemanal'
+
+// ── Eager (shell crítico) ────────────────────────────────────────────────────
 import Login from './pages/Login'
 import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
 import Dashboard from './pages/Dashboard'
-import Questionnaire from './pages/Questionnaire'
-import Exercises from './pages/Exercises'
-import ExerciseSession from './pages/ExerciseSession'
-import History from './pages/History'
-import ImageCapture from './pages/ImageCapture'
-import VisionTest from './pages/VisionTest'
-import VisualHealth from './pages/VisualHealth'
-import Profile from './pages/Profile'
-import DiagnosticoCompleto from './pages/DiagnosticoCompleto'
-import Learn from './pages/Learn'
-import BlinkDetector from './pages/BlinkDetector'
-import LecturaVisual from './pages/LecturaVisual'
-import ChatSintomas from './pages/ChatSintomas'
-import MapaOftalmologos from './pages/MapaOftalmologos'
-import JuegosVisuales from './pages/JuegosVisuales'
-import RutinasIA from './pages/RutinasIA'
-import DiarioVisual from './pages/DiarioVisual'
-import PomodoroVisual from './pages/PomodoroVisual'
-import CampoVisual from './pages/CampoVisual'
-import ModoZen from './pages/ModoZen'
-import ContrastTest from './pages/ContrastTest'
-import ReaccionVisual from './pages/ReaccionVisual'
-import VergenciaTraining from './pages/VergenciaTraining'
-import CargaVisual from './pages/CargaVisual'
-import NotasMedicas from './pages/NotasMedicas'
-import SimuladorCondiciones from './pages/SimuladorCondiciones'
-import TestCromatico from './pages/TestCromatico'
-import TestAcomodacion from './pages/TestAcomodacion'
-import EjerciciosAvanzados from './pages/EjerciciosAvanzados'
-import HistorialOcular from './pages/HistorialOcular'
-import AnalizadorSintomas from './pages/AnalizadorSintomas'
-import GaleriaCaptures from './pages/GaleriaCaptures'
-import EntrenamientoMental from './pages/EntrenamientoMental'
-import EstadisticasAvanzadas from './pages/EstadisticasAvanzadas'
+
+// ── Lazy (se cargan al navegar) ──────────────────────────────────────────────
+const Questionnaire      = lazy(() => import('./pages/Questionnaire'))
+const Exercises          = lazy(() => import('./pages/Exercises'))
+const ExerciseSession    = lazy(() => import('./pages/ExerciseSession'))
+const History            = lazy(() => import('./pages/History'))
+const ImageCapture       = lazy(() => import('./pages/ImageCapture'))
+const VisionTest         = lazy(() => import('./pages/VisionTest'))
+const VisualHealth       = lazy(() => import('./pages/VisualHealth'))
+const Profile            = lazy(() => import('./pages/Profile'))
+const DiagnosticoCompleto= lazy(() => import('./pages/DiagnosticoCompleto'))
+const Learn              = lazy(() => import('./pages/Learn'))
+const BlinkDetector      = lazy(() => import('./pages/BlinkDetector'))
+const LecturaVisual      = lazy(() => import('./pages/LecturaVisual'))
+const ChatSintomas       = lazy(() => import('./pages/ChatSintomas'))
+const MapaOftalmologos   = lazy(() => import('./pages/MapaOftalmologos'))
+const JuegosVisuales     = lazy(() => import('./pages/JuegosVisuales'))
+const RutinasIA          = lazy(() => import('./pages/RutinasIA'))
+const DiarioVisual       = lazy(() => import('./pages/DiarioVisual'))
+const PomodoroVisual     = lazy(() => import('./pages/PomodoroVisual'))
+const CampoVisual        = lazy(() => import('./pages/CampoVisual'))
+const ModoZen            = lazy(() => import('./pages/ModoZen'))
+const ContrastTest       = lazy(() => import('./pages/ContrastTest'))
+const ReaccionVisual     = lazy(() => import('./pages/ReaccionVisual'))
+const VergenciaTraining  = lazy(() => import('./pages/VergenciaTraining'))
+const CargaVisual        = lazy(() => import('./pages/CargaVisual'))
+const NotasMedicas       = lazy(() => import('./pages/NotasMedicas'))
+const SimuladorCondiciones= lazy(() => import('./pages/SimuladorCondiciones'))
+const TestCromatico      = lazy(() => import('./pages/TestCromatico'))
+const TestAcomodacion    = lazy(() => import('./pages/TestAcomodacion'))
+const EjerciciosAvanzados= lazy(() => import('./pages/EjerciciosAvanzados'))
+const HistorialOcular    = lazy(() => import('./pages/HistorialOcular'))
+const AnalizadorSintomas = lazy(() => import('./pages/AnalizadorSintomas'))
+const GaleriaCaptures    = lazy(() => import('./pages/GaleriaCaptures'))
+const EntrenamientoMental= lazy(() => import('./pages/EntrenamientoMental'))
+const EstadisticasAvanzadas= lazy(() => import('./pages/EstadisticasAvanzadas'))
+
+// ── Skeleton de carga entre páginas ─────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="text-center">
+        <div className="w-10 h-10 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" style={{ borderWidth: 3 }}/>
+        <p className="text-gray-400 text-sm">Cargando...</p>
+      </div>
+    </div>
+  )
+}
 
 type Page =
   | 'login'
@@ -295,7 +311,7 @@ function AppContent() {
   if (isPublicPage) {
     return (
       <div className="flex flex-col min-h-screen">
-        <div className="flex-1">{renderPageContent()}</div>
+        <div className="flex-1"><Suspense fallback={<PageLoader/>}>{renderPageContent()}</Suspense></div>
         <footer className="w-full py-4 text-center text-xs text-gray-400 bg-transparent">
           <span>&copy; {new Date().getFullYear()} Therapheye</span>
           <span className="mx-2">·</span>
@@ -317,7 +333,7 @@ function AppContent() {
         onNavigate={handleNavigate}
         onLogout={() => setCurrentPage('login')}
       >
-        {renderPageContent()}
+        <Suspense fallback={<PageLoader/>}>{renderPageContent()}</Suspense>
       </AppShell>
       <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
       <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
