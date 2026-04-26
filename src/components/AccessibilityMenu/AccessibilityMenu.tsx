@@ -458,6 +458,39 @@ const AccessibilityMenu = () => {
             )}
           </div>
 
+          {/* ========== MONITOR DE DISTANCIA ========== */}
+          <div className="mb-5 pb-5 border-b-2 border-gray-200">
+            <h4 className="text-base font-bold text-[#1B396B] mb-3 flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              {settings.appLanguage === 'es' ? 'Monitor de Distancia' : 'Distance Monitor'}
+            </h4>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-gray-700">
+                  {settings.appLanguage === 'es' ? 'Activar monitor de distancia' : 'Enable distance monitor'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {settings.appLanguage === 'es' ? 'Alerta si estás muy cerca de la pantalla' : 'Alerts if you\'re too close to the screen'}
+                </p>
+              </div>
+              <label className="relative inline-block w-[50px] h-[26px] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={(() => { try { return localStorage.getItem('therapheye_distance_monitor') === '1'; } catch { return false; } })()}
+                  onChange={(e) => {
+                    const val = e.target.checked ? '1' : '0';
+                    localStorage.setItem('therapheye_distance_monitor', val);
+                    window.dispatchEvent(new CustomEvent('therapheye-distance-monitor-changed', { detail: { active: e.target.checked } }));
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300">
+                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6" />
+                </div>
+              </label>
+            </div>
+          </div>
+
           {/* Botón Resetear */}
           <button
             onClick={resetSettings}

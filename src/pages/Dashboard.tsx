@@ -10,12 +10,15 @@ import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
 import { ARTICLES, CATEGORY_META } from '../data/articles';
+import CoachVisualSemanal from '../components/CoachVisualSemanal';
+import FatigaPredictor from '../components/FatigaPredictor';
+import AmbientLightDetector from '../components/AmbientLightDetector';
 
 type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'learn'
-  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos';
+  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales';
 
 interface Stats {
   evaluaciones: number;
@@ -374,6 +377,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             <p className={`text-xs mt-0.5 ${tc.headerSubtext}`}>{es ? 'Cuida tu vista, mejora tu día a día.' : 'Take care of your vision, improve your day.'}</p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Ambient light detector badge */}
+            <AmbientLightDetector />
             {/* Extensión badge */}
             {!extensionInstalled && !extensionDismissed && (
               <a href={extensionUrl} target="_blank" rel="noopener noreferrer"
@@ -537,6 +542,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </div>
           </div>
 
+          {/* ── Coach Visual Semanal ── */}
+          <CoachVisualSemanal />
+
           {/* ── Fila 3: Progreso semanal + Últimos diagnósticos ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
@@ -613,6 +621,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
               </button>
             </div>
           </div>
+
+            {/* ── Predictor de Fatiga ── */}
+            <FatigaPredictor />
 
             </>);
           })()}

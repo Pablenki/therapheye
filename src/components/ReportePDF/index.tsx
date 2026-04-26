@@ -222,6 +222,305 @@ function TherapeyeReport({ data }: { data: ReportData }) {
   );
 }
 
+// ─── INFORME MÉDICO SOAP ────────────────────────────────────────────────────
+
+interface MedicalReportData {
+  userName: string;
+  period: string;
+  generatedAt: string;
+  // S — Subjetivo
+  sintomasDominantes: string[];
+  frecuenciaSintomas: string;
+  sintomaDesc: string;
+  // O — Objetivo
+  avgFatiga: number;
+  ejerciciosCompletados: number;
+  ejerciciosTotal: number;
+  testsVision: number;
+  tasaParpadeo: number | null;
+  // A — Análisis (generado por IA)
+  analisisClinico: string;
+  // P — Plan
+  recomendaciones: string;
+  adherencia: string;
+}
+
+const SM = StyleSheet.create({
+  page: { padding: 45, fontFamily: 'Helvetica', backgroundColor: '#ffffff' },
+  // Portada
+  coverBg:     { backgroundColor: '#1B396B', padding: 45, minHeight: 200 },
+  coverTitle:  { fontSize: 26, fontFamily: 'Helvetica-Bold', color: '#ffffff', marginBottom: 6 },
+  coverSub:    { fontSize: 11, color: '#93c5fd', marginBottom: 24 },
+  coverInfo:   { fontSize: 9, color: '#bfdbfe', marginBottom: 3 },
+  coverDisclaimer: { fontSize: 7.5, color: '#93c5fd', marginTop: 20, fontStyle: 'italic' },
+  // SOAP
+  soapSection: { marginBottom: 22 },
+  soapHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  soapLetter:  { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#1B396B', width: 22 },
+  soapTitle:   { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#1B396B' },
+  soapSub:     { fontSize: 8, color: '#6b7280' },
+  divider:     { borderBottom: '1.5px solid #dbeafe', marginBottom: 14 },
+  bodyText:    { fontSize: 8.5, color: '#374151', lineHeight: 1.6 },
+  bodyBold:    { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#1e3a8a' },
+  metricRow:   { flexDirection: 'row', marginBottom: 6, alignItems: 'center' },
+  metricLabel: { fontSize: 8, color: '#6b7280', width: 160 },
+  metricVal:   { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#1B396B' },
+  bullet:      { fontSize: 8.5, color: '#374151', marginBottom: 3, lineHeight: 1.5 },
+  footer:      { position: 'absolute', bottom: 28, left: 45, right: 45, borderTop: '1px solid #e5e7eb', paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
+  footerText:  { fontSize: 6.5, color: '#9ca3af' },
+  footerWarn:  { fontSize: 6.5, color: '#d97706', flex: 1, textAlign: 'center' },
+  chip:        { backgroundColor: '#eff6ff', borderRadius: 4, padding: '3 7', marginRight: 5, marginBottom: 4 },
+  chipText:    { fontSize: 7.5, color: '#1e40af', fontFamily: 'Helvetica-Bold' },
+  chipsRow:    { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
+  aiBox:       { backgroundColor: '#f5f3ff', borderRadius: 6, padding: 10, borderLeft: '3px solid #7c3aed' },
+  aiText:      { fontSize: 8.5, color: '#4c1d95', lineHeight: 1.7 },
+});
+
+function MedicalReport({ data }: { data: MedicalReportData }) {
+  return (
+    <Document title={`Informe Médico Therapheye — ${data.period}`} author="Therapheye">
+      <Page size="A4" style={SM.page}>
+
+        {/* ── Portada ── */}
+        <View style={SM.coverBg}>
+          <Text style={SM.coverTitle}>Informe de Salud Visual</Text>
+          <Text style={SM.coverSub}>Para consulta con oftalmólogo · Formato SOAP</Text>
+          <Text style={SM.coverInfo}>Paciente: {data.userName}</Text>
+          <Text style={SM.coverInfo}>Período: {data.period}</Text>
+          <Text style={SM.coverInfo}>Fecha de generación: {data.generatedAt}</Text>
+          <Text style={SM.coverDisclaimer}>
+            Generado por Therapheye IA — No reemplaza diagnóstico médico profesional.
+            Este documento es un resumen de datos autorreportados y mediciones automatizadas para facilitar la consulta clínica.
+          </Text>
+        </View>
+
+        {/* ── S: Subjetivo ── */}
+        <View style={[SM.soapSection, { marginTop: 22 }]}>
+          <View style={SM.soapHeader}>
+            <Text style={SM.soapLetter}>S</Text>
+            <View>
+              <Text style={SM.soapTitle}>Subjetivo — Síntomas Reportados</Text>
+              <Text style={SM.soapSub}>Datos autorreportados por el paciente en cuestionarios de fatiga visual</Text>
+            </View>
+          </View>
+          <View style={SM.divider}/>
+          <View style={SM.metricRow}>
+            <Text style={SM.metricLabel}>Frecuencia de evaluación:</Text>
+            <Text style={SM.metricVal}>{data.frecuenciaSintomas}</Text>
+          </View>
+          <View style={SM.metricRow}>
+            <Text style={SM.metricLabel}>Síntoma dominante principal:</Text>
+            <Text style={SM.metricVal}>{data.sintomaDesc}</Text>
+          </View>
+          <Text style={[SM.bodyBold, { marginTop: 8, marginBottom: 4 }]}>Síntomas reportados frecuentemente:</Text>
+          <View style={SM.chipsRow}>
+            {data.sintomasDominantes.map((s, i) => (
+              <View key={i} style={SM.chip}><Text style={SM.chipText}>{s}</Text></View>
+            ))}
+          </View>
+        </View>
+
+        {/* ── O: Objetivo ── */}
+        <View style={SM.soapSection}>
+          <View style={SM.soapHeader}>
+            <Text style={SM.soapLetter}>O</Text>
+            <View>
+              <Text style={SM.soapTitle}>Objetivo — Métricas Cuantitativas</Text>
+              <Text style={SM.soapSub}>Datos numéricos recopilados por la plataforma Therapheye</Text>
+            </View>
+          </View>
+          <View style={SM.divider}/>
+          <View style={SM.metricRow}>
+            <Text style={SM.metricLabel}>Puntaje promedio de fatiga visual:</Text>
+            <Text style={[SM.metricVal, { color: data.avgFatiga < 40 ? '#16a34a' : data.avgFatiga < 70 ? '#d97706' : '#dc2626' }]}>
+              {data.avgFatiga}% ({data.avgFatiga < 40 ? 'Bajo' : data.avgFatiga < 70 ? 'Moderado' : 'Alto'})
+            </Text>
+          </View>
+          <View style={SM.metricRow}>
+            <Text style={SM.metricLabel}>Ejercicios oculares completados:</Text>
+            <Text style={SM.metricVal}>{data.ejerciciosCompletados} / {data.ejerciciosTotal}</Text>
+          </View>
+          <View style={SM.metricRow}>
+            <Text style={SM.metricLabel}>Tests de agudeza visual realizados:</Text>
+            <Text style={SM.metricVal}>{data.testsVision}</Text>
+          </View>
+          {data.tasaParpadeo !== null && (
+            <View style={SM.metricRow}>
+              <Text style={SM.metricLabel}>Tasa de parpadeo promedio:</Text>
+              <Text style={[SM.metricVal, { color: data.tasaParpadeo < 12 ? '#d97706' : '#16a34a' }]}>
+                {data.tasaParpadeo} parpadeos/min {data.tasaParpadeo < 12 ? '(por debajo del rango normal)' : '(rango normal)'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── A: Análisis ── */}
+        <View style={SM.soapSection}>
+          <View style={SM.soapHeader}>
+            <Text style={SM.soapLetter}>A</Text>
+            <View>
+              <Text style={SM.soapTitle}>Análisis — Evaluación Clínica</Text>
+              <Text style={SM.soapSub}>Generado por IA (Claude Haiku) · Requiere validación profesional</Text>
+            </View>
+          </View>
+          <View style={SM.divider}/>
+          <View style={SM.aiBox}>
+            <Text style={SM.aiText}>{data.analisisClinico}</Text>
+          </View>
+        </View>
+
+        {/* ── P: Plan ── */}
+        <View style={SM.soapSection}>
+          <View style={SM.soapHeader}>
+            <Text style={SM.soapLetter}>P</Text>
+            <View>
+              <Text style={SM.soapTitle}>Plan — Recomendaciones y Adherencia</Text>
+              <Text style={SM.soapSub}>Sugerencias generadas automáticamente según los datos</Text>
+            </View>
+          </View>
+          <View style={SM.divider}/>
+          <Text style={[SM.bodyBold, { marginBottom: 4 }]}>Adherencia al programa:</Text>
+          <Text style={SM.bodyText}>{data.adherencia}</Text>
+          <Text style={[SM.bodyBold, { marginTop: 10, marginBottom: 4 }]}>Recomendaciones para el especialista:</Text>
+          <Text style={SM.bodyText}>{data.recomendaciones}</Text>
+        </View>
+
+        {/* Footer */}
+        <View style={SM.footer} fixed>
+          <Text style={SM.footerText}>Therapheye © {new Date().getFullYear()}</Text>
+          <Text style={SM.footerWarn}>⚠ Generado por IA — No reemplaza diagnóstico médico profesional</Text>
+          <Text style={SM.footerText}>therapheye.netlify.app</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+// ─── Botón Informe Médico ────────────────────────────────────────────────────
+
+const SINTOMA_LABELS: Record<string, string> = {
+  ojo_sano: 'Sin síntomas', enro_leve: 'Enrojecimiento leve', piel_enro: 'Piel periocular enrojecida',
+  enro_moderado: 'Enrojecimiento moderado', parpado_caido: 'Ptosis palpebral', enro_grave: 'Hiperemia conjuntival grave',
+};
+
+export function MedicalPDFDownloadButton({ userId, userName }: { userId: string | undefined; userName: string }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!userId || loading) return;
+    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+    setLoading(true);
+    try {
+      const now = new Date();
+      const from30 = new Date(now.getTime() - 30 * 86_400_000);
+
+      const [evals, exs, visions, parpadeos] = await Promise.all([
+        sql`SELECT created_at, puntaje_fatiga, sintoma_dominante FROM respuestas_cuestionario WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC`,
+        sql`SELECT status FROM historial_ejercicios WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
+        sql`SELECT id FROM historial_vision_test WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
+        sql`SELECT blinks_per_minute FROM sesiones_parpadeo WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`.catch(() => []),
+      ]);
+
+      const evalList = evals as any[];
+      const avgFatiga = evalList.length ? Math.round(evalList.reduce((s: number, r: any) => s + Number(r.puntaje_fatiga), 0) / evalList.length) : 0;
+      const exList = exs as any[];
+      const completed = exList.filter((r: any) => r.status === 'completed').length;
+
+      // Síntomas dominantes
+      const sintomaCount: Record<string, number> = {};
+      evalList.forEach((r: any) => { const k = r.sintoma_dominante ?? 'sin_dato'; sintomaCount[k] = (sintomaCount[k] ?? 0) + 1; });
+      const sortedSintomas = Object.entries(sintomaCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const sintomasDominantes = sortedSintomas.map(([k]) => SINTOMA_LABELS[k] ?? k);
+      const sintomaDesc = sortedSintomas[0] ? (SINTOMA_LABELS[sortedSintomas[0][0]] ?? sortedSintomas[0][0]) : 'No especificado';
+
+      const blinksArr = (parpadeos as any[]).map((r: any) => Number(r.blinks_per_minute)).filter(v => v > 0);
+      const tasaParpadeo = blinksArr.length ? Math.round(blinksArr.reduce((a, b) => a + b, 0) / blinksArr.length) : null;
+
+      const totalDias30 = 30;
+      const diasActivos = new Set(evalList.map((r: any) => String(r.created_at).slice(0, 10))).size;
+      const adherencia = `El paciente registró actividad en ${diasActivos} de los últimos ${totalDias30} días (${Math.round(diasActivos / totalDias30 * 100)}% de adherencia). Completó ${completed} de ${exList.length} ejercicios prescritos (${exList.length > 0 ? Math.round(completed / exList.length * 100) : 0}%).`;
+
+      // Recomendaciones adaptadas
+      const recomendaciones = [
+        avgFatiga >= 50 ? 'Se recomienda evaluación oftalmológica prioritaria dado el nivel elevado de fatiga visual reportado.' : 'Continuar con el programa de ejercicios preventivos dado el buen control de fatiga.',
+        tasaParpadeo !== null && tasaParpadeo < 12 ? `Tasa de parpadeo de ${tasaParpadeo} ppm (por debajo del rango normal 15–20 ppm). Considerar síndrome de ojo seco.` : 'Tasa de parpadeo dentro o sin datos suficientes para evaluación de ojo seco.',
+        diasActivos < 10 ? 'Adherencia baja al programa (<33%). Se sugiere reforzar motivación y simplificar rutina de ejercicios.' : 'Buena adherencia al programa de seguimiento digital.',
+        'Evaluar necesidad de corrección óptica actualizada si el paciente refiere visión borrosa frecuente.',
+      ].join('\n• ');
+
+      // Análisis clínico con IA
+      let analisisClinico = 'No disponible (sin clave de API configurada).';
+      if (apiKey) {
+        const prompt = `Eres un asistente médico de salud visual. Genera un párrafo de análisis clínico formal (máximo 120 palabras, en español, lenguaje médico) basado en estos datos de un paciente:
+
+- Fatiga visual promedio: ${avgFatiga}% (${avgFatiga < 40 ? 'leve' : avgFatiga < 70 ? 'moderada' : 'severa'})
+- Síntomas predominantes: ${sintomasDominantes.join(', ') || 'no especificados'}
+- Ejercicios completados: ${completed}/${exList.length}
+- Tests de visión: ${(visions as any[]).length}
+- Tasa de parpadeo: ${tasaParpadeo !== null ? tasaParpadeo + ' ppm' : 'no evaluada'}
+- Adherencia: ${diasActivos}/${totalDias30} días activos
+
+Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisis, sin encabezado ni markdown.`;
+
+        try {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true',
+            },
+            body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 250, messages: [{ role: 'user', content: prompt }] }),
+          });
+          if (res.ok) { const d = await res.json(); analisisClinico = d.content?.[0]?.text ?? analisisClinico; }
+        } catch { /* usar fallback */ }
+      }
+
+      const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      const medData: MedicalReportData = {
+        userName,
+        period: `Últimos 30 días — ${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+        generatedAt: now.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        sintomasDominantes: sintomasDominantes.length > 0 ? sintomasDominantes : ['Sin síntomas registrados'],
+        frecuenciaSintomas: `${evalList.length} evaluaciones en 30 días (${diasActivos} días distintos)`,
+        sintomaDesc,
+        avgFatiga,
+        ejerciciosCompletados: completed,
+        ejerciciosTotal: exList.length,
+        testsVision: (visions as any[]).length,
+        tasaParpadeo,
+        analisisClinico,
+        recomendaciones: '• ' + recomendaciones,
+        adherencia,
+      };
+
+      const blob = await pdf(<MedicalReport data={medData} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Therapheye_InformeMedico_${now.toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Error generando informe médico:', e);
+      alert('Error al generar el informe. Intenta de nuevo.');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={loading}
+      className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-md"
+    >
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+      {loading ? 'Generando...' : 'Informe para Doctor'}
+    </button>
+  );
+}
+
 // ─── Botón de Descarga ───────────────────────────────────────────────────────
 
 interface DownloadBtnProps {

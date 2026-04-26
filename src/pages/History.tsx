@@ -72,7 +72,7 @@ const getExerciseDisplayName = (raw: string, lang: 'es' | 'en'): string => {
 };
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
-import { PDFDownloadButton } from '../components/ReportePDF';
+import { PDFDownloadButton, MedicalPDFDownloadButton } from '../components/ReportePDF';
 
 interface ImageCaptura {
   id: string;
@@ -993,6 +993,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
           </div>
           <div className="flex items-center gap-2">
             <PDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} lang={lang} />
+            <MedicalPDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} />
             <button
               onClick={handleShare}
               disabled={sharing}

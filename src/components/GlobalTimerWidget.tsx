@@ -24,7 +24,8 @@ type Page =
   | 'blink-detector'
   | 'reading-test'
   | 'chat-sintomas'
-  | 'mapa-oftalmologos';
+  | 'mapa-oftalmologos'
+  | 'juegos-visuales';
 
 type Props = {
   currentPage: Page;

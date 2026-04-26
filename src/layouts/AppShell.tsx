@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import DistanceMonitor from '../components/DistanceMonitor';
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
-  KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin,
+  KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -13,7 +14,7 @@ type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'verify-email' | 'learn'
-  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos';
+  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales';
 
 interface Props {
   currentPage: Page;
@@ -36,6 +37,7 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: BookOpenCheck,      label: 'Lectura Visual',    page: 'reading-test'        },
   { icon: MessageCircleHeart, label: 'Chat Visual',       page: 'chat-sintomas'       },
   { icon: MapPin,             label: 'Oftalmólogos',      page: 'mapa-oftalmologos'   },
+  { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'     },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded
@@ -50,6 +52,25 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
   const [collapsed, setCollapsed] = useState(false); // desktop icon-only mode
   const [showLogout, setShowLogout] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Distance monitor
+  const [distanceMonitorActive, setDistanceMonitorActive] = useState(() => {
+    try { return localStorage.getItem('therapheye_distance_monitor') === '1'; } catch { return false; }
+  });
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ev = e as CustomEvent<{ active: boolean }>;
+      setDistanceMonitorActive(ev.detail.active);
+    };
+    window.addEventListener('therapheye-distance-monitor-changed', handler);
+    return () => window.removeEventListener('therapheye-distance-monitor-changed', handler);
+  }, []);
+
+  const handleCloseDistanceMonitor = useCallback(() => {
+    localStorage.setItem('therapheye_distance_monitor', '0');
+    setDistanceMonitorActive(false);
+  }, []);
 
   // Push notification banner
   const [showPushBanner, setShowPushBanner] = useState(false);
@@ -297,6 +318,9 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
           </div>
         </div>
       )}
+
+      {/* ── Distance Monitor widget ────────────────────────────────────── */}
+      <DistanceMonitor active={distanceMonitorActive} onClose={handleCloseDistanceMonitor} />
 
       {/* ── Logout confirm modal ────────────────────────────────────────── */}
       {showLogout && (
