@@ -7,6 +7,7 @@ import {
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
+  Scan, QrCode, MessageCircle, Crown,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -23,7 +24,8 @@ type Page =
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
-  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas';
+  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
+  | 'ocr-receta' | 'qr-informe' | 'recordatorios-wa' | 'plan-premium';
 
 interface Props {
   currentPage: Page;
@@ -66,6 +68,10 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: ImageIcon,          label: 'Galería Capturas',  page: 'galeria-captures'    },
   { icon: BrainCircuit,       label: 'Entrena. Mental',   page: 'entrenamiento-mental'},
   { icon: AreaChart,          label: 'Stats Avanzadas',   page: 'estadisticas-avanzadas'},
+  { icon: Scan,               label: 'OCR Receta',        page: 'ocr-receta'            },
+  { icon: QrCode,             label: 'QR Informe',        page: 'qr-informe'            },
+  { icon: MessageCircle,      label: 'Recordatorios WA',  page: 'recordatorios-wa'      },
+  { icon: Crown,              label: 'Premium',           page: 'plan-premium'          },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded

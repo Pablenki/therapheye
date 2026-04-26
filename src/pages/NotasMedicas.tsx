@@ -6,11 +6,11 @@
 // =========================================
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Pill, Calendar, FileText, Stethoscope } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Pill, Calendar, FileText, Stethoscope, Scan, CalendarPlus } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
 
-interface Props { onBack: () => void; }
+interface Props { onBack: () => void; onNavigate?: (page: string) => void; }
 
 interface Nota {
   id: number;
@@ -41,7 +41,7 @@ const BADGE_MAP: Record<string, string> = {
   amber:  'bg-amber-100 text-amber-700',
 };
 
-export default function NotasMedicas({ onBack }: Props) {
+export default function NotasMedicas({ onBack, onNavigate }: Props) {
   const { user } = useUser();
   const [notas, setNotas] = useState<Nota[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,12 +122,23 @@ export default function NotasMedicas({ onBack }: Props) {
             <h1 className="text-2xl font-black">Notas Médicas</h1>
             <p className="text-indigo-200 text-sm mt-0.5">Diagnósticos, medicamentos y citas</p>
           </div>
-          <button
-            onClick={() => setShowForm(v => !v)}
-            className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition"
-          >
-            <Plus className="w-5 h-5 text-white"/>
-          </button>
+          <div className="flex items-center gap-2">
+            {onNavigate && (
+              <button
+                onClick={() => onNavigate('ocr-receta')}
+                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold px-3 py-2 rounded-xl transition"
+                title="OCR de receta médica"
+              >
+                <Scan className="w-3.5 h-3.5" /> OCR
+              </button>
+            )}
+            <button
+              onClick={() => setShowForm(v => !v)}
+              className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition"
+            >
+              <Plus className="w-5 h-5 text-white"/>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -258,12 +269,36 @@ export default function NotasMedicas({ onBack }: Props) {
                     <div className={`rounded-xl p-3 text-sm leading-relaxed mb-3 border ${COLOR_MAP[meta.color]}`}>
                       {nota.contenido}
                     </div>
-                    <button
-                      onClick={() => eliminar(nota.id)}
-                      className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5"/> Eliminar nota
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {nota.tipo === 'cita' && (
+                        <a
+                          href={(() => {
+                            const d = nota.fecha ? new Date(nota.fecha + 'T10:00:00') : new Date();
+                            d.setHours(10, 0, 0, 0);
+                            const end = new Date(d.getTime() + 60 * 60 * 1000);
+                            const fmt = (x: Date) => x.toISOString().replace(/[-:]/g, '').slice(0, 15);
+                            const params = new URLSearchParams({
+                              action: 'TEMPLATE',
+                              text: nota.titulo,
+                              details: nota.contenido + '\n\nAgendado desde Therapheye',
+                              dates: `${fmt(d)}/${fmt(end)}`,
+                            });
+                            return `https://calendar.google.com/calendar/render?${params.toString()}`;
+                          })()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition font-medium"
+                        >
+                          <CalendarPlus className="w-3.5 h-3.5" /> Agregar a Google Calendar
+                        </a>
+                      )}
+                      <button
+                        onClick={() => eliminar(nota.id)}
+                        className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5"/> Eliminar nota
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

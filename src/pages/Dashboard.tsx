@@ -38,7 +38,8 @@ type Page =
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
-  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas';
+  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
+  | 'ocr-receta' | 'qr-informe' | 'recordatorios-wa' | 'plan-premium';
 
 interface Stats {
   evaluaciones: number;

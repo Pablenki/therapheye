@@ -45,7 +45,9 @@
       "Bash(npm install:*)",
       "Bash(node -e \"const wp = require\\('web-push'\\); const k = wp.generateVAPIDKeys\\(\\); console.log\\('PUBLIC:' + k.publicKey\\); console.log\\('PRIVATE:' + k.privateKey\\);\")",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('dependencies',{}\\).items\\(\\)}, indent=2\\)\\)\")",
-      "Bash(awk '{print $NF}')"
+      "Bash(awk '{print $NF}')",
+      "Bash(ls src/pages/*.tsx)",
+      "Bash(ls src/components/*.tsx)"
     ]
   }
 }

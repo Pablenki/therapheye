@@ -44,7 +44,11 @@ type Page =
   | 'analizador-sintomas'
   | 'galeria-captures'
   | 'entrenamiento-mental'
-  | 'estadisticas-avanzadas';
+  | 'estadisticas-avanzadas'
+  | 'ocr-receta'
+  | 'qr-informe'
+  | 'recordatorios-wa'
+  | 'plan-premium';
 
 type Props = {
   currentPage: Page;

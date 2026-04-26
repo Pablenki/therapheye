@@ -4,7 +4,7 @@
 // =========================================
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, MapPin, Phone, Clock, AlertCircle, Loader2, Navigation } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Clock, AlertCircle, Loader2, Navigation, CalendarPlus } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -309,14 +309,38 @@ export default function MapaOftalmologos({ onBack }: Props) {
                   </p>
                 )}
               </div>
-              <a
-                href={`https://www.openstreetmap.org/directions?from=&to=${selected.lat},${selected.lon}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 block text-center bg-cyan-700 text-white text-xs font-semibold rounded-xl py-2 hover:bg-cyan-800 transition"
-              >
-                Cómo llegar →
-              </a>
+              <div className="mt-3 flex gap-2">
+                <a
+                  href={`https://www.openstreetmap.org/directions?from=&to=${selected.lat},${selected.lon}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-center bg-cyan-700 text-white text-xs font-semibold rounded-xl py-2 hover:bg-cyan-800 transition"
+                >
+                  Cómo llegar →
+                </a>
+                <a
+                  href={(() => {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(10, 0, 0, 0);
+                    const end = new Date(tomorrow.getTime() + 60 * 60 * 1000);
+                    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').slice(0, 15);
+                    const params = new URLSearchParams({
+                      action: 'TEMPLATE',
+                      text: `Cita — ${selected.name}`,
+                      details: `Cita con especialista visual agendada desde Therapheye.\n${selected.address ?? ''}`,
+                      location: selected.address ?? selected.name,
+                      dates: `${fmt(tomorrow)}/${fmt(end)}`,
+                    });
+                    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl px-3 py-2 hover:bg-indigo-700 transition flex-shrink-0"
+                >
+                  <CalendarPlus className="w-3.5 h-3.5" /> Agendar
+                </a>
+              </div>
             </div>
           )}
 
