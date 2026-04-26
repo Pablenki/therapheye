@@ -5,7 +5,7 @@
 // =========================================
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Activity, Eye } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Activity, Eye, Monitor, Puzzle, ExternalLink } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
 
@@ -43,6 +43,28 @@ export default function EstadisticasAvanzadas({ onBack }: Props) {
   const [promedioScore, setPromedioScore] = useState<number | null>(null);
   const [correlation, setCorrelation] = useState<CorrelationPoint[]>([]);
   const [mejorDiaSemana, setMejorDiaSemana] = useState<string | null>(null);
+
+  // Extension screen time
+  interface ExtDayData { totalMs: number; sessions: number; sites: Record<string, number> }
+  const [extData, setExtData] = useState<Record<string, ExtDayData> | null>(null);
+  const [extInstalled, setExtInstalled] = useState(false);
+
+  const loadExtData = () => {
+    const installed = localStorage.getItem('therapheye_ext_installed') === '1';
+    setExtInstalled(installed);
+    if (!installed) return;
+    try {
+      const raw = localStorage.getItem('therapheye_ext_screentime');
+      if (raw) setExtData(JSON.parse(raw));
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadExtData();
+    const handler = () => loadExtData();
+    window.addEventListener('therapheye-ext-sync', handler);
+    return () => window.removeEventListener('therapheye-ext-sync', handler);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!user?.id) return;
@@ -212,6 +234,108 @@ export default function EstadisticasAvanzadas({ onBack }: Props) {
                 </div>
               ))}
             </div>
+
+            {/* ── Extension screen time ── */}
+            {extInstalled && extData ? (() => {
+              const today = new Date().toISOString().slice(0, 10);
+              const todayMs = extData[today]?.totalMs ?? 0;
+              const weekDays = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(); d.setDate(d.getDate() - (6 - i));
+                const key = d.toISOString().slice(0, 10);
+                return { key, ms: extData[key]?.totalMs ?? 0, label: ['D','L','M','Mi','J','V','S'][d.getDay()] };
+              });
+              const maxMs = Math.max(...weekDays.map(d => d.ms), 1);
+              const fmt = (ms: number) => {
+                const h = Math.floor(ms / 3_600_000);
+                const m = Math.floor((ms % 3_600_000) / 60_000);
+                return h > 0 ? `${h}h ${m}m` : `${m}m`;
+              };
+              const topSites = Object.entries(extData[today]?.sites ?? {})
+                .sort((a: any, b: any) => b[1] - a[1]).slice(0, 3);
+              return (
+                <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+                  <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 flex items-center gap-2">
+                    <Monitor className="w-4 h-4 text-white" />
+                    <span className="text-white font-bold text-sm">Tiempo de pantalla</span>
+                    <span className="ml-auto text-indigo-200 text-xs flex items-center gap-1">
+                      <Puzzle className="w-3 h-3" /> Screen Guard
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className="text-3xl font-black text-gray-900">{fmt(todayMs)}</span>
+                      <span className="text-sm text-gray-500">hoy</span>
+                      {todayMs >= 8 * 3_600_000 && (
+                        <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Mucho tiempo</span>
+                      )}
+                    </div>
+                    {/* Weekly bars */}
+                    <div className="flex items-end gap-1 h-12 mb-1">
+                      {weekDays.map(d => (
+                        <div key={d.key} className="flex-1 flex flex-col items-center gap-0.5">
+                          <div className="w-full rounded-t-sm transition-all"
+                            style={{
+                              height: `${Math.max((d.ms / maxMs) * 100, d.ms > 0 ? 8 : 0)}%`,
+                              background: d.key === today
+                                ? 'linear-gradient(180deg,#4f46e5,#7c3aed)'
+                                : d.ms >= 8 * 3_600_000
+                                ? '#ef4444'
+                                : d.ms > 0 ? '#a5b4fc' : '#f3f4f6',
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-1 mb-3">
+                      {weekDays.map(d => (
+                        <div key={d.key} className={`flex-1 text-center text-[9px] font-semibold ${d.key === today ? 'text-indigo-600' : 'text-gray-400'}`}>
+                          {d.label}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Top sites */}
+                    {topSites.length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium mb-1.5">Top sitios hoy</p>
+                        <div className="space-y-1.5">
+                          {topSites.map(([host, ms]: [string, any]) => {
+                            const pct = Math.round((ms / (extData[today]?.totalMs ?? 1)) * 100);
+                            return (
+                              <div key={host} className="flex items-center gap-2">
+                                <span className="text-xs text-gray-700 w-28 truncate">{host.replace('www.', '')}</span>
+                                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="text-xs text-gray-500 w-10 text-right">{fmt(ms)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })() : !extInstalled ? (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-start gap-3">
+                <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Puzzle className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-indigo-800 text-sm">Instala Therapheye Screen Guard</p>
+                  <p className="text-xs text-indigo-600 mt-0.5 leading-relaxed">
+                    La extensión de Chrome trackea tu tiempo de pantalla y muestra las estadísticas aquí.
+                  </p>
+                  <a
+                    href="https://github.com/Pablenki/therapheye/tree/main/extension"
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-indigo-700 hover:text-indigo-900 transition"
+                  >
+                    Ver instrucciones <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+            ) : null}
 
             {/* Trend indicator */}
             {recentTrend && (
