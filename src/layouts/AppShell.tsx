@@ -4,6 +4,7 @@ import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
+  Sparkles, BookMarked, Zap,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -14,7 +15,8 @@ type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'verify-email' | 'learn'
-  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales';
+  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales'
+  | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual';
 
 interface Props {
   currentPage: Page;
@@ -38,6 +40,9 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: MessageCircleHeart, label: 'Chat Visual',       page: 'chat-sintomas'       },
   { icon: MapPin,             label: 'Oftalmólogos',      page: 'mapa-oftalmologos'   },
   { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'     },
+  { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'          },
+  { icon: BookMarked,         label: 'Diario Visual',     page: 'diario-visual'       },
+  { icon: Zap,                label: 'Pomodoro Visual',   page: 'pomodoro-visual'     },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded

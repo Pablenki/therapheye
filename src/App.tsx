@@ -24,6 +24,9 @@ import LecturaVisual from './pages/LecturaVisual'
 import ChatSintomas from './pages/ChatSintomas'
 import MapaOftalmologos from './pages/MapaOftalmologos'
 import JuegosVisuales from './pages/JuegosVisuales'
+import RutinasIA from './pages/RutinasIA'
+import DiarioVisual from './pages/DiarioVisual'
+import PomodoroVisual from './pages/PomodoroVisual'
 
 type Page =
   | 'login'
@@ -44,7 +47,10 @@ type Page =
   | 'reading-test'
   | 'chat-sintomas'
   | 'mapa-oftalmologos'
-  | 'juegos-visuales';
+  | 'juegos-visuales'
+  | 'rutinas-ia'
+  | 'diario-visual'
+  | 'pomodoro-visual';
 
 interface PendingUser {
   name: string;
@@ -194,6 +200,12 @@ function AppContent() {
         return <MapaOftalmologos onBack={() => handleNavigate('dashboard')} />
       case 'juegos-visuales':
         return <JuegosVisuales onBack={() => handleNavigate('dashboard')} />
+      case 'rutinas-ia':
+        return <RutinasIA onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
+      case 'diario-visual':
+        return <DiarioVisual onBack={() => handleNavigate('dashboard')} />
+      case 'pomodoro-visual':
+        return <PomodoroVisual onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       default:
         return (
           <Login

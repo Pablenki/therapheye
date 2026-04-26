@@ -18,7 +18,8 @@ type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'learn'
-  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales';
+  | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales'
+  | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual';
 
 interface Stats {
   evaluaciones: number;

@@ -25,7 +25,10 @@ type Page =
   | 'reading-test'
   | 'chat-sintomas'
   | 'mapa-oftalmologos'
-  | 'juegos-visuales';
+  | 'juegos-visuales'
+  | 'rutinas-ia'
+  | 'diario-visual'
+  | 'pomodoro-visual';
 
 type Props = {
   currentPage: Page;

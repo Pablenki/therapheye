@@ -1,9 +1,30 @@
-import { ArrowLeft, Camera, X, CheckCircle, Loader2, Upload, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Camera, X, CheckCircle, Loader2, Upload, AlertCircle, Sparkles, Brain } from 'lucide-react'
 import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '../i18n'
 import { sql } from '../neonCliente'
+
+interface ClaudeVisionResult {
+  analisis: string;
+  signos: string[];
+  nivel_confianza: 'alto' | 'medio' | 'bajo';
+  recomendacion: string;
+}
+
+const CLAUDE_VISION_PROMPT = `Eres un asistente de análisis de salud visual. Analiza esta imagen del ojo de un usuario.
+
+Identifica ÚNICAMENTE signos visibles en la imagen. Responde en JSON:
+{
+  "analisis": "descripción concisa de lo que observas en el ojo (1-2 oraciones)",
+  "signos": ["signo1", "signo2"],
+  "nivel_confianza": "alto|medio|bajo",
+  "recomendacion": "recomendación concreta de 1 oración"
+}
+
+Signos posibles: enrojecimiento leve, enrojecimiento moderado, enrojecimiento severo, párpado caído, ojo seco aparente, conjuntiva irritada, lagrimeo, imagen borrosa, mala iluminación.
+Si la imagen no muestra claramente un ojo, indica "imagen no adecuada" en analisis y usa nivel_confianza "bajo".
+NUNCA diagnostiques enfermedades. Solo describe lo visible.`;
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
@@ -38,6 +59,8 @@ const ImageCapture = ({ onBack }: Props) => {
   const [resultado, setResultado] = useState<DiagnosticoResult | null>(null)
   const [isDiagnosing, setIsDiagnosing] = useState(false)
   const [errorDiagnostico, setErrorDiagnostico] = useState<string | null>(null)
+  const [claudeResult, setClaudeResult] = useState<ClaudeVisionResult | null>(null)
+  const [isClaudeAnalyzing, setIsClaudeAnalyzing] = useState(false)
   const [errorCamara, setErrorCamara] = useState<string | null>(null)
   const [cargandoCamara, setCargandoCamara] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -146,10 +169,57 @@ const ImageCapture = ({ onBack }: Props) => {
     e.target.value = ''
   }
 
+  const analizarConClaude = async (imagenBase64: string) => {
+    setIsClaudeAnalyzing(true)
+    try {
+      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
+      if (!apiKey) return
+      // Extraer solo la parte base64 (sin el prefijo data:image/...;base64,)
+      const base64Data = imagenBase64.split(',')[1] ?? imagenBase64
+      const mediaType = imagenBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg'
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 512,
+          system: CLAUDE_VISION_PROMPT,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
+              { type: 'text', text: 'Analiza esta imagen del ojo.' }
+            ]
+          }],
+        }),
+      })
+      if (!resp.ok) return
+      const data = await resp.json()
+      const text = data.content[0].text
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]) as ClaudeVisionResult
+        setClaudeResult(parsed)
+      }
+    } catch (e) {
+      console.warn('[Claude Vision] Error:', e)
+    } finally {
+      setIsClaudeAnalyzing(false)
+    }
+  }
+
   const realizarDiagnostico = async () => {
     if (!imagenCapturada) return
     setIsDiagnosing(true)
     setErrorDiagnostico(null)
+    setClaudeResult(null)
+    // Lanzar análisis de Claude Vision en paralelo
+    analizarConClaude(imagenCapturada)
     try {
       const res = await fetch(`${API_BASE}/diagnostico`, {
         method: 'POST',
@@ -207,6 +277,50 @@ const ImageCapture = ({ onBack }: Props) => {
                 <p className="text-lg font-semibold text-green-700">Ningún signo de fatiga visual detectado.</p>
               )}
             </div>
+            {/* Análisis Claude Vision */}
+            {(isClaudeAnalyzing || claudeResult) && (
+              <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-indigo-100 rounded-xl p-5 mb-5 text-left">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+                    <Brain className="w-4 h-4 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-indigo-800">Análisis IA — Claude Vision</h3>
+                  {isClaudeAnalyzing && <Loader2 className="w-4 h-4 animate-spin text-indigo-400 ml-auto" />}
+                </div>
+                {claudeResult ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-700 leading-relaxed">{claudeResult.analisis}</p>
+                    {claudeResult.signos.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {claudeResult.signos.map(s => (
+                          <span key={s} className="text-xs bg-white border border-indigo-200 text-indigo-700 rounded-full px-2.5 py-0.5">{s}</span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
+                      <span className="text-xs text-gray-500">Confianza del análisis</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        claudeResult.nivel_confianza === 'alto' ? 'bg-emerald-100 text-emerald-700' :
+                        claudeResult.nivel_confianza === 'medio' ? 'bg-amber-100 text-amber-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {claudeResult.nivel_confianza === 'alto' ? '● Alta' : claudeResult.nivel_confianza === 'medio' ? '● Media' : '● Baja'}
+                      </span>
+                    </div>
+                    {claudeResult.recomendacion && (
+                      <p className="text-xs text-indigo-700 bg-indigo-50 rounded-lg px-3 py-2 flex items-start gap-1.5">
+                        <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        {claudeResult.recomendacion}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-gray-400 leading-tight">* Análisis generado por IA. No reemplaza diagnóstico médico profesional.</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-indigo-600 animate-pulse">Procesando imagen con IA...</p>
+                )}
+              </div>
+            )}
+
             <div className="bg-blue-50 rounded-xl p-6 mb-6 text-left">
               <h3 className="font-semibold text-gray-800 mb-3">Recomendaciones:</h3>
               <ul className="space-y-2 text-gray-700">

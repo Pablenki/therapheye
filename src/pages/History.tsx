@@ -586,6 +586,181 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
   );
 };
 
+// ─── Heatmap semanal de ejercicios (estilo GitHub) ──────────────────────────
+const ExerciseHeatmap = ({ exercises }: { exercises: Exercise[] }) => {
+  const WEEKS = 16;
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - (WEEKS * 7 - 1));
+  startDate.setHours(0, 0, 0, 0);
+
+  // Contar ejercicios completados por día
+  const countByDay: Record<string, number> = {};
+  exercises.forEach(ex => {
+    if (ex.status === 'incomplete') return;
+    const d = new Date(ex.created_at.includes('T') ? ex.created_at : ex.created_at.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    countByDay[key] = (countByDay[key] ?? 0) + 1;
+  });
+
+  // Construir grid de semanas x días
+  const weeks: { date: Date; key: string; count: number }[][] = [];
+  const cursor = new Date(startDate);
+  // Retroceder al lunes anterior
+  const dow = cursor.getDay();
+  cursor.setDate(cursor.getDate() - (dow === 0 ? 6 : dow - 1));
+
+  for (let w = 0; w < WEEKS; w++) {
+    const week: { date: Date; key: string; count: number }[] = [];
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(cursor);
+      const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+      week.push({ date, key, count: countByDay[key] ?? 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  const cellColor = (count: number) => {
+    if (count === 0) return '#f3f4f6';
+    if (count === 1) return '#a5f3fc';
+    if (count === 2) return '#22d3ee';
+    if (count === 3) return '#0891b2';
+    return '#0e7490';
+  };
+
+  const DIAS_ES = ['L','M','X','J','V','S','D'];
+  const totalCompletados = exercises.filter(e => e.status !== 'incomplete').length;
+  const diasActivos = Object.values(countByDay).filter(v => v > 0).length;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex gap-4 text-xs text-gray-500">
+          <span><b className="text-gray-800">{totalCompletados}</b> ejercicios completados</span>
+          <span><b className="text-gray-800">{diasActivos}</b> días activos</span>
+        </div>
+        <div className="flex items-center gap-1 text-xs text-gray-400">
+          <span>Menos</span>
+          {[0,1,2,3,4].map(v => <span key={v} style={{ width: 10, height: 10, borderRadius: 2, background: cellColor(v), display:'inline-block' }} />)}
+          <span>Más</span>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
+          {/* Etiquetas de días */}
+          <div className="flex flex-col gap-1 mr-1">
+            {DIAS_ES.map((d, i) => (
+              <div key={d} style={{ height: 11, lineHeight: '11px', fontSize: 9, color: '#9ca3af', width: 12, textAlign: 'right' }}>
+                {i % 2 === 0 ? d : ''}
+              </div>
+            ))}
+          </div>
+          {weeks.map((week, wi) => (
+            <div key={wi} className="flex flex-col gap-1">
+              {week.map((cell) => {
+                const isFuture = cell.date > today;
+                return (
+                  <div
+                    key={cell.key}
+                    title={`${cell.date.toLocaleDateString('es-MX', { day:'2-digit', month:'short' })}: ${cell.count} ejercicio${cell.count !== 1 ? 's' : ''}`}
+                    style={{
+                      width: 11, height: 11, borderRadius: 2,
+                      background: isFuture ? 'transparent' : cellColor(cell.count),
+                      border: isFuture ? 'none' : '1px solid rgba(0,0,0,0.06)',
+                      cursor: cell.count > 0 ? 'help' : 'default',
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        {/* Etiquetas de meses */}
+        <div className="flex gap-1 mt-1 ml-[15px]">
+          {weeks.map((week, wi) => {
+            const firstDay = week[0].date;
+            const showMonth = firstDay.getDate() <= 7;
+            return (
+              <div key={wi} style={{ width: 11, fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
+                {showMonth ? firstDay.toLocaleDateString('es-MX', { month: 'short' }) : ''}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Comparativa mes a mes de fatiga ─────────────────────────────────────────
+const ComparativaMeses = ({ evaluations }: { evaluations: Evaluation[] }) => {
+  if (evaluations.length < 2) return null;
+
+  // Agrupar por mes-año
+  const byMonth: Record<string, number[]> = {};
+  evaluations.forEach(e => {
+    const d = e.raw_date;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(e.puntaje_fatiga);
+  });
+
+  const meses = Object.keys(byMonth).sort().slice(-6); // últimos 6 meses
+  if (meses.length < 2) return null;
+
+  const datos = meses.map(key => {
+    const vals = byMonth[key];
+    const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    const [year, month] = key.split('-');
+    const label = new Date(Number(year), Number(month)-1, 1).toLocaleDateString('es-MX', { month: 'short', year: '2-digit' });
+    return { key, label, avg, count: vals.length };
+  });
+
+  const maxAvg = Math.max(...datos.map(d => d.avg));
+  const barColor = (avg: number) => {
+    if (avg < 25) return '#22c55e';
+    if (avg < 50) return '#eab308';
+    if (avg < 75) return '#f97316';
+    return '#ef4444';
+  };
+
+  return (
+    <div>
+      <div className="flex items-end justify-around gap-2 h-36">
+        {datos.map((d, i) => {
+          const prev = i > 0 ? datos[i-1].avg : null;
+          const delta = prev !== null ? d.avg - prev : 0;
+          const barH = Math.max(8, (d.avg / Math.max(maxAvg, 1)) * 120);
+          return (
+            <div key={d.key} className="flex flex-col items-center gap-1 flex-1">
+              {prev !== null && delta !== 0 && (
+                <span className={`text-[9px] font-bold ${delta < 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                  {delta > 0 ? '+' : ''}{delta}
+                </span>
+              )}
+              <div
+                style={{ height: barH, width: '100%', maxWidth: 40, background: barColor(d.avg), borderRadius: '4px 4px 0 0', transition: 'height 0.4s' }}
+                title={`${d.label}: promedio ${d.avg}% (${d.count} evaluaciones)`}
+              />
+              <span className="text-xs font-bold text-gray-700">{d.avg}%</span>
+              <span className="text-[9px] text-gray-400 text-center leading-tight">{d.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-3 mt-3 text-xs text-gray-400 flex-wrap">
+        <span className="flex items-center gap-1"><span className="w-3 h-1 bg-emerald-400 rounded" />Leve (&lt;25)</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-1 bg-yellow-400 rounded" />Moderada (25–50)</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-1 bg-orange-400 rounded" />Considerable (50–75)</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-1 bg-red-400 rounded" />Severa (&gt;75)</span>
+      </div>
+    </div>
+  );
+};
+
 // ─── Gráfica de agudeza visual ───────────────────────────────────────────────
 const VISION_ZONES = [
   { min: 0, max: 3,  fill: '#fef2f2', dot: '#ef4444', label_es: 'Limitada (20/100–)',     label_en: 'Limited (20/100–)'     },
@@ -1099,6 +1274,24 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
           </div>
           <TrendChart evaluations={evaluations} />
         </div>
+
+        {/* ── Heatmap semanal de ejercicios ── */}
+        {exercises.length > 0 && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">Actividad semanal</h2>
+            <p className="text-sm text-gray-400 mb-4">Ejercicios completados en las últimas 16 semanas</p>
+            <ExerciseHeatmap exercises={exercises} />
+          </div>
+        )}
+
+        {/* ── Comparativa mes a mes ── */}
+        {evaluations.length >= 2 && (
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">Fatiga mes a mes</h2>
+            <p className="text-sm text-gray-400 mb-4">Promedio de fatiga ocular por mes (últimos 6 meses)</p>
+            <ComparativaMeses evaluations={evaluations} />
+          </div>
+        )}
 
         {/* ── Agudeza Visual ── */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
