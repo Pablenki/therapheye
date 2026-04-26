@@ -1,0 +1,380 @@
+// =========================================
+// ESTADÍSTICAS AVANZADAS — Therapheye
+// Dashboard analítico completo: tendencias,
+// correlaciones, predicciones y comparativas
+// =========================================
+
+import { useState, useEffect } from 'react';
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Activity, Eye } from 'lucide-react';
+import { useUser } from '../context/UserContext';
+import { sql } from '../neonCliente';
+
+interface Props { onBack: () => void; }
+
+interface DayStat {
+  fecha: string;
+  ejercicios: number;
+  puntaje: number | null;
+}
+
+interface HourlyPattern {
+  hora: number;
+  count: number;
+}
+
+interface CorrelationPoint {
+  ejercicios: number;
+  puntaje: number;
+}
+
+const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+export default function EstadisticasAvanzadas({ onBack }: Props) {
+  const { user } = useUser();
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'resumen' | 'tendencias' | 'patrones'>('resumen');
+
+  // Data
+  const [dayStats, setDayStats] = useState<DayStat[]>([]);
+  const [hourlyPattern, setHourlyPattern] = useState<HourlyPattern[]>([]);
+  const [totalEjercicios, setTotalEjercicios] = useState(0);
+  const [totalEvaluaciones, setTotalEvaluaciones] = useState(0);
+  const [mejorRacha, setMejorRacha] = useState(0);
+  const [promedioScore, setPromedioScore] = useState<number | null>(null);
+  const [correlation, setCorrelation] = useState<CorrelationPoint[]>([]);
+  const [mejorDiaSemana, setMejorDiaSemana] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [sesiones, evaluaciones] = await Promise.all([
+          sql`
+            SELECT DATE(created_at) as fecha, COUNT(*) as cnt,
+                   EXTRACT(HOUR FROM created_at) as hora
+            FROM sesiones_ejercicio
+            WHERE user_id = ${user.id} AND created_at > NOW() - INTERVAL '180 days'
+            GROUP BY fecha, hora
+            ORDER BY fecha ASC
+          `.catch(() => []),
+          sql`
+            SELECT DATE(created_at) as fecha, AVG(puntaje) as avg_score
+            FROM respuestas_cuestionario
+            WHERE user_id = ${user.id} AND created_at > NOW() - INTERVAL '180 days'
+            GROUP BY fecha
+            ORDER BY fecha ASC
+          `.catch(() => []),
+        ]);
+
+        // Total counts
+        const totSesiones = await sql`SELECT COUNT(*) as cnt FROM sesiones_ejercicio WHERE user_id = ${user.id}`.catch(() => [{ cnt: 0 }]);
+        const totEval = await sql`SELECT COUNT(*) as cnt FROM respuestas_cuestionario WHERE user_id = ${user.id}`.catch(() => [{ cnt: 0 }]);
+        const avgScore = await sql`SELECT AVG(puntaje) as avg FROM respuestas_cuestionario WHERE user_id = ${user.id}`.catch(() => [{ avg: null }]);
+
+        setTotalEjercicios(Number((totSesiones as any[])[0]?.cnt ?? 0));
+        setTotalEvaluaciones(Number((totEval as any[])[0]?.cnt ?? 0));
+        setPromedioScore((avgScore as any[])[0]?.avg != null ? Math.round(Number((avgScore as any[])[0].avg)) : null);
+
+        // Day stats (merge exercises and scores by date)
+        const scoreByDate = new Map<string, number>();
+        for (const e of evaluaciones as any[]) {
+          scoreByDate.set(e.fecha, Math.round(Number(e.avg_score)));
+        }
+        const exByDate = new Map<string, number>();
+        for (const s of sesiones as any[]) {
+          const d = s.fecha;
+          exByDate.set(d, (exByDate.get(d) ?? 0) + Number(s.cnt));
+        }
+
+        const allDates = new Set([...scoreByDate.keys(), ...exByDate.keys()]);
+        const days: DayStat[] = Array.from(allDates).sort().map(d => ({
+          fecha: d,
+          ejercicios: exByDate.get(d) ?? 0,
+          puntaje: scoreByDate.get(d) ?? null,
+        }));
+        setDayStats(days);
+
+        // Hourly pattern
+        const hourCounts = new Array(24).fill(0);
+        for (const s of sesiones as any[]) {
+          const h = Number(s.hora);
+          hourCounts[h] += Number(s.cnt);
+        }
+        setHourlyPattern(hourCounts.map((count, hora) => ({ hora, count })));
+
+        // Best day of week
+        const dowCounts = new Array(7).fill(0);
+        for (const s of sesiones as any[]) {
+          const dow = new Date(s.fecha).getDay();
+          dowCounts[dow] += Number(s.cnt);
+        }
+        const bestDow = dowCounts.indexOf(Math.max(...dowCounts));
+        setMejorDiaSemana(DIAS_SEMANA[bestDow]);
+
+        // Correlation: exercises per week vs avg score
+        const corrData: CorrelationPoint[] = [];
+        for (const d of days) {
+          if (d.puntaje !== null) {
+            corrData.push({ ejercicios: d.ejercicios, puntaje: d.puntaje });
+          }
+        }
+        setCorrelation(corrData.slice(-60));
+
+        // Best streak
+        let streak = 0;
+        let maxStreak = 0;
+        let prevDate: Date | null = null;
+        for (const d of days) {
+          const dt = new Date(d.fecha);
+          if (d.ejercicios > 0) {
+            if (prevDate && (dt.getTime() - prevDate.getTime()) === 86400000) {
+              streak++;
+            } else {
+              streak = 1;
+            }
+            maxStreak = Math.max(maxStreak, streak);
+            prevDate = dt;
+          } else {
+            streak = 0;
+            prevDate = null;
+          }
+        }
+        setMejorRacha(maxStreak);
+
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, [user?.id]);
+
+  const last30 = dayStats.slice(-30);
+  const maxEx = Math.max(...dayStats.map(d => d.ejercicios), 1);
+
+  const recentTrend = (() => {
+    if (dayStats.length < 10) return null;
+    const half = Math.floor(dayStats.length / 2);
+    const first = dayStats.slice(0, half).reduce((a, d) => a + d.ejercicios, 0) / half;
+    const second = dayStats.slice(half).reduce((a, d) => a + d.ejercicios, 0) / (dayStats.length - half);
+    if (second > first * 1.1) return 'up';
+    if (second < first * 0.9) return 'down';
+    return 'stable';
+  })();
+
+  const activeHours = hourlyPattern.filter(h => h.count > 0);
+  const peakHour = activeHours.length > 0
+    ? activeHours.reduce((a, b) => a.count > b.count ? a : b).hora
+    : null;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-4 pt-10 pb-6 text-white">
+        <button onClick={onBack} className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4 transition">
+          <ArrowLeft className="w-4 h-4"/> Volver
+        </button>
+        <h1 className="text-2xl font-black">Estadísticas Avanzadas</h1>
+        <p className="text-indigo-300 text-sm mt-0.5">Análisis de los últimos 6 meses</p>
+      </div>
+
+      {/* Tab bar */}
+      <div className="bg-white border-b border-gray-100 flex">
+        {([['resumen', 'Resumen'], ['tendencias', 'Tendencias'], ['patrones', 'Patrones']] as const).map(([t, l]) => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`flex-1 py-3 text-sm font-semibold transition border-b-2 ${
+              tab === t ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4 max-w-lg mx-auto">
+        {loading && <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 rounded-2xl skeleton"/>)}</div>}
+
+        {/* ── RESUMEN ── */}
+        {!loading && tab === 'resumen' && (
+          <div className="space-y-4 animate-[fadeInUp_0.3s_ease]">
+            {/* KPIs */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Ejercicios totales', value: totalEjercicios, icon: Activity, color: 'indigo' },
+                { label: 'Evaluaciones', value: totalEvaluaciones, icon: ClipboardList, color: 'blue' },
+                { label: 'Mejor racha', value: `${mejorRacha}d`, icon: TrendingUp, color: 'emerald' },
+                { label: 'Puntaje promedio', value: promedioScore !== null ? `${promedioScore}/100` : 'N/A', icon: Eye, color: 'violet' },
+              ].map(({ label, value, icon: Icon, color }) => (
+                <div key={label} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                  <div className={`w-8 h-8 rounded-xl bg-${color}-100 flex items-center justify-center mb-2`}>
+                    <Icon className={`w-4 h-4 text-${color}-600`}/>
+                  </div>
+                  <p className={`text-2xl font-black text-${color}-600`}>{value}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Trend indicator */}
+            {recentTrend && (
+              <div className={`rounded-2xl p-4 flex items-center gap-3 ${
+                recentTrend === 'up' ? 'bg-emerald-50 border border-emerald-200' :
+                recentTrend === 'down' ? 'bg-red-50 border border-red-200' :
+                'bg-gray-50 border border-gray-200'
+              }`}>
+                {recentTrend === 'up' ? <TrendingUp className="w-5 h-5 text-emerald-600 flex-shrink-0"/>
+                  : recentTrend === 'down' ? <TrendingDown className="w-5 h-5 text-red-500 flex-shrink-0"/>
+                  : <Minus className="w-5 h-5 text-gray-500 flex-shrink-0"/>}
+                <div>
+                  <p className={`font-bold text-sm ${recentTrend === 'up' ? 'text-emerald-700' : recentTrend === 'down' ? 'text-red-700' : 'text-gray-700'}`}>
+                    {recentTrend === 'up' ? 'Tendencia positiva' : recentTrend === 'down' ? 'Actividad en descenso' : 'Actividad estable'}
+                  </p>
+                  <p className={`text-xs ${recentTrend === 'up' ? 'text-emerald-600' : recentTrend === 'down' ? 'text-red-500' : 'text-gray-500'}`}>
+                    {recentTrend === 'up' ? 'Hiciste más ejercicios en la segunda mitad del período.'
+                      : recentTrend === 'down' ? 'La actividad bajó. Retoma tu rutina hoy.'
+                      : 'La actividad se mantiene constante.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Peak day/hour */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <p className="font-bold text-gray-900 mb-3 text-sm">Tus mejores momentos</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <p className="text-3xl font-black text-indigo-600">{mejorDiaSemana ?? '—'}</p>
+                  <p className="text-xs text-gray-500 mt-1">Día más activo</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl font-black text-violet-600">
+                    {peakHour !== null ? `${peakHour}:00` : '—'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Hora pico</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TENDENCIAS ── */}
+        {!loading && tab === 'tendencias' && (
+          <div className="space-y-4 animate-[fadeInUp_0.3s_ease]">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <p className="font-bold text-gray-900 mb-3 text-sm">Ejercicios diarios — últimos 30 días</p>
+              <div className="flex items-end gap-0.5 h-20">
+                {last30.map((d, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center">
+                    <div
+                      className="w-full rounded-t-sm"
+                      style={{
+                        height: `${Math.round((d.ejercicios / maxEx) * 100)}%`,
+                        minHeight: d.ejercicios > 0 ? '4px' : '0',
+                        background: d.ejercicios === 0 ? '#f3f4f6'
+                          : d.ejercicios >= 3 ? '#6366f1'
+                          : d.ejercicios >= 2 ? '#818cf8'
+                          : '#a5b4fc',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                <span>30d atrás</span><span>Hoy</span>
+              </div>
+            </div>
+
+            {/* Scores chart */}
+            {dayStats.some(d => d.puntaje !== null) && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p className="font-bold text-gray-900 mb-3 text-sm">Puntaje de evaluaciones — últimos 30 días</p>
+                <div className="flex items-end gap-0.5 h-20">
+                  {last30.map((d, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center">
+                      {d.puntaje !== null ? (
+                        <div
+                          className="w-full rounded-t-sm"
+                          style={{
+                            height: `${d.puntaje}%`,
+                            minHeight: '4px',
+                            background: d.puntaje >= 70 ? '#10b981' : d.puntaje >= 40 ? '#f59e0b' : '#ef4444',
+                          }}
+                        />
+                      ) : <div className="w-full" style={{ height: '2px', background: '#f3f4f6' }}/>}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                  <span>0</span><span>50</span><span>100</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PATRONES ── */}
+        {!loading && tab === 'patrones' && (
+          <div className="space-y-4 animate-[fadeInUp_0.3s_ease]">
+            {/* Hourly heatmap */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+              <p className="font-bold text-gray-900 mb-3 text-sm">Patrón horario de ejercicio</p>
+              <div className="grid grid-cols-12 gap-0.5">
+                {hourlyPattern.slice(6, 23).map(h => {
+                  const maxH = Math.max(...hourlyPattern.map(x => x.count), 1);
+                  const intensity = h.count / maxH;
+                  return (
+                    <div key={h.hora} className="flex flex-col items-center gap-0.5">
+                      <div
+                        className="w-full h-8 rounded-sm"
+                        style={{
+                          background: intensity === 0 ? '#f3f4f6'
+                            : `rgba(99, 102, 241, ${0.15 + intensity * 0.85})`,
+                        }}
+                        title={`${h.hora}:00 — ${h.count} sesiones`}
+                      />
+                      <span className="text-[8px] text-gray-400">{h.hora}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">6:00 a 22:00 · más oscuro = más activo</p>
+            </div>
+
+            {/* Correlation: exercises vs score */}
+            {correlation.length >= 5 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p className="font-bold text-gray-900 mb-1 text-sm">Ejercicios vs. Puntaje</p>
+                <p className="text-xs text-gray-500 mb-3">¿Más ejercicios → mejor puntaje?</p>
+                <div className="relative h-32 border-l border-b border-gray-200">
+                  {correlation.map((pt, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-2 h-2 rounded-full bg-indigo-500 opacity-60"
+                      style={{
+                        left: `${Math.min((pt.ejercicios / 5) * 100, 95)}%`,
+                        bottom: `${pt.puntaje}%`,
+                        transform: 'translate(-50%, 50%)',
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                  <span>← 0 ejercicios</span><span>5+ ejercicios →</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function ClipboardList({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <path d="M9 12h6M9 16h4"/>
+    </svg>
+  );
+}

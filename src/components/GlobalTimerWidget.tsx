@@ -43,7 +43,8 @@ type Page =
   | 'historial-ocular'
   | 'analizador-sintomas'
   | 'galeria-captures'
-  | 'entrenamiento-mental';
+  | 'entrenamiento-mental'
+  | 'estadisticas-avanzadas';
 
 type Props = {
   currentPage: Page;

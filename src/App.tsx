@@ -46,6 +46,7 @@ import HistorialOcular from './pages/HistorialOcular'
 import AnalizadorSintomas from './pages/AnalizadorSintomas'
 import GaleriaCaptures from './pages/GaleriaCaptures'
 import EntrenamientoMental from './pages/EntrenamientoMental'
+import EstadisticasAvanzadas from './pages/EstadisticasAvanzadas'
 
 type Page =
   | 'login'
@@ -84,7 +85,8 @@ type Page =
   | 'historial-ocular'
   | 'analizador-sintomas'
   | 'galeria-captures'
-  | 'entrenamiento-mental';
+  | 'entrenamiento-mental'
+  | 'estadisticas-avanzadas';
 
 interface PendingUser {
   name: string;
@@ -278,6 +280,8 @@ function AppContent() {
         return <GaleriaCaptures onBack={() => handleNavigate('dashboard')} onNavigate={(p) => handleNavigate(p as Page)} />
       case 'entrenamiento-mental':
         return <EntrenamientoMental onBack={() => handleNavigate('dashboard')} />
+      case 'estadisticas-avanzadas':
+        return <EstadisticasAvanzadas onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login
