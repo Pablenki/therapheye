@@ -31,7 +31,13 @@ type Page =
   | 'pomodoro-visual'
   | 'campo-visual'
   | 'modo-zen'
-  | 'contrast-test';
+  | 'contrast-test'
+  | 'reaccion-visual'
+  | 'vergencia'
+  | 'carga-visual'
+  | 'notas-medicas'
+  | 'simulador'
+  | 'test-cromatico';
 
 type Props = {
   currentPage: Page;

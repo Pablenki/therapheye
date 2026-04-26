@@ -5,6 +5,7 @@ import {
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
+  Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -17,7 +18,9 @@ type Page =
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'verify-email' | 'learn'
   | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales'
   | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual'
-  | 'campo-visual' | 'modo-zen' | 'contrast-test';
+  | 'campo-visual' | 'modo-zen' | 'contrast-test'
+  | 'reaccion-visual' | 'vergencia' | 'carga-visual'
+  | 'notas-medicas' | 'simulador' | 'test-cromatico';
 
 interface Props {
   currentPage: Page;
@@ -47,6 +50,12 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: Crosshair,          label: 'Campo Visual',      page: 'campo-visual'        },
   { icon: EarOff,             label: 'Modo Zen',          page: 'modo-zen'            },
   { icon: Contrast,           label: 'Test Contraste',    page: 'contrast-test'       },
+  { icon: Timer,              label: 'Reacción Visual',   page: 'reaccion-visual'     },
+  { icon: Orbit,              label: 'Vergencia',         page: 'vergencia'           },
+  { icon: BarChart2,          label: 'Carga Visual',      page: 'carga-visual'        },
+  { icon: ClipboardCheck,     label: 'Notas Médicas',     page: 'notas-medicas'       },
+  { icon: Palette,            label: 'Simulador Visual',  page: 'simulador'           },
+  { icon: FlaskConical,       label: 'Test Cromático',    page: 'test-cromatico'      },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded

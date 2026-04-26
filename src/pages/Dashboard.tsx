@@ -34,7 +34,9 @@ type Page =
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'learn'
   | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales'
   | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual'
-  | 'campo-visual' | 'modo-zen' | 'contrast-test';
+  | 'campo-visual' | 'modo-zen' | 'contrast-test'
+  | 'reaccion-visual' | 'vergencia' | 'carga-visual'
+  | 'notas-medicas' | 'simulador' | 'test-cromatico';
 
 interface Stats {
   evaluaciones: number;

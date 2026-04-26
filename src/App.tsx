@@ -34,6 +34,12 @@ import PomodoroVisual from './pages/PomodoroVisual'
 import CampoVisual from './pages/CampoVisual'
 import ModoZen from './pages/ModoZen'
 import ContrastTest from './pages/ContrastTest'
+import ReaccionVisual from './pages/ReaccionVisual'
+import VergenciaTraining from './pages/VergenciaTraining'
+import CargaVisual from './pages/CargaVisual'
+import NotasMedicas from './pages/NotasMedicas'
+import SimuladorCondiciones from './pages/SimuladorCondiciones'
+import TestCromatico from './pages/TestCromatico'
 
 type Page =
   | 'login'
@@ -60,7 +66,13 @@ type Page =
   | 'pomodoro-visual'
   | 'campo-visual'
   | 'modo-zen'
-  | 'contrast-test';
+  | 'contrast-test'
+  | 'reaccion-visual'
+  | 'vergencia'
+  | 'carga-visual'
+  | 'notas-medicas'
+  | 'simulador'
+  | 'test-cromatico';
 
 interface PendingUser {
   name: string;
@@ -230,6 +242,18 @@ function AppContent() {
         return <ModoZen onBack={() => handleNavigate('dashboard')} />
       case 'contrast-test':
         return <ContrastTest onBack={() => handleNavigate('dashboard')} />
+      case 'reaccion-visual':
+        return <ReaccionVisual onBack={() => handleNavigate('dashboard')} />
+      case 'vergencia':
+        return <VergenciaTraining onBack={() => handleNavigate('dashboard')} />
+      case 'carga-visual':
+        return <CargaVisual onBack={() => handleNavigate('dashboard')} />
+      case 'notas-medicas':
+        return <NotasMedicas onBack={() => handleNavigate('dashboard')} />
+      case 'simulador':
+        return <SimuladorCondiciones onBack={() => handleNavigate('dashboard')} />
+      case 'test-cromatico':
+        return <TestCromatico onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login
