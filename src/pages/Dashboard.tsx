@@ -4,7 +4,7 @@ import type { Theme } from '../themes';
 import {
   Flame, TrendingDown, TrendingUp, Minus, Bell,
   ChevronRight, ChevronLeft, Play, Pause, BookOpen, Clock,
-  Activity, Camera, Glasses, HeartPulse, ScanEye,
+  Activity, Camera, Glasses, HeartPulse, ScanEye, Zap,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -13,6 +13,20 @@ import { ARTICLES, CATEGORY_META } from '../data/articles';
 import CoachVisualSemanal from '../components/CoachVisualSemanal';
 import FatigaPredictor from '../components/FatigaPredictor';
 import AmbientLightDetector from '../components/AmbientLightDetector';
+import QuickCheck from '../components/QuickCheck';
+
+const TIPS_DEL_DIA = [
+  { emoji: '💧', tip: 'Parpadea conscientemente cada 20 segundos. La pantalla reduce la tasa de parpadeo a la mitad.' },
+  { emoji: '📏', tip: 'Mantén la pantalla a 50-70 cm de tus ojos. Si la acercas, tus músculos oculares trabajan el doble.' },
+  { emoji: '☀️', tip: 'Ajusta el brillo de la pantalla para que sea similar al del entorno. Demasiado contraste fatiga.' },
+  { emoji: '🌿', tip: 'La regla 20-20-20: cada 20 min, mira algo a 6 metros por 20 segundos.' },
+  { emoji: '💤', tip: 'Dormir 7-8 horas permite que tus ojos se recuperen y se hidraten naturalmente.' },
+  { emoji: '🥤', tip: 'La deshidratación causa ojo seco. Toma agua regularmente durante el día.' },
+  { emoji: '🌙', tip: 'Activa el modo oscuro/nocturno en tu pantalla después de las 6pm para reducir la luz azul.' },
+  { emoji: '🏃', tip: 'Ejercicio cardiovascular mejora la circulación ocular. 30 min diarios hacen diferencia.' },
+  { emoji: '🥦', tip: 'La luteína y zeaxantina (en verduras verdes) protegen la mácula de la luz azul.' },
+  { emoji: '👁', tip: 'Los ojos también necesitan "calentamiento". Los ejercicios oculares mejoran la acomodación.' },
+];
 
 type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
@@ -195,6 +209,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [weekData, setWeekData]     = useState<WeekDay[]>([]);
   const [diagList, setDiagList]     = useState<DiagEntry[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [showQuickCheck, setShowQuickCheck] = useState(false);
+  const [showStreakCelebration, setShowStreakCelebration] = useState(false);
+  const [tipIndex] = useState(() => new Date().getDate() % TIPS_DEL_DIA.length);
   const [screenTimeMs, setScreenTimeMs]     = useState(0);
   const [screenTimeRunning, setScreenTimeRunning] = useState(false);
   const [articleIdx, setArticleIdx]     = useState(() => Math.floor(Math.random() * ARTICLES.length));
@@ -296,6 +313,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           tendencia = diff <= -5 ? 'mejorando' : diff >= 5 ? 'empeorando' : 'estable';
         } else if (evalRows.length === 1) { ultimoPuntaje = Number(evalRows[0].puntaje_fatiga); }
         setStats({ evaluaciones, ejercicios, racha, tendencia, ultimoPuntaje, penultimoPuntaje });
+        // Celebrar hitos de racha
+        const milestones = [3, 7, 14, 30, 60, 100];
+        const lastCelebrated = Number(localStorage.getItem('therapheye_last_celebrated_racha') ?? 0);
+        if (milestones.includes(racha) && racha !== lastCelebrated) {
+          localStorage.setItem('therapheye_last_celebrated_racha', String(racha));
+          setTimeout(() => { setShowStreakCelebration(true); setTimeout(() => setShowStreakCelebration(false), 5000); }, 800);
+        }
 
         // Semana: Lun-Dom
         const diasLabels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -367,6 +391,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   })();
 
   return (
+    <>
     <div className={`flex flex-col h-screen overflow-hidden bg-gradient-to-br ${tc.dashBg}`}>
 
         {/* Top bar */}
@@ -378,6 +403,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             <p className={`text-xs mt-0.5 ${tc.headerSubtext}`}>{es ? 'Cuida tu vista, mejora tu día a día.' : 'Take care of your vision, improve your day.'}</p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Quick Check button */}
+            <button
+              onClick={() => setShowQuickCheck(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
+            >
+              <Zap className="w-3.5 h-3.5" /> Check rápido
+            </button>
             {/* Ambient light detector badge */}
             <AmbientLightDetector />
             {/* Extensión badge */}
@@ -707,8 +739,54 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             );
           })()}
 
+          {/* ── Tip del Día ── */}
+          {(() => {
+            const tip = TIPS_DEL_DIA[tipIndex];
+            return (
+              <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                <span className="text-2xl flex-shrink-0">{tip.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-0.5">Tip del día</p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{tip.tip}</p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Quick check flotante (mobile) ── */}
+          <button
+            onClick={() => setShowQuickCheck(true)}
+            className="sm:hidden fixed bottom-20 right-4 z-[7999] w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg flex items-center justify-center transition active:scale-95"
+            title="Check rápido"
+          >
+            <Zap className="w-6 h-6" />
+          </button>
+
         </main>
     </div>
+
+    {/* ── Streak celebration ── */}
+    {showStreakCelebration && (
+      <div className="fixed inset-0 z-[20000] flex items-center justify-center pointer-events-none">
+        <div className="bg-gradient-to-br from-orange-400 to-pink-500 text-white rounded-3xl shadow-2xl px-8 py-6 text-center animate-[bounceIn_0.5s_ease] max-w-xs mx-4 pointer-events-auto">
+          <p className="text-5xl mb-2">🔥</p>
+          <p className="text-2xl font-black mb-1">{stats.racha} días seguidos</p>
+          <p className="text-sm text-white/80 leading-relaxed">¡Increíble racha! Tus ojos te lo agradecen.</p>
+          <button
+            onClick={() => setShowStreakCelebration(false)}
+            className="mt-4 px-5 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-semibold transition"
+          >
+            ¡Gracias!
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* ── Quick Check modal ── */}
+    {showQuickCheck && (
+      <QuickCheck onClose={() => setShowQuickCheck(false)} />
+    )}
+    </>
   );
 };
 

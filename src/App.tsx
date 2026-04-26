@@ -5,6 +5,8 @@ import { AccessibilityMenu } from './components/AccessibilityMenu'
 import GlobalTimerWidget from './components/GlobalTimerWidget'
 import SessionGuard from './components/SessionGuard'
 import AppShell from './layouts/AppShell'
+import Onboarding, { isOnboardingDone } from './components/Onboarding'
+import PresenceDetector from './components/PresenceDetector'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
@@ -67,16 +69,21 @@ function AppContent() {
   const [currentExerciseId, setCurrentExerciseId] = useState<string>('palming')
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
   const [exerciseQueue, setExerciseQueue] = useState<string[]>([])
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Cuando se restaura la sesión, ir al dashboard
   useEffect(() => {
     if (!isRestoringSession && isAuthenticated && currentPage === 'login') {
       setCurrentPage('dashboard')
+      // Mostrar onboarding si es primera vez
+      if (!isOnboardingDone()) setShowOnboarding(true)
     }
   }, [isRestoringSession, isAuthenticated, currentPage])
 
+  // Al hacer login también mostrar onboarding si aplica
   const handleNavigate = (page: Page) => {
     setCurrentPage(page)
+    if (page === 'dashboard' && !isOnboardingDone()) setShowOnboarding(true)
   }
 
   const handleStartExercise = (exerciseId: string) => {
@@ -246,6 +253,8 @@ function AppContent() {
       <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
       <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
       <AccessibilityMenu />
+      <PresenceDetector />
+      {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
     </>
   )
 }

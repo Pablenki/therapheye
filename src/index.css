@@ -75,3 +75,53 @@ kbd {
   from { opacity: 0; transform: scale(0.9); }
   to   { opacity: 1; transform: scale(1); }
 }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.6); }
+  60%  { opacity: 1; transform: scale(1.1); }
+  80%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Dashboard card entrance animation ───── */
+.dashboard-card-enter {
+  animation: fadeInUp 0.4s ease both;
+}
+
+/* ─── Skeleton loader ─────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 8px;
+}
+
+/* ─── Safe area (iPhone notch / home bar) ─── */
+.safe-area-pb { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ─── Dark mode automático (prefers-color-scheme) ────────────────────────── */
+/* Solo afecta elementos sin clases de color explícitas de Tailwind           */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sidebar-bg: #0a1628;
+  }
+  /* La app usa Tailwind con clases explícitas, así que el dark mode solo
+     ajusta el fondo base y el scrollbar para no interferir con los temas */
+  body { background-color: #111827; }
+  ::-webkit-scrollbar-track { background: #1f2937; }
+  ::-webkit-scrollbar-thumb { background: #374151; }
+}

@@ -301,6 +301,11 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
         INSERT INTO respuestas_cuestionario (user_id, respuestas_json, puntaje_fatiga, sintoma_dominante, created_at)
         VALUES (${user?.id}, ${JSON.stringify(finalAnswers)}, ${score}, ${dominant}, ${localISOString()})
       `;
+      // Marcar cuestionario del día para progreso del sidebar
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        localStorage.setItem(`therapheye_questionnaire_${today}`, '1');
+      } catch {}
     } catch (error) {
       console.error('Error al guardar respuestas:', error);
     } finally {

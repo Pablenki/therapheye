@@ -4,7 +4,7 @@ import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
-  Sparkles, BookMarked, Zap,
+  Sparkles, BookMarked, Zap, MoreHorizontal,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -57,6 +57,27 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
   const [collapsed, setCollapsed] = useState(false); // desktop icon-only mode
   const [showLogout, setShowLogout] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Daily progress (% of daily goals completed)
+  const [dailyProgress, setDailyProgress] = useState(0);
+  useEffect(() => {
+    const calc = () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const timerRaw = localStorage.getItem('therapeye_visual_health_timer');
+        const hasTimer = timerRaw ? (() => { try { const s = JSON.parse(timerRaw); return s.accumulatedMs > 5 * 60 * 1000; } catch { return false; } })() : false;
+        const lastEx = Number(localStorage.getItem('therapheye_last_exercise') ?? 0);
+        const exToday = lastEx > 0 && new Date(lastEx).toISOString().slice(0, 10) === today;
+        const questKey = `therapheye_questionnaire_${today}`;
+        const hasQuest = !!localStorage.getItem(questKey);
+        const done = [hasTimer, exToday, hasQuest].filter(Boolean).length;
+        setDailyProgress(Math.round((done / 3) * 100));
+      } catch { setDailyProgress(0); }
+    };
+    calc();
+    const iv = setInterval(calc, 30_000);
+    return () => clearInterval(iv);
+  }, []);
 
   // Distance monitor
   const [distanceMonitorActive, setDistanceMonitorActive] = useState(() => {
@@ -177,6 +198,25 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
           )}
         </div>
 
+        {/* Daily progress bar */}
+        {showLabels && (
+          <div className="px-4 pb-3 flex-shrink-0">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-white/50 font-medium uppercase tracking-wide">Progreso hoy</span>
+              <span className="text-[10px] text-white/70 font-bold">{dailyProgress}%</span>
+            </div>
+            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${dailyProgress}%`,
+                  background: dailyProgress >= 100 ? '#10b981' : dailyProgress >= 50 ? '#f59e0b' : '#6366f1'
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
           {NAV_ITEMS.map(({ icon: Icon, label, page }) => {
@@ -283,7 +323,9 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
           </button>
         )}
 
-        {children}
+        <div className={isMobile ? 'pb-16' : ''}>
+          {children}
+        </div>
       </div>
 
       {/* ── Push notification banner ────────────────────────────────────── */}
@@ -326,6 +368,38 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
 
       {/* ── Distance Monitor widget ────────────────────────────────────── */}
       <DistanceMonitor active={distanceMonitorActive} onClose={handleCloseDistanceMonitor} />
+
+      {/* ══════════════════ MOBILE BOTTOM NAV ══════════════════ */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 z-[9000] bg-white border-t border-gray-200 flex items-center justify-around px-1 py-1 safe-area-pb shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
+          {[
+            { icon: Home,          page: 'dashboard'    as Page, label: 'Inicio'    },
+            { icon: Activity,      page: 'exercises'    as Page, label: 'Ejercicios'},
+            { icon: ClipboardList, page: 'questionnaire'as Page, label: 'Check'     },
+            { icon: History,       page: 'history'      as Page, label: 'Historial' },
+            { icon: MoreHorizontal,page: null           as any,  label: 'Más'       },
+          ].map(({ icon: Icon, page, label }) => {
+            const isActive = page ? currentPage === page : false;
+            const isMore = page === null;
+            return (
+              <button
+                key={label}
+                onClick={() => isMore ? setOpen(true) : (page && handleNav(page))}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[52px] ${
+                  isActive
+                    ? 'text-indigo-600 bg-indigo-50'
+                    : isMore && open
+                    ? 'text-indigo-600 bg-indigo-50'
+                    : 'text-gray-500 hover:text-indigo-500'
+                }`}
+              >
+                <Icon style={{ width: 20, height: 20 }} className="flex-shrink-0" />
+                <span className="text-[9px] font-semibold leading-none">{label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       {/* ── Logout confirm modal ────────────────────────────────────────── */}
       {showLogout && (

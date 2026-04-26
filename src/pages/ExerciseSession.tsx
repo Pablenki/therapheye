@@ -767,6 +767,8 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
         clearResumeState(exerciseId);
         setIsComplete(true);
         setShowFatiga(true);
+        // Registrar para PresenceDetector y progreso del sidebar
+        try { localStorage.setItem('therapheye_last_exercise', String(Date.now())); window.dispatchEvent(new Event('therapheye-exercise-done')); } catch {}
       } else if (status === 'incomplete' && timeLeftRef.current > 0 && timeLeftRef.current < selectedDuration) {
         saveResumeState(exerciseId, selectedDuration, timeLeftRef.current);
       }

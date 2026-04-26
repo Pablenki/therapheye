@@ -42,7 +42,10 @@
       "mcp__claude_ai_Vercel__list_teams",
       "mcp__claude_ai_Vercel__list_deployments",
       "mcp__claude_ai_Vercel__list_projects",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(node -e \"const wp = require\\('web-push'\\); const k = wp.generateVAPIDKeys\\(\\); console.log\\('PUBLIC:' + k.publicKey\\); console.log\\('PRIVATE:' + k.privateKey\\);\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('dependencies',{}\\).items\\(\\)}, indent=2\\)\\)\")",
+      "Bash(awk '{print $NF}')"
     ]
   }
 }
