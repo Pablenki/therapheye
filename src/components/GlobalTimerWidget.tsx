@@ -37,7 +37,10 @@ type Page =
   | 'carga-visual'
   | 'notas-medicas'
   | 'simulador'
-  | 'test-cromatico';
+  | 'test-cromatico'
+  | 'test-acomodacion'
+  | 'ejercicios-avanzados'
+  | 'historial-ocular';
 
 type Props = {
   currentPage: Page;

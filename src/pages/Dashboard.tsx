@@ -36,7 +36,8 @@ type Page =
   | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual'
   | 'campo-visual' | 'modo-zen' | 'contrast-test'
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
-  | 'notas-medicas' | 'simulador' | 'test-cromatico';
+  | 'notas-medicas' | 'simulador' | 'test-cromatico'
+  | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular';
 
 interface Stats {
   evaluaciones: number;

@@ -6,6 +6,7 @@ import {
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
+  Focus, Microscope, ScrollText,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -20,7 +21,8 @@ type Page =
   | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual'
   | 'campo-visual' | 'modo-zen' | 'contrast-test'
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
-  | 'notas-medicas' | 'simulador' | 'test-cromatico';
+  | 'notas-medicas' | 'simulador' | 'test-cromatico'
+  | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular';
 
 interface Props {
   currentPage: Page;
@@ -56,6 +58,9 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: ClipboardCheck,     label: 'Notas Médicas',     page: 'notas-medicas'       },
   { icon: Palette,            label: 'Simulador Visual',  page: 'simulador'           },
   { icon: FlaskConical,       label: 'Test Cromático',    page: 'test-cromatico'      },
+  { icon: Focus,              label: 'Test Acomodación',  page: 'test-acomodacion'    },
+  { icon: Microscope,         label: 'Ejerc. Avanzados',  page: 'ejercicios-avanzados'},
+  { icon: ScrollText,         label: 'Historial Ocular',  page: 'historial-ocular'    },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded
