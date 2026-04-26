@@ -40,7 +40,9 @@ type Page =
   | 'test-cromatico'
   | 'test-acomodacion'
   | 'ejercicios-avanzados'
-  | 'historial-ocular';
+  | 'historial-ocular'
+  | 'analizador-sintomas'
+  | 'galeria-captures';
 
 type Props = {
   currentPage: Page;

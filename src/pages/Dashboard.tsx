@@ -37,7 +37,8 @@ type Page =
   | 'campo-visual' | 'modo-zen' | 'contrast-test'
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
-  | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular';
+  | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
+  | 'analizador-sintomas' | 'galeria-captures';
 
 interface Stats {
   evaluaciones: number;

@@ -6,7 +6,7 @@ import {
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
-  Focus, Microscope, ScrollText,
+  Focus, Microscope, ScrollText, TriangleAlert, ImageIcon,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -22,7 +22,8 @@ type Page =
   | 'campo-visual' | 'modo-zen' | 'contrast-test'
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
-  | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular';
+  | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
+  | 'analizador-sintomas' | 'galeria-captures';
 
 interface Props {
   currentPage: Page;
@@ -61,6 +62,8 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: Focus,              label: 'Test Acomodación',  page: 'test-acomodacion'    },
   { icon: Microscope,         label: 'Ejerc. Avanzados',  page: 'ejercicios-avanzados'},
   { icon: ScrollText,         label: 'Historial Ocular',  page: 'historial-ocular'    },
+  { icon: TriangleAlert,      label: 'Analizador Síntomas', page: 'analizador-sintomas' },
+  { icon: ImageIcon,          label: 'Galería Capturas',  page: 'galeria-captures'    },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded

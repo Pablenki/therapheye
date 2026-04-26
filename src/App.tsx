@@ -43,6 +43,8 @@ import TestCromatico from './pages/TestCromatico'
 import TestAcomodacion from './pages/TestAcomodacion'
 import EjerciciosAvanzados from './pages/EjerciciosAvanzados'
 import HistorialOcular from './pages/HistorialOcular'
+import AnalizadorSintomas from './pages/AnalizadorSintomas'
+import GaleriaCaptures from './pages/GaleriaCaptures'
 
 type Page =
   | 'login'
@@ -78,7 +80,9 @@ type Page =
   | 'test-cromatico'
   | 'test-acomodacion'
   | 'ejercicios-avanzados'
-  | 'historial-ocular';
+  | 'historial-ocular'
+  | 'analizador-sintomas'
+  | 'galeria-captures';
 
 interface PendingUser {
   name: string;
@@ -266,6 +270,10 @@ function AppContent() {
         return <EjerciciosAvanzados onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       case 'historial-ocular':
         return <HistorialOcular onBack={() => handleNavigate('dashboard')} />
+      case 'analizador-sintomas':
+        return <AnalizadorSintomas onBack={() => handleNavigate('dashboard')} />
+      case 'galeria-captures':
+        return <GaleriaCaptures onBack={() => handleNavigate('dashboard')} onNavigate={(p) => handleNavigate(p as Page)} />
       default:
         return (
           <Login
