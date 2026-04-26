@@ -5,8 +5,10 @@
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, AlertTriangle, Headphones, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../i18n';
+import { useUser } from '../context/UserContext';
+import { enviarSoporteTecnico } from '../utils/emailService';
 
 interface Props { onBack: () => void }
 
@@ -91,6 +93,7 @@ function ChatBubble({ msg }: { msg: Message }) {
 
 export default function ChatSintomas({ onBack }: Props) {
   const { lang } = useLanguage();
+  const { user } = useUser();
   const quickSymptoms = lang === 'en' ? QUICK_SYMPTOMS_EN : QUICK_SYMPTOMS_ES;
   const welcomeMsg = lang === 'en' ? WELCOME_MSG_EN : WELCOME_MSG_ES;
 
@@ -101,6 +104,8 @@ export default function ChatSintomas({ onBack }: Props) {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  const [supportSent, setSupportSent] = useState(false);
+  const [supportSending, setSupportSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -169,6 +174,32 @@ export default function ChatSintomas({ onBack }: Props) {
     setMessages([{ role: 'assistant', content: welcomeMsg, timestamp: new Date() }]);
     setError('');
     setInput('');
+    setSupportSent(false);
+  };
+
+  const handleSendSupport = async () => {
+    if (supportSending || supportSent) return;
+    setSupportSending(true);
+    try {
+      const transcript = messages
+        .map(m => {
+          const who = m.role === 'assistant' ? 'Asistente IA' : (user?.nombre ?? 'Usuario');
+          const time = m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `[${time}] ${who}: ${m.content}`;
+        })
+        .join('\n\n');
+
+      await enviarSoporteTecnico(
+        user?.nombre ?? 'Usuario desconocido',
+        user?.email ?? 'sin email',
+        transcript,
+        new Date().toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })
+      );
+      setSupportSent(true);
+    } catch {
+      setError(lang === 'es' ? 'Error al enviar a soporte. Intenta de nuevo.' : 'Error sending to support. Try again.');
+    }
+    setSupportSending(false);
   };
 
   return (
@@ -256,6 +287,33 @@ export default function ChatSintomas({ onBack }: Props) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Support escalation — shown after at least 3 messages */}
+      {messages.length >= 3 && (
+        <div className="px-4 pb-2 flex-shrink-0">
+          {supportSent ? (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+              <p className="text-xs text-green-700 font-medium">
+                {lang === 'es'
+                  ? 'Transcript enviado a soporte. Te responderemos pronto.'
+                  : 'Transcript sent to support. We\'ll get back to you soon.'}
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={handleSendSupport}
+              disabled={supportSending}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-xs text-amber-700 font-medium transition disabled:opacity-60"
+            >
+              <Headphones className="w-3.5 h-3.5" />
+              {supportSending
+                ? (lang === 'es' ? 'Enviando...' : 'Sending...')
+                : (lang === 'es' ? '¿No resolviste tu problema? Contactar soporte' : 'Didn\'t solve your issue? Contact support')}
+            </button>
+          )}
         </div>
       )}
 
