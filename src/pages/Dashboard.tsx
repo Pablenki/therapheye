@@ -758,6 +758,36 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             );
           })()}
 
+          {/* ── Panel acceso rápido features avanzadas ── */}
+          <div className="mt-2">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Herramientas avanzadas</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {([
+                { page: 'reaccion-visual',    label: 'Reacción',       emoji: '⚡', color: 'from-violet-500 to-purple-600' },
+                { page: 'vergencia',          label: 'Vergencia',      emoji: '🎯', color: 'from-teal-500 to-cyan-600' },
+                { page: 'campo-visual',       label: 'Campo Visual',   emoji: '🔭', color: 'from-indigo-500 to-blue-600' },
+                { page: 'contrast-test',      label: 'Contraste',      emoji: '⬛', color: 'from-gray-600 to-slate-700' },
+                { page: 'test-cromatico',     label: 'Daltonismo',     emoji: '🎨', color: 'from-rose-500 to-pink-600' },
+                { page: 'test-acomodacion',   label: 'Acomodación',    emoji: '🔍', color: 'from-cyan-500 to-teal-600' },
+                { page: 'modo-zen',           label: 'Modo Zen',       emoji: '🧘', color: 'from-emerald-500 to-green-600' },
+                { page: 'entrenamiento-mental', label: 'Cognitivo',    emoji: '🧠', color: 'from-amber-500 to-orange-500' },
+                { page: 'analizador-sintomas', label: 'Síntomas IA',  emoji: '🚨', color: 'from-red-500 to-rose-600' },
+                { page: 'simulador',          label: 'Simulador',      emoji: '👓', color: 'from-slate-500 to-gray-600' },
+                { page: 'carga-visual',       label: 'Carga Visual',   emoji: '📊', color: 'from-blue-500 to-indigo-600' },
+                { page: 'notas-medicas',      label: 'Notas',          emoji: '📋', color: 'from-orange-500 to-amber-600' },
+              ] as { page: Page; label: string; emoji: string; color: string }[]).map(item => (
+                <button
+                  key={item.page}
+                  onClick={() => onNavigate(item.page)}
+                  className={`bg-gradient-to-br ${item.color} text-white rounded-2xl p-3 flex flex-col items-start gap-1 hover:opacity-90 transition active:scale-95 shadow-sm`}
+                >
+                  <span className="text-xl">{item.emoji}</span>
+                  <span className="text-xs font-bold leading-tight">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── Quick check flotante (mobile) ── */}
           <button
             onClick={() => setShowQuickCheck(true)}
