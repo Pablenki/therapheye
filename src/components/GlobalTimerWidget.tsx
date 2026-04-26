@@ -42,7 +42,8 @@ type Page =
   | 'ejercicios-avanzados'
   | 'historial-ocular'
   | 'analizador-sintomas'
-  | 'galeria-captures';
+  | 'galeria-captures'
+  | 'entrenamiento-mental';
 
 type Props = {
   currentPage: Page;

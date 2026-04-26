@@ -38,7 +38,7 @@ type Page =
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
-  | 'analizador-sintomas' | 'galeria-captures';
+  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental';
 
 interface Stats {
   evaluaciones: number;

@@ -6,7 +6,7 @@ import {
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
-  Focus, Microscope, ScrollText, TriangleAlert, ImageIcon,
+  Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -23,7 +23,7 @@ type Page =
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
-  | 'analizador-sintomas' | 'galeria-captures';
+  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental';
 
 interface Props {
   currentPage: Page;
@@ -64,6 +64,7 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
   { icon: ScrollText,         label: 'Historial Ocular',  page: 'historial-ocular'    },
   { icon: TriangleAlert,      label: 'Analizador Síntomas', page: 'analizador-sintomas' },
   { icon: ImageIcon,          label: 'Galería Capturas',  page: 'galeria-captures'    },
+  { icon: BrainCircuit,       label: 'Entrena. Mental',   page: 'entrenamiento-mental'},
 ];
 
 const SIDEBAR_W  = 240; // px — expanded
