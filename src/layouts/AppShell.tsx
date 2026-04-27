@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import DistanceMonitor from '../components/DistanceMonitor';
+import CommandPalette from '../components/CommandPalette';
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
@@ -7,10 +8,77 @@ import {
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
-  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot,
+  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
+
+const GOALS_CONFIG_KEY = 'therapheye_daily_goals_config';
+const AUTO_DARK_KEY    = 'therapheye_auto_dark';
+
+const GOAL_OPTIONS = [
+  { id: 'timer',       label: 'Tiempo en pantalla (>5 min)', emoji: '⏱️' },
+  { id: 'ejercicio',   label: 'Ejercicio terapéutico',       emoji: '💪' },
+  { id: 'cuestionario',label: 'Cuestionario diario',         emoji: '📋' },
+  { id: 'vision',      label: 'Test de visión',              emoji: '👓' },
+  { id: 'respiracion', label: 'Respiración 4-7-8',           emoji: '💨' },
+  { id: 'chat',        label: 'Chat IA',                     emoji: '💬' },
+  { id: 'diario',      label: 'Diario visual',               emoji: '📓' },
+] as const;
+
+type GoalId = typeof GOAL_OPTIONS[number]['id'];
+const DEFAULT_GOALS: GoalId[] = ['timer', 'ejercicio', 'cuestionario'];
+
+function loadGoalsConfig(): GoalId[] {
+  try {
+    const raw = localStorage.getItem(GOALS_CONFIG_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as GoalId[];
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* noop */ }
+  return DEFAULT_GOALS;
+}
+
+function checkGoalDone(id: GoalId, today: string): boolean {
+  try {
+    switch (id) {
+      case 'timer': {
+        const raw = localStorage.getItem('therapeye_visual_health_timer');
+        if (!raw) return false;
+        const s = JSON.parse(raw);
+        return s.accumulatedMs > 5 * 60 * 1000;
+      }
+      case 'ejercicio': {
+        const lastEx = Number(localStorage.getItem('therapheye_last_exercise') ?? 0);
+        return lastEx > 0 && new Date(lastEx).toISOString().slice(0, 10) === today;
+      }
+      case 'cuestionario':
+        return !!localStorage.getItem(`therapheye_questionnaire_${today}`);
+      case 'vision':
+        return !!localStorage.getItem(`therapheye_vision_test_${today}`);
+      case 'respiracion': {
+        // getWeekKey equivalent
+        const d = new Date();
+        const jan1 = new Date(d.getFullYear(), 0, 1);
+        const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+        const wk = `${d.getFullYear()}-W${week}`;
+        return Number(localStorage.getItem(`therapheye_respiracion_week_${wk}`) ?? 0) > 0;
+      }
+      case 'chat': {
+        const d = new Date();
+        const jan1 = new Date(d.getFullYear(), 0, 1);
+        const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+        const wk = `${d.getFullYear()}-W${week}`;
+        return Number(localStorage.getItem(`therapheye_chat_week_${wk}`) ?? 0) > 0;
+      }
+      case 'diario':
+        return !!localStorage.getItem(`therapheye_diario_${today}`);
+      default:
+        return false;
+    }
+  } catch { return false; }
+}
 
 const PUSH_BANNER_KEY = 'therapheye_push_banner_dismissed';
 
@@ -91,6 +159,10 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
   const [collapsed, setCollapsed] = useState(false); // desktop icon-only mode
   const [showLogout, setShowLogout] = useState(false);
   const [showFab, setShowFab] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
+  const [showGoalsConfig, setShowGoalsConfig] = useState(false);
+  const [goalsConfig, setGoalsConfig] = useState<GoalId[]>(loadGoalsConfig);
+  const [autoDark, setAutoDark] = useState(() => localStorage.getItem(AUTO_DARK_KEY) === '1');
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // Daily progress (% of daily goals completed)
@@ -99,19 +171,46 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
     const calc = () => {
       try {
         const today = new Date().toISOString().slice(0, 10);
-        const timerRaw = localStorage.getItem('therapeye_visual_health_timer');
-        const hasTimer = timerRaw ? (() => { try { const s = JSON.parse(timerRaw); return s.accumulatedMs > 5 * 60 * 1000; } catch { return false; } })() : false;
-        const lastEx = Number(localStorage.getItem('therapheye_last_exercise') ?? 0);
-        const exToday = lastEx > 0 && new Date(lastEx).toISOString().slice(0, 10) === today;
-        const questKey = `therapheye_questionnaire_${today}`;
-        const hasQuest = !!localStorage.getItem(questKey);
-        const done = [hasTimer, exToday, hasQuest].filter(Boolean).length;
-        setDailyProgress(Math.round((done / 3) * 100));
+        const cfg = loadGoalsConfig();
+        const done = cfg.filter(id => checkGoalDone(id, today)).length;
+        setDailyProgress(Math.round((done / Math.max(cfg.length, 1)) * 100));
       } catch { setDailyProgress(0); }
     };
     calc();
     const iv = setInterval(calc, 30_000);
     return () => clearInterval(iv);
+  }, [goalsConfig]);
+
+  // Modo oscuro automático (7pm–7am)
+  useEffect(() => {
+    if (!autoDark) return;
+    const apply = () => {
+      const h = new Date().getHours();
+      const dark = h >= 19 || h < 7;
+      const current = document.documentElement.getAttribute('data-theme') ?? '';
+      if (dark && current !== 'oscuro') {
+        document.documentElement.setAttribute('data-theme', 'oscuro');
+        window.dispatchEvent(new CustomEvent('therapheye-theme-changed', { detail: { theme: 'oscuro' } }));
+      } else if (!dark && current === 'oscuro') {
+        document.documentElement.removeAttribute('data-theme');
+        window.dispatchEvent(new CustomEvent('therapheye-theme-changed', { detail: { theme: 'default' } }));
+      }
+    };
+    apply();
+    const iv = setInterval(apply, 60_000);
+    return () => clearInterval(iv);
+  }, [autoDark]);
+
+  // Cmd+K / Ctrl+K → Command Palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowPalette(v => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   // Distance monitor
@@ -245,7 +344,16 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
           <div data-tour="tour-progress" className="px-4 pb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-white/50 font-medium uppercase tracking-wide">Progreso hoy</span>
-              <span className="text-[10px] text-white/70 font-bold">{dailyProgress}%</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-white/70 font-bold">{dailyProgress}%</span>
+                <button
+                  onClick={() => setShowGoalsConfig(true)}
+                  title="Configurar metas diarias"
+                  className="text-white/40 hover:text-white/80 transition ml-0.5"
+                >
+                  <Settings className="w-3 h-3"/>
+                </button>
+              </div>
             </div>
             <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
               <div
@@ -321,6 +429,26 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                   <HelpCircle className="w-3.5 h-3.5"/> ¿Cómo usar esto?
                 </button>
               )}
+              <button
+                onClick={() => {
+                  const next = !autoDark;
+                  setAutoDark(next);
+                  localStorage.setItem(AUTO_DARK_KEY, next ? '1' : '0');
+                }}
+                className={`w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs transition ${
+                  autoDark ? 'text-amber-400 hover:bg-amber-500/10' : 'text-gray-500 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5"/>
+                Modo oscuro auto {autoDark ? '(activo)' : ''}
+              </button>
+              <button
+                onClick={() => setShowPalette(true)}
+                className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-gray-500 hover:bg-white/10 hover:text-white transition"
+              >
+                <span className="text-[10px] border border-gray-600 rounded px-1 font-mono">⌘K</span>
+                Buscar herramienta
+              </button>
             </>
           ) : (
             /* Collapsed: just avatar + logout icon */
@@ -484,6 +612,65 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
           <Sparkles className="w-6 h-6 text-white" style={{ transform: showFab ? 'rotate(-45deg)' : 'none', transition: 'transform 0.3s' }}/>
         </button>
       </div>
+
+      {/* ── Command Palette ─────────────────────────────────────────────── */}
+      <CommandPalette
+        open={showPalette}
+        onClose={() => setShowPalette(false)}
+        onNavigate={(page) => { onNavigate(page as Page); if (isMobile) setOpen(false); }}
+      />
+
+      {/* ── Goals Config Modal ──────────────────────────────────────────── */}
+      {showGoalsConfig && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-indigo-600"/>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-800">Metas diarias</h3>
+                  <p className="text-[11px] text-gray-400">Elige qué actividades cuentan</p>
+                </div>
+              </div>
+              <button onClick={() => setShowGoalsConfig(false)} className="text-gray-400 hover:text-gray-600 transition">
+                <X className="w-5 h-5"/>
+              </button>
+            </div>
+            <div className="space-y-2 mb-4">
+              {GOAL_OPTIONS.map(({ id, label, emoji }) => {
+                const checked = goalsConfig.includes(id);
+                return (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      const next = checked
+                        ? goalsConfig.filter(g => g !== id)
+                        : [...goalsConfig, id];
+                      if (next.length === 0) return; // at least 1
+                      setGoalsConfig(next);
+                      localStorage.setItem(GOALS_CONFIG_KEY, JSON.stringify(next));
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition text-left ${
+                      checked ? 'border-indigo-500 bg-indigo-50' : 'border-gray-100 hover:border-indigo-200'
+                    }`}
+                  >
+                    <span className="text-lg leading-none">{emoji}</span>
+                    <span className={`text-sm font-medium flex-1 ${checked ? 'text-indigo-700' : 'text-gray-700'}`}>{label}</span>
+                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      checked ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'
+                    }`}>
+                      {checked && <svg viewBox="0 0 10 10" className="w-2.5 h-2.5"><path d="M1.5 5l2.5 2.5L8.5 2.5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-gray-400 text-center">El progreso se actualiza cada 30 segundos · Selecciona al menos 1</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Logout confirm modal ────────────────────────────────────────── */}
       {showLogout && (

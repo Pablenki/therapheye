@@ -11,6 +11,7 @@ import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
 import { ARTICLES, CATEGORY_META } from '../data/articles';
 import CoachVisualSemanal from '../components/CoachVisualSemanal';
+import RetoSemanal from '../components/RetoSemanal';
 import FatigaPredictor from '../components/FatigaPredictor';
 import AmbientLightDetector from '../components/AmbientLightDetector';
 import QuickCheck from '../components/QuickCheck';
@@ -650,6 +651,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
 
           {/* ── Coach Visual Semanal ── */}
           <CoachVisualSemanal />
+
+          {/* ── Reto Semanal ── */}
+          <RetoSemanal onNavigate={onNavigate} />
 
           {/* ── Fila 3: Progreso semanal + Últimos diagnósticos ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

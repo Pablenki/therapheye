@@ -538,6 +538,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const [muted, setMuted]           = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [musicStyle, setMusicStyle] = useState<MusicStyle>('zen');
+  const [feedback, setFeedback]     = useState<string | null>(null);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
 
   const musicStyleRef = useRef<MusicStyle>('zen');
@@ -918,6 +919,41 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             <p className="text-sm text-indigo-600 font-medium mb-4">
               🏃 {t('exerciseSession', 'routineInProgress')} {queueRemaining} {queueRemaining > 1 ? t('exerciseSession', 'exercisesRemainingPlural') : t('exerciseSession', 'exercisesRemaining')} {t('exerciseSession', 'remaining')}
             </p>
+          )}
+          {/* ── Feedback post-ejercicio ── */}
+          {!isSaving && (
+            <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <p className="text-sm font-semibold text-gray-700 mb-3">¿Cómo te sientes?</p>
+              <div className="flex gap-3 justify-center">
+                {[
+                  { emoji: '😌', label: 'Bien',    value: 'bien'    },
+                  { emoji: '😕', label: 'Regular', value: 'regular' },
+                  { emoji: '😣', label: 'Cansado', value: 'cansado' },
+                ].map(({ emoji, label, value }) => (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      setFeedback(value);
+                      try {
+                        const key = `therapheye_feedback_${new Date().toISOString().slice(0,10)}_${exerciseId}`;
+                        localStorage.setItem(key, value);
+                      } catch { /* noop */ }
+                    }}
+                    className={`flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl border-2 transition ${
+                      feedback === value
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 hover:border-indigo-300 text-gray-600'
+                    }`}
+                  >
+                    <span className="text-2xl">{emoji}</span>
+                    <span className="text-xs font-semibold">{label}</span>
+                  </button>
+                ))}
+              </div>
+              {feedback && (
+                <p className="text-xs text-green-600 text-center mt-2 font-medium">✓ Gracias por tu feedback</p>
+              )}
+            </div>
           )}
           <div className="flex gap-4">
             <button

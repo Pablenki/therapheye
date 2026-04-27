@@ -323,6 +323,67 @@ Identifica correlaciones entre pantalla y síntomas, patrones de fatiga, y da un
               ))}
             </div>
 
+            {/* ── Comparativa semana vs semana anterior ── */}
+            {(() => {
+              const now = new Date();
+              const dayOfWeek = now.getDay();
+              const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+              const thisMonday = new Date(now); thisMonday.setDate(now.getDate() + diffToMon); thisMonday.setHours(0,0,0,0);
+              const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate() - 7);
+              const thisWeekKey = thisMonday.toISOString().slice(0, 10);
+              const lastWeekKey = lastMonday.toISOString().slice(0, 10);
+              const thisWeekEnd = thisMonday.toISOString().slice(0, 10);
+              const lastWeekEnd = thisWeekKey;
+
+              const thisWeekDays = dayStats.filter(d => d.fecha >= thisWeekKey);
+              const lastWeekDays = dayStats.filter(d => d.fecha >= lastWeekKey && d.fecha < thisWeekEnd);
+
+              const thisEx   = thisWeekDays.reduce((s, d) => s + d.ejercicios, 0);
+              const lastEx   = lastWeekDays.reduce((s, d) => s + d.ejercicios, 0);
+              const thisScores = thisWeekDays.filter(d => d.puntaje !== null).map(d => d.puntaje!);
+              const lastScores = lastWeekDays.filter(d => d.puntaje !== null).map(d => d.puntaje!);
+              const thisAvg = thisScores.length ? Math.round(thisScores.reduce((a, b) => a + b, 0) / thisScores.length) : null;
+              const lastAvg = lastScores.length ? Math.round(lastScores.reduce((a, b) => a + b, 0) / lastScores.length) : null;
+
+              const deltaEx = thisEx - lastEx;
+              const deltaScore = thisAvg !== null && lastAvg !== null ? thisAvg - lastAvg : null;
+
+              return (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 text-violet-600"/>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">Esta semana vs anterior</p>
+                      <p className="text-xs text-gray-400">Comparativa de rendimiento</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-xs text-gray-500 mb-1">Ejercicios</p>
+                      <p className="text-xl font-black text-gray-800">{thisEx}</p>
+                      <div className={`flex items-center gap-1 mt-0.5 text-xs font-semibold ${deltaEx > 0 ? 'text-emerald-600' : deltaEx < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                        {deltaEx > 0 ? <TrendingUp className="w-3 h-3"/> : deltaEx < 0 ? <TrendingDown className="w-3 h-3"/> : <Minus className="w-3 h-3"/>}
+                        {deltaEx > 0 ? `+${deltaEx}` : deltaEx === 0 ? 'igual' : deltaEx} vs sem. ant.
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-xs text-gray-500 mb-1">Puntaje promedio</p>
+                      <p className="text-xl font-black text-gray-800">{thisAvg !== null ? `${thisAvg}/100` : 'N/A'}</p>
+                      {deltaScore !== null && (
+                        <div className={`flex items-center gap-1 mt-0.5 text-xs font-semibold ${deltaScore < 0 ? 'text-emerald-600' : deltaScore > 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                          {deltaScore < 0 ? <TrendingDown className="w-3 h-3"/> : deltaScore > 0 ? <TrendingUp className="w-3 h-3"/> : <Minus className="w-3 h-3"/>}
+                          {deltaScore > 0 ? `+${deltaScore}` : deltaScore === 0 ? 'igual' : deltaScore} vs sem. ant.
+                        </div>
+                      )}
+                      {deltaScore === null && <p className="text-xs text-gray-400 mt-0.5">Sin datos previos</p>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ── Extension screen time ── */}
             {extInstalled && extData ? (() => {
               const today = new Date().toISOString().slice(0, 10);
