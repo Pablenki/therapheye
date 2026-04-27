@@ -49,6 +49,11 @@ export default function EstadisticasAvanzadas({ onBack }: Props) {
   const [extData, setExtData] = useState<Record<string, ExtDayData> | null>(null);
   const [extInstalled, setExtInstalled] = useState(false);
 
+  // IA Correlation
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   const loadExtData = () => {
     const installed = localStorage.getItem('therapheye_ext_installed') === '1';
     setExtInstalled(installed);
@@ -169,6 +174,63 @@ export default function EstadisticasAvanzadas({ onBack }: Props) {
     };
     load();
   }, [user?.id]);
+
+  const analyzeWithAI = async () => {
+    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+    if (!apiKey) { setAiError('Falta VITE_ANTHROPIC_API_KEY en .env'); return; }
+    if (dayStats.length < 3) { setAiError('Necesitas más datos (mínimo 3 días de actividad) para el análisis.'); return; }
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiInsight(null);
+
+    try {
+      // Preparar resumen de datos
+      const screenSummary = extData
+        ? Object.entries(extData).slice(-14).map(([d, v]) =>
+            `${d}: ${Math.round(v.totalMs / 60000)}min pantalla`
+          ).join(', ')
+        : 'Sin datos de extensión';
+
+      const exerciseSummary = dayStats.slice(-14).map(d =>
+        `${d.fecha}: ${d.ejercicios} ejercicios${d.puntaje !== null ? `, score ${d.puntaje}` : ''}`
+      ).join('; ');
+
+      const prompt = `Eres un especialista en salud visual. Analiza estos datos de un usuario de Therapheye y da 3 insights concretos y personalizados en español (sin markdown, párrafo directo, máximo 120 palabras):
+
+Ejercicios y scores (últimos 14 días): ${exerciseSummary}
+Tiempo de pantalla (últimos 14 días): ${screenSummary}
+Total ejercicios: ${totalEjercicios}, Total evaluaciones: ${totalEvaluaciones}
+Mejor racha: ${mejorRacha} días, Puntaje promedio: ${promedioScore ?? 'N/A'}
+Día más activo: ${mejorDiaSemana ?? 'desconocido'}, Hora pico: ${peakHour !== null ? `${peakHour}:00` : 'desconocida'}
+
+Identifica correlaciones entre pantalla y síntomas, patrones de fatiga, y da una recomendación accionable para esta semana.`;
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 300,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      const data = await res.json();
+      const text = data?.content?.[0]?.text ?? '';
+      if (!text) throw new Error('Sin respuesta');
+      setAiInsight(text);
+    } catch {
+      setAiError('Error al contactar la IA. Intenta de nuevo.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const last30 = dayStats.slice(-30);
   const maxEx = Math.max(...dayStats.map(d => d.ejercicios), 1);
@@ -359,6 +421,43 @@ export default function EstadisticasAvanzadas({ onBack }: Props) {
                 </div>
               </div>
             )}
+
+            {/* ── Panel IA Correlación ── */}
+            <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl border border-indigo-100 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-bold text-indigo-900 text-sm">Análisis con IA</p>
+                  <p className="text-xs text-indigo-500 mt-0.5">Correlaciones + recomendación personalizada</p>
+                </div>
+                <button
+                  onClick={analyzeWithAI}
+                  disabled={aiLoading}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl transition active:scale-95"
+                >
+                  {aiLoading ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                      Analizando…
+                    </span>
+                  ) : '✨ Analizar'}
+                </button>
+              </div>
+              {aiError && <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2">{aiError}</p>}
+              {aiInsight && (
+                <div className="bg-white rounded-xl p-3 border border-indigo-100">
+                  <p className="text-sm text-gray-800 leading-relaxed">{aiInsight}</p>
+                  <button
+                    onClick={() => setAiInsight(null)}
+                    className="mt-2 text-xs text-indigo-400 hover:text-indigo-600 transition"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              )}
+              {!aiInsight && !aiError && !aiLoading && (
+                <p className="text-xs text-indigo-400">Toca "Analizar" para ver insights sobre tus hábitos visuales.</p>
+              )}
+            </div>
 
             {/* Peak day/hour */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">

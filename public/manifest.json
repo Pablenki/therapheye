@@ -1,0 +1,21 @@
+{
+  "name": "Therapheye – Salud Visual",
+  "short_name": "Therapheye",
+  "description": "Tu app de salud visual: ejercicios, tests, timer de pantalla y análisis con IA.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1B396B",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/therapheye-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "medical", "lifestyle"],
+  "lang": "es",
+  "screenshots": []
+}

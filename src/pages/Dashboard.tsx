@@ -224,6 +224,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [articleFading, setArticleFading] = useState(false);
   const articleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [extensionInstalled, setExtensionInstalled] = useState(false);
+  const [timerSource, setTimerSource] = useState<'ext' | 'web'>('web');
   const extensionDismissed = localStorage.getItem('therapheye_ext_banner_dismissed') === 'true';
   const notifRef = useRef<HTMLDivElement>(null);
   const [showNotif, setShowNotif] = useState(false);
@@ -277,7 +278,35 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   };
 
   useEffect(() => {
-    const load = () => { const s = readTimerState(); setScreenTimeMs(calcTimerMs(s)); setScreenTimeRunning(s.isRunning); };
+    const load = () => {
+      // Priorizar extensión si está instalada y tiene datos de hoy
+      const extInstalled = localStorage.getItem('therapheye_ext_installed') === '1';
+      if (extInstalled) {
+        try {
+          const raw = localStorage.getItem('therapeye_ext_timer');
+          if (raw) {
+            const ext = JSON.parse(raw);
+            const today = new Date().toISOString().slice(0, 10);
+            if (ext.stateDate === today) {
+              let ms = Number(ext.accumulatedMs) || 0;
+              if (ext.isRunning && ext.startTimestamp) {
+                const delta = Date.now() - Number(ext.startTimestamp);
+                if (delta > 0 && delta < TIMER_MAX_MS) ms += delta;
+              }
+              setScreenTimeMs(Math.max(0, Math.min(ms, TIMER_MAX_MS)));
+              setScreenTimeRunning(ext.isRunning === true);
+              setTimerSource('ext');
+              return;
+            }
+          }
+        } catch {}
+      }
+      // Fallback: timer web
+      const s = readTimerState();
+      setScreenTimeMs(calcTimerMs(s));
+      setScreenTimeRunning(s.isRunning);
+      setTimerSource('web');
+    };
     load(); const iv = setInterval(load, 1000); return () => clearInterval(iv);
   }, []);
 
@@ -646,18 +675,31 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 <span className={`w-3 h-3 rounded-full ${isFlat ? (screenTimeRunning ? 'bg-teal-500 animate-pulse' : 'bg-gray-400') : (screenTimeRunning ? 'bg-white animate-pulse' : 'bg-white/60')}`}/>
               </div>
               <div>
-                <p className={`text-sm font-bold ${tc.cardText}`}>{es ? 'Tiempo en pantalla hoy' : 'Screen time today'}</p>
-                <p className={`text-xs ${tc.cardSubtext}`}>{screenTimeRunning ? (es ? 'Cronómetro activo' : 'Timer running') : (es ? 'Cronómetro pausado' : 'Timer paused')} · {es ? 'Toca para ver detalles' : 'Tap to view details'}</p>
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm font-bold ${tc.cardText}`}>{es ? 'Tiempo en pantalla hoy' : 'Screen time today'}</p>
+                  {timerSource === 'ext'
+                    ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">🧩 Ext</span>
+                    : <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">🌐 Web</span>
+                  }
+                </div>
+                <p className={`text-xs ${tc.cardSubtext}`}>
+                  {screenTimeRunning ? (es ? 'Activo' : 'Running') : (es ? 'Pausado' : 'Paused')}
+                  {timerSource === 'ext' ? (es ? ' · Controlado desde la extensión' : ' · Controlled by extension') : (es ? ' · Toca para detalles' : ' · Tap for details')}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <p className={`text-2xl font-black font-mono tabular-nums ${tc.cardText}`}>{screenHH}:{screenMM}:{screenSS}</p>
-              <button
-                onClick={handleTimerToggle}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition ${screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
-              >
-                {screenTimeRunning ? <><Pause className="w-3.5 h-3.5"/> {es ? 'Pausar' : 'Pause'}</> : <><Play className="w-3.5 h-3.5"/> {es ? 'Iniciar' : 'Start'}</>}
-              </button>
+              {timerSource === 'ext' ? (
+                <span className="text-xs text-indigo-500 font-semibold">Usa la extensión</span>
+              ) : (
+                <button
+                  onClick={handleTimerToggle}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition ${screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
+                >
+                  {screenTimeRunning ? <><Pause className="w-3.5 h-3.5"/> {es ? 'Pausar' : 'Pause'}</> : <><Play className="w-3.5 h-3.5"/> {es ? 'Iniciar' : 'Start'}</>}
+                </button>
+              )}
             </div>
           </div>
 
