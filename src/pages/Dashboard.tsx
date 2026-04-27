@@ -15,6 +15,24 @@ import FatigaPredictor from '../components/FatigaPredictor';
 import AmbientLightDetector from '../components/AmbientLightDetector';
 import QuickCheck from '../components/QuickCheck';
 
+const OJOS_DEL_DIA = [
+  { emoji: '👁️', dato: 'El ojo humano puede distinguir hasta 10 millones de colores diferentes.' },
+  { emoji: '⚡', dato: 'Un parpadeo dura entre 100 y 400 milisegundos. Parpadeamos 15-20 veces por minuto.' },
+  { emoji: '🌙', dato: 'Los ojos son los órganos más activos del cuerpo. Están en movimiento incluso mientras duermes.' },
+  { emoji: '🔬', dato: 'La retina tiene más de 120 millones de fotorreceptores para detectar luz y color.' },
+  { emoji: '🦅', dato: 'Los ojos de un águila son 4-8 veces más potentes que los humanos. Pueden ver a 3 km de distancia.' },
+  { emoji: '💤', dato: 'Durante el sueño REM, los ojos se mueven porque el cerebro está procesando sueños visualmente.' },
+  { emoji: '🌊', dato: 'Las lágrimas tienen 3 capas: lipídica, acuosa y mucosa. Cada una tiene una función diferente.' },
+  { emoji: '🧬', dato: 'El iris tiene más de 200 características únicas, más del doble que una huella dactilar.' },
+  { emoji: '📐', dato: 'El punto ciego existe donde el nervio óptico sale del ojo. Tu cerebro lo "rellena" automáticamente.' },
+  { emoji: '🎨', dato: 'Los daltonismos afectan al 8% de los hombres y al 0.5% de las mujeres a nivel mundial.' },
+  { emoji: '🔭', dato: 'El ojo puede detectar una vela a 48 km de distancia en completa oscuridad.' },
+  { emoji: '💊', dato: 'Las zanahorias realmente ayudan: contienen betacaroteno que el cuerpo convierte en vitamina A.' },
+  { emoji: '🖥️', dato: 'La fatiga digital (CVS) afecta al 90% de las personas que trabajan frente a pantallas más de 3h.' },
+  { emoji: '🏃', dato: 'Los músculos oculares son los más activos del cuerpo, con 100,000 movimientos por día.' },
+  { emoji: '🌿', dato: 'La luteína, presente en espinacas y huevo, actúa como filtro solar natural para la retina.' },
+];
+
 const TIPS_DEL_DIA = [
   { emoji: '💧', tip: 'Parpadea conscientemente cada 20 segundos. La pantalla reduce la tasa de parpadeo a la mitad.' },
   { emoji: '📏', tip: 'Mantén la pantalla a 50-70 cm de tus ojos. Si la acercas, tus músculos oculares trabajan el doble.' },
@@ -39,7 +57,8 @@ type Page =
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
   | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
-  | 'ocr-receta' | 'qr-informe' | 'recordatorios-wa' | 'plan-premium';
+  | 'ocr-receta' | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
+  | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478';
 
 interface Stats {
   evaluaciones: number;
@@ -806,15 +825,25 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             );
           })()}
 
-          {/* ── Tip del Día ── */}
+          {/* ── Tip del Día + Ojo del Día ── */}
           {(() => {
             const tip = TIPS_DEL_DIA[tipIndex];
+            const ojo = OJOS_DEL_DIA[new Date().getDate() % OJOS_DEL_DIA.length];
             return (
-              <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 flex items-center gap-3">
-                <span className="text-2xl flex-shrink-0">{tip.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-0.5">Tip del día</p>
-                  <p className="text-xs text-gray-700 leading-relaxed">{tip.tip}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                  <span className="text-2xl flex-shrink-0">{tip.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-0.5">Tip del día</p>
+                    <p className="text-xs text-gray-700 leading-relaxed">{tip.tip}</p>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                  <span className="text-2xl flex-shrink-0">{ojo.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">¿Sabías que…?</p>
+                    <p className="text-xs text-gray-700 leading-relaxed">{ojo.dato}</p>
+                  </div>
                 </div>
               </div>
             );
@@ -837,6 +866,9 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 { page: 'simulador',          label: 'Simulador',      emoji: '👓', color: 'from-slate-500 to-gray-600' },
                 { page: 'carga-visual',       label: 'Carga Visual',   emoji: '📊', color: 'from-blue-500 to-indigo-600' },
                 { page: 'notas-medicas',      label: 'Notas',          emoji: '📋', color: 'from-orange-500 to-amber-600' },
+                { page: 'amsler-grid',        label: 'Amsler',         emoji: '🔲', color: 'from-slate-600 to-gray-700'    },
+                { page: 'dominancia-ocular',  label: 'Dominancia',     emoji: '👁️', color: 'from-indigo-500 to-violet-600' },
+                { page: 'respiracion-478',    label: 'Respiración',    emoji: '💨', color: 'from-sky-500 to-cyan-600'      },
               ] as { page: Page; label: string; emoji: string; color: string }[]).map(item => (
                 <button
                   key={item.page}

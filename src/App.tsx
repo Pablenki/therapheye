@@ -57,6 +57,9 @@ const OCRReceta           = lazy(() => import('./pages/OCRReceta'))
 const QRInforme           = lazy(() => import('./pages/QRInforme'))
 const RecordatoriosWA     = lazy(() => import('./pages/RecordatoriosWA'))
 const PlanPremium         = lazy(() => import('./pages/PlanPremium'))
+const AmslerGrid          = lazy(() => import('./pages/AmslerGrid'))
+const DominanciaOcular    = lazy(() => import('./pages/DominanciaOcular'))
+const Respiracion478      = lazy(() => import('./pages/Respiracion478'))
 
 // ── Skeleton de carga entre páginas ─────────────────────────────────────────
 function PageLoader() {
@@ -112,7 +115,10 @@ type Page =
   | 'ocr-receta'
   | 'qr-informe'
   | 'recordatorios-wa'
-  | 'plan-premium';
+  | 'plan-premium'
+  | 'amsler-grid'
+  | 'dominancia-ocular'
+  | 'respiracion-478';
 
 interface PendingUser {
   name: string;
@@ -319,6 +325,12 @@ function AppContent() {
         return <RecordatoriosWA onBack={() => handleNavigate('dashboard')} />
       case 'plan-premium':
         return <PlanPremium onBack={() => handleNavigate('dashboard')} />
+      case 'amsler-grid':
+        return <AmslerGrid onBack={() => handleNavigate('dashboard')} />
+      case 'dominancia-ocular':
+        return <DominanciaOcular onBack={() => handleNavigate('dashboard')} />
+      case 'respiracion-478':
+        return <Respiracion478 onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login

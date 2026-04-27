@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { ArrowLeft, Calendar, TrendingUp, Eye, CheckCircle2, XCircle, ChevronDown, ChevronUp, Play, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
+import { ArrowLeft, Calendar, TrendingUp, Eye, CheckCircle2, XCircle, ChevronDown, ChevronUp, Play, ChevronLeft, ChevronRight, Share2, FileDown } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import translations from '../i18n/translations';
 
@@ -990,6 +990,41 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
     } catch { setSharing(false); }
   }, []);
 
+  const handleExportCSV = useCallback(() => {
+    const rows: string[] = [];
+
+    // Evaluaciones
+    rows.push('=== EVALUACIONES DE FATIGA ===');
+    rows.push('Fecha,Puntaje Fatiga,Nivel,Síntoma Dominante');
+    evaluations.forEach(e => {
+      const level = e.puntaje_fatiga < 25 ? 'Leve' : e.puntaje_fatiga < 50 ? 'Moderada' : e.puntaje_fatiga < 75 ? 'Considerable' : 'Severa';
+      rows.push(`"${e.created_at}",${e.puntaje_fatiga},"${level}","${e.sintoma_dominante ?? ''}"`);
+    });
+
+    rows.push('');
+    rows.push('=== EJERCICIOS ===');
+    rows.push('Fecha,Ejercicio,Duración (s),Estado');
+    exercises.forEach(e => {
+      rows.push(`"${e.created_at}","${e.tipo_ejercicio}",${e.duracion},"${e.status ?? ''}"`);
+    });
+
+    rows.push('');
+    rows.push('=== TESTS DE VISIÓN ===');
+    rows.push('Fecha,Mejor Nivel,Agudeza,Distancia (cm)');
+    visionTests.forEach(v => {
+      rows.push(`"${v.created_at}",${v.mejor_nivel},"${v.agudeza}",${v.distancia_cm}`);
+    });
+
+    const csv = rows.join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `therapheye-historial-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [evaluations, exercises, visionTests]);
+
   useEffect(() => { loadHistoryData(); }, []);
 
   const loadHistoryData = async () => {
@@ -1169,6 +1204,14 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
           <div className="flex items-center gap-2">
             <PDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} lang={lang} />
             <MedicalPDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} />
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+              title="Exportar historial como CSV"
+            >
+              <FileDown className="w-4 h-4"/>
+              CSV
+            </button>
             <button
               onClick={handleShare}
               disabled={sharing}
