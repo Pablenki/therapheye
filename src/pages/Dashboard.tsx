@@ -226,6 +226,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [extensionInstalled, setExtensionInstalled] = useState(false);
   const [timerSource, setTimerSource] = useState<'ext' | 'web'>('web');
   const extensionDismissed = localStorage.getItem('therapheye_ext_banner_dismissed') === 'true';
+  const [pwaPrompt, setPwaPrompt] = useState<Event & { prompt?: () => void } | null>(null);
+  const [pwaInstalled, setPwaInstalled] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const [showNotif, setShowNotif] = useState(false);
 
@@ -243,6 +245,14 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
     });
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-therapheye-ext'] });
     return () => { obs.disconnect(); img.onload = null; };
+  }, []);
+
+  // PWA install prompt
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setPwaPrompt(e as any); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setPwaInstalled(true));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   // Cerrar notif al click fuera
@@ -447,6 +457,15 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             </button>
             {/* Ambient light detector badge */}
             <AmbientLightDetector />
+            {/* PWA install badge */}
+            {pwaPrompt && !pwaInstalled && (
+              <button
+                onClick={async () => { (pwaPrompt as any).prompt?.(); setPwaPrompt(null); }}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 hover:bg-emerald-100 transition"
+              >
+                📲 {es ? 'Instalar app' : 'Install app'}
+              </button>
+            )}
             {/* Extensión badge */}
             {!extensionInstalled && !extensionDismissed && (
               <a href={extensionUrl} target="_blank" rel="noopener noreferrer"

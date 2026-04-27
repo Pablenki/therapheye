@@ -5,7 +5,7 @@
 // =========================================
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Activity, Eye, Monitor, Puzzle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Activity, Eye, Monitor, Puzzle, ExternalLink, Share2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
 
@@ -254,9 +254,35 @@ Identifica correlaciones entre pantalla y síntomas, patrones de fatiga, y da un
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-800 to-indigo-900 px-4 pt-10 pb-6 text-white">
-        <button onClick={onBack} className="flex items-center gap-2 text-white/60 hover:text-white text-sm mb-4 transition">
-          <ArrowLeft className="w-4 h-4"/> Volver
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={onBack} className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition">
+            <ArrowLeft className="w-4 h-4"/> Volver
+          </button>
+          <button
+            onClick={() => {
+              const today = new Date().toISOString().slice(0, 10);
+              const todayScreenMin = extData?.[today] ? Math.round((extData[today].totalMs) / 60000) : null;
+              const text = [
+                '👁 Mis estadísticas en Therapheye',
+                `📊 ${totalEjercicios} ejercicios visuales completados`,
+                `🏆 Mejor racha: ${mejorRacha} días seguidos`,
+                promedioScore !== null ? `⭐ Puntaje promedio: ${promedioScore}/100` : null,
+                todayScreenMin !== null ? `🖥 Pantalla hoy: ${todayScreenMin}min` : null,
+                '',
+                '🔗 therapheye.netlify.app',
+              ].filter(Boolean).join('\n');
+
+              if (navigator.share) {
+                navigator.share({ title: 'Mis stats Therapheye', text });
+              } else {
+                navigator.clipboard.writeText(text).then(() => alert('¡Copiado al portapapeles!'));
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl transition"
+          >
+            <Share2 className="w-3.5 h-3.5"/> Compartir
+          </button>
+        </div>
         <h1 className="text-2xl font-black">Estadísticas Avanzadas</h1>
         <p className="text-indigo-300 text-sm mt-0.5">Análisis de los últimos 6 meses</p>
       </div>
