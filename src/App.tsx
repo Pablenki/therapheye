@@ -6,7 +6,8 @@ import GlobalTimerWidget from './components/GlobalTimerWidget'
 import SessionGuard from './components/SessionGuard'
 import AppShell from './layouts/AppShell'
 import Onboarding, { isOnboardingDone } from './components/Onboarding'
-import TourGuide, { isTourDone } from './components/TourGuide'
+import TourGuide from './components/TourGuide'
+import FeatureShowcase, { isShowcaseDone } from './components/FeatureShowcase'
 import PresenceDetector from './components/PresenceDetector'
 import BuenosDias, { shouldShowBuenosDias } from './components/BuenosDias'
 import { useReporteSemanal } from './hooks/useReporteSemanal'
@@ -131,24 +132,24 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showBuenosDias, setShowBuenosDias] = useState(false)
   const [showTour, setShowTour] = useState(false)
+  const [showShowcase, setShowShowcase] = useState(false)
   useReporteSemanal()
 
   // Cuando se restaura la sesión, ir al dashboard
   useEffect(() => {
     if (!isRestoringSession && isAuthenticated && currentPage === 'login') {
       setCurrentPage('dashboard')
-      // Mostrar onboarding si es primera vez, si no → tour si tampoco está hecho
       if (!isOnboardingDone()) setShowOnboarding(true)
-      else if (!isTourDone()) setTimeout(() => setShowTour(true), 800)
+      else if (!isShowcaseDone()) setTimeout(() => setShowShowcase(true), 800)
       else if (shouldShowBuenosDias()) setShowBuenosDias(true)
     }
   }, [isRestoringSession, isAuthenticated, currentPage])
 
-  // Al hacer login también mostrar onboarding/tour si aplica
+  // Al hacer login también mostrar onboarding/showcase si aplica
   const handleNavigate = (page: Page) => {
     setCurrentPage(page)
     if (page === 'dashboard' && !isOnboardingDone()) setShowOnboarding(true)
-    else if (page === 'dashboard' && !isTourDone()) setTimeout(() => setShowTour(true), 800)
+    else if (page === 'dashboard' && !isShowcaseDone()) setTimeout(() => setShowShowcase(true), 800)
   }
 
   const handleStartExercise = (exerciseId: string) => {
@@ -352,7 +353,7 @@ function AppContent() {
         currentPage={currentPage}
         onNavigate={handleNavigate}
         onLogout={() => setCurrentPage('login')}
-        onStartTour={() => setShowTour(true)}
+        onStartTour={() => setShowShowcase(true)}
       >
         <Suspense fallback={<PageLoader/>}>{renderPageContent()}</Suspense>
       </AppShell>
@@ -364,12 +365,14 @@ function AppContent() {
         <Onboarding
           onDone={() => {
             setShowOnboarding(false);
-            if (!isTourDone()) {
-              setTimeout(() => setShowTour(true), 600);
-            }
+            if (!isShowcaseDone()) setTimeout(() => setShowShowcase(true), 500);
           }}
         />
       )}
+      <FeatureShowcase
+        active={showShowcase}
+        onClose={() => setShowShowcase(false)}
+      />
       <TourGuide
         active={showTour}
         onClose={() => setShowTour(false)}
