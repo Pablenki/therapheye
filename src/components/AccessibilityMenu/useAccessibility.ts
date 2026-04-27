@@ -70,6 +70,32 @@ export const useAccessibility = () => {
     // Modo foco
     body.classList.toggle('focus-mode', settings.focusMode);
 
+    // Banner visual "Modo Foco activo"
+    let focusBanner = document.getElementById('therapheye-focus-banner');
+    if (settings.focusMode) {
+      if (!focusBanner) {
+        focusBanner = document.createElement('div');
+        focusBanner.id = 'therapheye-focus-banner';
+        focusBanner.style.cssText = [
+          'position:fixed', 'top:0', 'left:0', 'right:0', 'height:3px',
+          'background:linear-gradient(90deg,#1B396B,#4f46e5,#1B396B)',
+          'background-size:200% 100%',
+          'animation:focusBannerSlide 3s linear infinite',
+          'z-index:99999', 'pointer-events:none',
+        ].join(';');
+        document.body.appendChild(focusBanner);
+        // Inject keyframe once
+        if (!document.getElementById('focus-banner-style')) {
+          const s = document.createElement('style');
+          s.id = 'focus-banner-style';
+          s.textContent = '@keyframes focusBannerSlide{0%{background-position:0% 0%}100%{background-position:200% 0%}}';
+          document.head.appendChild(s);
+        }
+      }
+    } else if (focusBanner) {
+      focusBanner.remove();
+    }
+
     // ===== Clases en #ROOT (SÍ usan filter) =====
     // Esto evita que filter rompa position:fixed del menú de accesibilidad
     if (root) {

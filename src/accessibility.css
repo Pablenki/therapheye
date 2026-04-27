@@ -69,21 +69,44 @@ body.text-large input { font-size: 1.1rem !important; }
    que el resto de la app cuando "Invertir colores" está activo. */
 
 /* ========== INDICADORES VISUALES (en body) ========== */
-body.visual-indicators input:focus,
-body.visual-indicators textarea:focus,
-body.visual-indicators select:focus,
-body.visual-indicators button:focus,
-body.visual-indicators a:focus {
+/* `:focus-visible` = keyboard nav. `:hover` = mouse. `:active` = click feedback. */
+
+body.visual-indicators input:focus-visible,
+body.visual-indicators textarea:focus-visible,
+body.visual-indicators select:focus-visible,
+body.visual-indicators button:focus-visible,
+body.visual-indicators a:focus-visible {
   outline: 4px solid #1B396B !important;
   outline-offset: 4px !important;
-  box-shadow: 0 0 0 8px rgba(27, 57, 107, 0.3) !important;
+  box-shadow: 0 0 0 8px rgba(27, 57, 107, 0.25) !important;
+  transition: outline 0.15s, box-shadow 0.15s !important;
 }
 
 body.visual-indicators button:hover,
 body.visual-indicators a:hover {
-  box-shadow: 0 0 0 4px rgba(27, 57, 107, 0.4) !important;
+  box-shadow: 0 0 0 4px rgba(27, 57, 107, 0.35), 0 4px 14px rgba(27, 57, 107, 0.18) !important;
   outline: 2px solid #1B396B !important;
+  outline-offset: 3px !important;
+  transform: translateY(-1px) !important;
+  transition: all 0.15s ease !important;
+}
+
+body.visual-indicators button:active,
+body.visual-indicators a:active {
+  box-shadow: 0 0 0 6px rgba(27, 57, 107, 0.5) !important;
+  outline: 3px solid #003875 !important;
+  transform: translateY(0px) scale(0.98) !important;
+  transition: all 0.08s ease !important;
+}
+
+/* Badge visual en inputs para saber dónde estás escribiendo */
+body.visual-indicators input:focus,
+body.visual-indicators textarea:focus,
+body.visual-indicators select:focus {
+  outline: 3px solid #1B396B !important;
   outline-offset: 2px !important;
+  box-shadow: 0 0 0 6px rgba(27, 57, 107, 0.2), 0 4px 12px rgba(0,0,0,0.1) !important;
+  background-color: rgba(27, 57, 107, 0.03) !important;
 }
 
 /* ========== DALTONISMO (en #root) ========== */
@@ -154,33 +177,63 @@ body.highlight-links button:hover {
 }
 
 /* ========== MODO FOCO (en body) ========== */
-body.focus-mode input:not(:focus),
-body.focus-mode textarea:not(:focus),
-body.focus-mode select:not(:focus),
-body.focus-mode button:not(:focus):not(.accessibility-menu button),
-body.focus-mode a:not(:focus) {
-  opacity: 0.3 !important;
-  transition: opacity 0.3s ease !important;
+/* Objetivo: reducir ruido visual sin romper la UI.
+   Destaca el elemento activo (hover/focus) con un anillo prominente
+   y baja sutilmente el contraste de lo que no se está usando. */
+
+/* Tarjetas y secciones: leve dim en reposo, se "levanta" al hacer hover */
+body.focus-mode .card,
+body.focus-mode [class*="rounded-xl"],
+body.focus-mode [class*="rounded-2xl"] {
+  transition: opacity 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease !important;
 }
 
+/* Highlight: el elemento activo se eleva visualmente */
+body.focus-mode button:hover,
+body.focus-mode button:focus-visible,
+body.focus-mode a:hover,
+body.focus-mode a:focus-visible,
 body.focus-mode input:focus,
 body.focus-mode textarea:focus,
-body.focus-mode select:focus,
-body.focus-mode button:focus,
-body.focus-mode a:focus {
-  opacity: 1 !important;
-  outline: 4px solid #1B396B !important;
-  outline-offset: 4px !important;
-  box-shadow: 0 0 0 8px rgba(27, 57, 107, 0.3) !important;
-  position: relative;
-  z-index: 9990 !important;
+body.focus-mode select:focus {
+  outline: 3px solid #1B396B !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 6px rgba(27, 57, 107, 0.22), 0 6px 20px rgba(27, 57, 107, 0.18) !important;
+  position: relative !important;
+  z-index: 10 !important;
+  transition: all 0.15s ease !important;
 }
 
-/* El menú de accesibilidad SIEMPRE visible */
+/* Sidebar en modo foco: se vuelve más sobria */
+body.focus-mode aside {
+  opacity: 0.75 !important;
+  transition: opacity 0.3s ease !important;
+}
+body.focus-mode aside:hover {
+  opacity: 1 !important;
+}
+
+/* Animaciones decorativas se suprimen */
+body.focus-mode * {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+/* Excepción: menú accesibilidad siempre visible */
 body.focus-mode .accessibility-menu,
 body.focus-mode .accessibility-menu * {
   opacity: 1 !important;
   filter: none !important;
+  animation-duration: revert !important;
+  animation-iteration-count: revert !important;
+}
+
+/* Scrollbar más discreta en modo foco */
+body.focus-mode ::-webkit-scrollbar {
+  width: 4px !important;
+}
+body.focus-mode ::-webkit-scrollbar-thumb {
+  background: rgba(27, 57, 107, 0.35) !important;
 }
 
 /* ========== SCROLLBAR PERSONALIZADO ========== */
