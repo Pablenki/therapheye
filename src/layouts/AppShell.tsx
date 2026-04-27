@@ -7,7 +7,7 @@ import {
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
-  Scan, QrCode, MessageCircle, Crown,
+  Scan, QrCode, MessageCircle, Crown, HelpCircle,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -31,22 +31,23 @@ interface Props {
   currentPage: Page;
   onNavigate: (page: Page) => void;
   onLogout: () => void;
+  onStartTour?: () => void;
   children: React.ReactNode;
 }
 
-const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
+const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page; tourId?: string }[] = [
   { icon: Home,          label: 'Inicio',           page: 'dashboard'           },
-  { icon: Activity,      label: 'Ejercicios',        page: 'exercises'           },
+  { icon: Activity,      label: 'Ejercicios',        page: 'exercises',            tourId: 'tour-exercises'    },
   { icon: Camera,        label: 'Captura de imagen', page: 'image-capture'       },
   { icon: Glasses,       label: 'Prueba de visión',  page: 'vision-test'         },
-  { icon: History,       label: 'Historial',         page: 'history'             },
+  { icon: History,       label: 'Historial',         page: 'history',              tourId: 'tour-history'      },
   { icon: HeartPulse,    label: 'Salud Visual',      page: 'visual-health'       },
-  { icon: ScanEye,       label: 'Diagnóstico',       page: 'diagnostico-completo'},
-  { icon: ClipboardList, label: 'Cuestionario',      page: 'questionnaire'       },
+  { icon: ScanEye,       label: 'Diagnóstico',       page: 'diagnostico-completo', tourId: 'tour-diagnostico'  },
+  { icon: ClipboardList, label: 'Cuestionario',      page: 'questionnaire',        tourId: 'tour-questionnaire'},
   { icon: BookOpen,      label: 'Aprende',           page: 'learn'               },
   { icon: ScanFace,      label: 'Parpadeo',          page: 'blink-detector'      },
   { icon: BookOpenCheck,      label: 'Lectura Visual',    page: 'reading-test'        },
-  { icon: MessageCircleHeart, label: 'Chat Visual',       page: 'chat-sintomas'       },
+  { icon: MessageCircleHeart, label: 'Chat Visual',       page: 'chat-sintomas',        tourId: 'tour-chat'         },
   { icon: MapPin,             label: 'Oftalmólogos',      page: 'mapa-oftalmologos'   },
   { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'     },
   { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'          },
@@ -77,7 +78,7 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page }[] = [
 const SIDEBAR_W  = 240; // px — expanded
 const ICON_W     = 64;  // px — collapsed (desktop only)
 
-export default function AppShell({ currentPage, onNavigate, onLogout, children }: Props) {
+export default function AppShell({ currentPage, onNavigate, onLogout, onStartTour, children }: Props) {
   const { user, logout } = useUser();
   const { t } = useLanguage();
 
@@ -144,6 +145,13 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
     if (permanent) localStorage.setItem(PUSH_BANNER_KEY, '1');
     setShowPushBanner(false);
   };
+
+  // Listen for tour requests to open sidebar
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener('therapheye-open-sidebar', handler);
+    return () => window.removeEventListener('therapheye-open-sidebar', handler);
+  }, []);
 
   // Track viewport for responsive behaviour
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -229,7 +237,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
 
         {/* Daily progress bar */}
         {showLabels && (
-          <div className="px-4 pb-3 flex-shrink-0">
+          <div data-tour="tour-progress" className="px-4 pb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-white/50 font-medium uppercase tracking-wide">Progreso hoy</span>
               <span className="text-[10px] text-white/70 font-bold">{dailyProgress}%</span>
@@ -247,12 +255,13 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
         )}
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
-          {NAV_ITEMS.map(({ icon: Icon, label, page }) => {
+        <nav data-tour="tour-nav" className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
+          {NAV_ITEMS.map(({ icon: Icon, label, page, tourId }) => {
             const active = currentPage === page;
             return (
               <button
                 key={page}
+                data-tour={tourId}
                 onClick={() => handleNav(page)}
                 title={collapsed && !isMobile ? label : undefined}
                 className={`
@@ -298,6 +307,15 @@ export default function AppShell({ currentPage, onNavigate, onLogout, children }
               >
                 <LogOut className="w-3.5 h-3.5"/> Cerrar sesión
               </button>
+              {onStartTour && (
+                <button
+                  data-tour="tour-help"
+                  onClick={onStartTour}
+                  className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition"
+                >
+                  <HelpCircle className="w-3.5 h-3.5"/> ¿Cómo usar esto?
+                </button>
+              )}
             </>
           ) : (
             /* Collapsed: just avatar + logout icon */
