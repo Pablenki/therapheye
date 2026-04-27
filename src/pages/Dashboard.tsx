@@ -59,7 +59,7 @@ type Page =
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
   | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'ocr-receta' | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
-  | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478';
+  | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 
 interface Stats {
   evaluaciones: number;
@@ -873,6 +873,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 { page: 'amsler-grid',        label: 'Amsler',         emoji: '🔲', color: 'from-slate-600 to-gray-700'    },
                 { page: 'dominancia-ocular',  label: 'Dominancia',     emoji: '👁️', color: 'from-indigo-500 to-violet-600' },
                 { page: 'respiracion-478',    label: 'Respiración',    emoji: '💨', color: 'from-sky-500 to-cyan-600'      },
+                { page: 'evolucion-tests',   label: 'Evolución',      emoji: '📈', color: 'from-violet-600 to-purple-700'  },
               ] as { page: Page; label: string; emoji: string; color: string }[]).map(item => (
                 <button
                   key={item.page}

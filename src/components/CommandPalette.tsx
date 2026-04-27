@@ -12,7 +12,7 @@ import {
   Crosshair, EarOff, Contrast, Timer, Orbit, BarChart2, ClipboardCheck,
   Palette, FlaskConical, Focus, Microscope, ScrollText, TriangleAlert,
   ImageIcon, BrainCircuit, AreaChart, Scan, QrCode, MessageCircle, Crown,
-  Grid3x3, Wind, Dot,
+  Grid3x3, Wind, Dot, LineChart,
 } from 'lucide-react';
 
 type Page = string;
@@ -65,6 +65,7 @@ const ALL_ITEMS: NavItem[] = [
   { icon: Grid3x3,           label: 'Rejilla de Amsler',  page: 'amsler-grid',          desc: 'Test clínico para detectar problemas maculares' },
   { icon: Dot,               label: 'Dominancia Ocular',  page: 'dominancia-ocular',    desc: 'Determina cuál es tu ojo dominante' },
   { icon: Wind,              label: 'Respiración 4-7-8',  page: 'respiracion-478',      desc: 'Técnica de relajación ocular animada' },
+  { icon: LineChart,         label: 'Evolución Tests',    page: 'evolucion-tests',      desc: 'Progresión temporal de tus pruebas clínicas' },
 ];
 
 function fuzzy(text: string, query: string): boolean {

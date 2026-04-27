@@ -8,7 +8,7 @@ import {
   Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
-  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon,
+  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -94,7 +94,7 @@ type Page =
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
   | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'ocr-receta' | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
-  | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478';
+  | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 
 interface Props {
   currentPage: Page;
@@ -145,6 +145,7 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page; tourId?: 
   { icon: Grid3x3,            label: 'Rejilla Amsler',    page: 'amsler-grid'           },
   { icon: Dot,                label: 'Dom. Ocular',       page: 'dominancia-ocular'     },
   { icon: Wind,               label: 'Respiración 4-7-8', page: 'respiracion-478'       },
+  { icon: LineChart,           label: 'Evolución Tests',   page: 'evolucion-tests'       },
 ];
 
 const SIDEBAR_W  = 240; // px — expanded

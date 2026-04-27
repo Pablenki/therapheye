@@ -384,6 +384,63 @@ Identifica correlaciones entre pantalla y síntomas, patrones de fatiga, y da un
               );
             })()}
 
+            {/* ── Feedback post-ejercicio tendencias ── */}
+            {(() => {
+              // Read all feedback keys from localStorage
+              const feedbackCounts: Record<string, number> = { bien: 0, regular: 0, cansado: 0 };
+              let total = 0;
+              try {
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (key?.startsWith('therapheye_feedback_')) {
+                    const val = localStorage.getItem(key);
+                    if (val && feedbackCounts[val] !== undefined) {
+                      feedbackCounts[val]++;
+                      total++;
+                    }
+                  }
+                }
+              } catch { /* noop */ }
+
+              if (total === 0) return null;
+
+              const items = [
+                { label: 'Bien', value: feedbackCounts.bien, emoji: '😌', color: '#10b981' },
+                { label: 'Regular', value: feedbackCounts.regular, emoji: '😕', color: '#f59e0b' },
+                { label: 'Cansado', value: feedbackCounts.cansado, emoji: '😣', color: '#ef4444' },
+              ];
+
+              return (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">💬</span>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">Feedback post-ejercicio</p>
+                      <p className="text-xs text-gray-400">{total} respuestas acumuladas</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {items.map(({ label, value, emoji, color }) => {
+                      const pct = Math.round((value / total) * 100);
+                      return (
+                        <div key={label} className="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                          <span className="text-xl">{emoji}</span>
+                          <p className="text-lg font-black mt-1" style={{ color }}>{pct}%</p>
+                          <p className="text-[10px] text-gray-400 font-medium">{label} ({value})</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Bar */}
+                  <div className="flex h-2 rounded-full overflow-hidden mt-3">
+                    {items.map(({ label, value, color }) => (
+                      <div key={label} style={{ width: `${(value / total) * 100}%`, backgroundColor: color }} className="transition-all duration-500" />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ── Extension screen time ── */}
             {extInstalled && extData ? (() => {
               const today = new Date().toISOString().slice(0, 10);

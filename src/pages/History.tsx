@@ -958,6 +958,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
   const [expandedEvalId, setExpandedEvalId]   = useState<string | null>(null);
   const [expandedVisionId, setExpandedVisionId] = useState<string | null>(null);
   const [expandedCapturaId, setExpandedCapturaId] = useState<string | null>(null);
+  const [sectionFilter, setSectionFilter] = useState<'all' | 'fatiga' | 'ejercicios' | 'vision' | 'evaluaciones' | 'capturas'>('all');
   // Paginación de listas
   const [evalPage, setEvalPage]       = useState(0);
   const [visionPage, setVisionPage]   = useState(0);
@@ -1304,7 +1305,32 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
           </div>
         </div>
 
+        {/* ── Filtro de secciones ── */}
+        <div className="flex flex-wrap gap-2 mb-6 sticky top-0 z-10 bg-white/90 backdrop-blur-sm py-3 -mx-4 px-4 border-b border-gray-100">
+          {([
+            { key: 'all',          label: lang === 'es' ? 'Todo'          : 'All'          },
+            { key: 'fatiga',       label: lang === 'es' ? 'Tendencia'     : 'Trend'        },
+            { key: 'ejercicios',   label: lang === 'es' ? 'Ejercicios'   : 'Exercises'    },
+            { key: 'vision',       label: lang === 'es' ? 'Visión'       : 'Vision'       },
+            { key: 'evaluaciones', label: lang === 'es' ? 'Evaluaciones' : 'Evaluations'  },
+            { key: 'capturas',     label: lang === 'es' ? 'Capturas IA'  : 'AI Captures'  },
+          ] as const).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSectionFilter(key)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                sectionFilter === key
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* ── Gráfica de tendencia ── */}
+        {(sectionFilter === 'all' || sectionFilter === 'fatiga') && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8" id="chart-fatiga">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-gray-800">{t('history', 'trendChartTitle')}</h2>
@@ -1317,9 +1343,10 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
           </div>
           <TrendChart evaluations={evaluations} />
         </div>
+        )}
 
         {/* ── Heatmap semanal de ejercicios ── */}
-        {exercises.length > 0 && (
+        {(sectionFilter === 'all' || sectionFilter === 'ejercicios') && exercises.length > 0 && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-1">Actividad semanal</h2>
             <p className="text-sm text-gray-400 mb-4">Ejercicios completados en las últimas 16 semanas</p>
@@ -1328,7 +1355,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
         )}
 
         {/* ── Comparativa mes a mes ── */}
-        {evaluations.length >= 2 && (
+        {(sectionFilter === 'all' || sectionFilter === 'fatiga') && evaluations.length >= 2 && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-1">Fatiga mes a mes</h2>
             <p className="text-sm text-gray-400 mb-4">Promedio de fatiga ocular por mes (últimos 6 meses)</p>
@@ -1337,6 +1364,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
         )}
 
         {/* ── Agudeza Visual ── */}
+        {(sectionFilter === 'all' || sectionFilter === 'vision') && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex items-start justify-between mb-4">
             <div>
@@ -1427,8 +1455,10 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           )}
         </div>
+        )}
 
         {/* Evaluaciones en lista — clickables */}
+        {(sectionFilter === 'all' || sectionFilter === 'evaluaciones') && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-1">{t('history', 'evaluationsTitle')}</h2>
           <p className="text-sm text-gray-400 mb-6">{t('history', 'evaluationsHint')}</p>
@@ -1539,8 +1569,10 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           )}
         </div>
+        )}
 
         {/* Capturas de imagen */}
+        {(sectionFilter === 'all' || sectionFilter === 'capturas') && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-1">
             {lang === 'es' ? 'Capturas de imagen' : 'Image Captures'}
@@ -1596,8 +1628,10 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           )}
         </div>
+        )}
 
         {/* Ejercicios realizados */}
+        {(sectionFilter === 'all' || sectionFilter === 'ejercicios') && (
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-1">{t('history', 'exercisesTitle')}</h2>
           {onStartExercise && (
@@ -1659,6 +1693,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

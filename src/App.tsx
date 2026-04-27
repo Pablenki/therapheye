@@ -1,9 +1,10 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { UserProvider, useUser } from './context/UserContext'
 import { LanguageProvider } from './i18n'
 import { AccessibilityMenu } from './components/AccessibilityMenu'
 import GlobalTimerWidget from './components/GlobalTimerWidget'
 import SessionGuard from './components/SessionGuard'
+import ErrorBoundary from './components/ErrorBoundary'
 import AppShell from './layouts/AppShell'
 import Onboarding, { isOnboardingDone } from './components/Onboarding'
 import TourGuide from './components/TourGuide'
@@ -60,6 +61,7 @@ const PlanPremium         = lazy(() => import('./pages/PlanPremium'))
 const AmslerGrid          = lazy(() => import('./pages/AmslerGrid'))
 const DominanciaOcular    = lazy(() => import('./pages/DominanciaOcular'))
 const Respiracion478      = lazy(() => import('./pages/Respiracion478'))
+const EvolucionTests      = lazy(() => import('./pages/EvolucionTests'))
 
 // ── Skeleton de carga entre páginas ─────────────────────────────────────────
 function PageLoader() {
@@ -118,7 +120,8 @@ type Page =
   | 'plan-premium'
   | 'amsler-grid'
   | 'dominancia-ocular'
-  | 'respiracion-478';
+  | 'respiracion-478'
+  | 'evolucion-tests';
 
 interface PendingUser {
   name: string;
@@ -139,7 +142,23 @@ function AppContent() {
   const [showBuenosDias, setShowBuenosDias] = useState(false)
   const [showTour, setShowTour] = useState(false)
   const [showShowcase, setShowShowcase] = useState(false)
+  const [pageKey, setPageKey] = useState(0) // for transition animation
+  const isPopstateRef = useRef(false)
   useReporteSemanal()
+
+  // ── Browser Back Button support via History API ──────────────────────────────
+  useEffect(() => {
+    const handler = (e: PopStateEvent) => {
+      const page = e.state?.page as Page | undefined
+      if (page) {
+        isPopstateRef.current = true
+        setCurrentPage(page)
+        setPageKey(k => k + 1)
+      }
+    }
+    window.addEventListener('popstate', handler)
+    return () => window.removeEventListener('popstate', handler)
+  }, [])
 
   // Cuando se restaura la sesión, ir al dashboard
   useEffect(() => {
@@ -152,11 +171,19 @@ function AppContent() {
   }, [isRestoringSession, isAuthenticated, currentPage])
 
   // Al hacer login también mostrar onboarding/showcase si aplica
-  const handleNavigate = (page: Page) => {
-    setCurrentPage(page)
+  const handleNavigate = useCallback((page: Page) => {
+    setCurrentPage(prev => {
+      // Push state only if it's a real navigation (not popstate)
+      if (!isPopstateRef.current && prev !== page) {
+        window.history.pushState({ page }, '', `#${page}`)
+      }
+      isPopstateRef.current = false
+      return page
+    })
+    setPageKey(k => k + 1)
     if (page === 'dashboard' && !isOnboardingDone()) setShowOnboarding(true)
     else if (page === 'dashboard' && !isShowcaseDone()) setTimeout(() => setShowShowcase(true), 800)
-  }
+  }, [])
 
   const handleStartExercise = (exerciseId: string) => {
     setExerciseQueue([])
@@ -331,6 +358,8 @@ function AppContent() {
         return <DominanciaOcular onBack={() => handleNavigate('dashboard')} />
       case 'respiracion-478':
         return <Respiracion478 onBack={() => handleNavigate('dashboard')} />
+      case 'evolucion-tests':
+        return <EvolucionTests onBack={() => handleNavigate('dashboard')} />
       default:
         return (
           <Login
@@ -344,7 +373,13 @@ function AppContent() {
   if (isPublicPage) {
     return (
       <div className="flex flex-col min-h-screen">
-        <div className="flex-1"><Suspense fallback={<PageLoader/>}>{renderPageContent()}</Suspense></div>
+        <div className="flex-1">
+          <ErrorBoundary onReset={() => handleNavigate('login')}>
+            <Suspense fallback={<PageLoader/>}>
+              <div key={pageKey} className="animate-[fadeIn_0.15s_ease]">{renderPageContent()}</div>
+            </Suspense>
+          </ErrorBoundary>
+        </div>
         <footer className="w-full py-4 text-center text-xs text-gray-400 bg-transparent">
           <span>&copy; {new Date().getFullYear()} Therapheye</span>
           <span className="mx-2">·</span>
@@ -367,7 +402,11 @@ function AppContent() {
         onLogout={() => setCurrentPage('login')}
         onStartTour={() => setShowShowcase(true)}
       >
-        <Suspense fallback={<PageLoader/>}>{renderPageContent()}</Suspense>
+        <ErrorBoundary onReset={() => handleNavigate('dashboard')}>
+          <Suspense fallback={<PageLoader/>}>
+            <div key={pageKey} className="animate-[fadeIn_0.15s_ease]">{renderPageContent()}</div>
+          </Suspense>
+        </ErrorBoundary>
       </AppShell>
       <GlobalTimerWidget currentPage={currentPage} onNavigate={handleNavigate} />
       <SessionGuard currentPage={currentPage} onForceLogout={() => setCurrentPage('login')} />
