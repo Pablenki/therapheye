@@ -8,6 +8,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, AlertTriangle, Headphones, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
+import { callClaude } from '../utils/claudeApi';
 import { enviarSoporteTecnico } from '../utils/emailService';
 
 interface Props { onBack: () => void }
@@ -103,7 +104,7 @@ export default function ChatSintomas({ onBack }: Props) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+
   const [supportSent, setSupportSent] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -116,12 +117,6 @@ export default function ChatSintomas({ onBack }: Props) {
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
-
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      setApiKeyMissing(true);
-      return;
-    }
 
     const userMsg: Message = { role: 'user', content: trimmed, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
@@ -136,24 +131,12 @@ export default function ChatSintomas({ onBack }: Props) {
       .map(m => ({ role: m.role, content: m.content }));
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 512,
-          system: SYSTEM_PROMPT,
-          messages: history,
-        }),
+      const data = await callClaude({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        system: SYSTEM_PROMPT,
+        messages: history,
       });
-
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const data = await res.json();
       const reply = data.content?.[0]?.text ?? '...';
 
       setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
@@ -236,18 +219,6 @@ export default function ChatSintomas({ onBack }: Props) {
           </button>
         </div>
       </div>
-
-      {/* API key warning */}
-      {apiKeyMissing && (
-        <div className="mx-4 mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex-shrink-0">
-          <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700">
-            {lang === 'es'
-              ? 'Agrega VITE_ANTHROPIC_API_KEY al archivo .env para activar el chat con IA.'
-              : 'Add VITE_ANTHROPIC_API_KEY to the .env file to enable the AI chat.'}
-          </p>
-        </div>
-      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">

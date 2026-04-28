@@ -4,6 +4,7 @@ import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '../i18n'
 import { sql } from '../neonCliente'
+import { callClaude } from '../utils/claudeApi'
 
 interface ClaudeVisionResult {
   analisis: string;
@@ -172,34 +173,21 @@ const ImageCapture = ({ onBack }: Props) => {
   const analizarConClaude = async (imagenBase64: string) => {
     setIsClaudeAnalyzing(true)
     try {
-      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-      if (!apiKey) return
       // Extraer solo la parte base64 (sin el prefijo data:image/...;base64,)
       const base64Data = imagenBase64.split(',')[1] ?? imagenBase64
       const mediaType = imagenBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg'
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 512,
-          system: CLAUDE_VISION_PROMPT,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-              { type: 'text', text: 'Analiza esta imagen del ojo.' }
-            ]
-          }],
-        }),
+      const data = await callClaude({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 512,
+        system: CLAUDE_VISION_PROMPT,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
+            { type: 'text', text: 'Analiza esta imagen del ojo.' }
+          ]
+        }],
       })
-      if (!resp.ok) return
-      const data = await resp.json()
       const text = data.content[0].text
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {

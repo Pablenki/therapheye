@@ -4,6 +4,7 @@
 // =========================================
 
 import { useState, useRef } from 'react';
+import { callClaude } from '../utils/claudeApi';
 import {
   ArrowLeft, Camera, Upload, Loader2, Pill, Clock,
   AlertCircle, CheckCircle, RotateCcw, Save, Sparkles,
@@ -68,36 +69,21 @@ export default function OCRReceta({ onBack }: Props) {
     setResultado(null);
     setExpandedMed(0);
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      setError('Falta VITE_ANTHROPIC_API_KEY en .env');
-      setLoading(false);
-      return;
-    }
-
     const [meta, base64] = preview.split(',');
     const mediaType = (meta.match(/:(.*?);/)?.[1] ?? 'image/jpeg') as
       'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1200,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-              {
-                type: 'text',
-                text: `Analiza esta receta médica y extrae toda la información de medicamentos.
+      const data = await callClaude({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1200,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            {
+              type: 'text',
+              text: `Analiza esta receta médica y extrae toda la información de medicamentos.
 Devuelve un JSON con esta estructura exacta (sin markdown, solo el JSON):
 {
   "medicamentos": [
@@ -117,11 +103,7 @@ Si no puedes leer un campo, usa cadena vacía. Si no hay medicamentos visibles, 
               },
             ],
           }],
-        }),
       });
-
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const data = await res.json();
       const text = (data.content?.[0]?.text ?? '{}').trim();
       // Strip markdown code blocks if present
       const clean = text.replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '');

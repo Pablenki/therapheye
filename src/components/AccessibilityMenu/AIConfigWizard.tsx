@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { Sparkles, X, ChevronRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { AccessibilitySettings } from './accessibility.types';
+import { callClaude } from '../../utils/claudeApi';
 
 interface Props {
   onApply: (partial: Partial<AccessibilitySettings>) => void;
@@ -60,13 +61,6 @@ export default function AIConfigWizard({ onApply, onClose, lang }: Props) {
     setError('');
     setStep(3);
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      setError('Agrega VITE_ANTHROPIC_API_KEY al archivo .env para usar la IA.');
-      setLoading(false);
-      return;
-    }
-
     const condLabel = conditions.length ? conditions.join(', ') : 'ninguna';
     const diffLabel = difficulty.length ? difficulty.join(', ') : 'ninguna';
     const usageLabel = USAGE_OPTIONS.find(u => u.id === usage)?.label ?? usage;
@@ -108,23 +102,11 @@ Responde ÚNICAMENTE con JSON válido, sin texto extra:
 }`;
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          messages: [{ role: 'user', content: prompt }],
-        }),
+      const data = await callClaude({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: prompt }],
       });
-
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const data = await res.json();
       const text = (data.content?.[0]?.text ?? '').trim();
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('Sin JSON en respuesta');

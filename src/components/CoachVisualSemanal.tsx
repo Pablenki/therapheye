@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Brain, RefreshCw, Sparkles, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import { callClaude } from '../utils/claudeApi';
 
 interface Props {
   onNavigate?: (page: string) => void;
@@ -61,9 +62,6 @@ export default function CoachVisualSemanal({ onNavigate: _onNavigate }: Props) {
     } else {
       clearCache(user.id);
     }
-
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) { setError('Falta VITE_ANTHROPIC_API_KEY para el Coach Visual.'); return; }
 
     setLoading(true);
     setError('');
@@ -152,23 +150,11 @@ REGLAS:
 DATOS:
 ${resumen}`;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 700,
-          messages: [{ role: 'user', content: prompt }],
-        }),
+      const data = await callClaude({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 700,
+        messages: [{ role: 'user', content: prompt }],
       });
-
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const data = await res.json();
       const text = data.content?.[0]?.text ?? '{}';
 
       // Parse JSON — puede venir con ```json ... ``` o solo el objeto

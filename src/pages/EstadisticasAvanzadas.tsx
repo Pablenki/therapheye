@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Activity, Eye, Monitor, Puzzle, ExternalLink, Share2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
+import { callClaude } from '../utils/claudeApi';
 
 interface Props { onBack: () => void; }
 
@@ -176,8 +177,6 @@ export default function EstadisticasAvanzadas({ onBack }: Props) {
   }, [user?.id]);
 
   const analyzeWithAI = async () => {
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-    if (!apiKey) { setAiError('Falta VITE_ANTHROPIC_API_KEY en .env'); return; }
     if (dayStats.length < 3) { setAiError('Necesitas más datos (mínimo 3 días de actividad) para el análisis.'); return; }
 
     setAiLoading(true);
@@ -206,22 +205,11 @@ Día más activo: ${mejorDiaSemana ?? 'desconocido'}, Hora pico: ${peakHour !== 
 
 Identifica correlaciones entre pantalla y síntomas, patrones de fatiga, y da una recomendación accionable para esta semana.`;
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 300,
-          messages: [{ role: 'user', content: prompt }],
-        }),
+      const data = await callClaude({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }],
       });
-
-      const data = await res.json();
       const text = data?.content?.[0]?.text ?? '';
       if (!text) throw new Error('Sin respuesta');
       setAiInsight(text);

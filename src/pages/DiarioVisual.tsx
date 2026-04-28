@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, BookOpen, Send, Loader2, Tag, TrendingUp, Search, Trash2, ChevronDown } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql, localISOString } from '../neonCliente';
+import { callClaude } from '../utils/claudeApi';
 
 interface Props { onBack: () => void }
 
@@ -119,29 +120,17 @@ export default function DiarioVisual({ onBack }: Props) {
     setError(null);
     try {
       // Llamar a Claude para clasificar
-      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 256,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: texto }],
-        }),
-      });
-
       let clasificacion = '';
       let sintomas: string[] = [];
       let estado: string = 'regular';
 
-      if (resp.ok) {
-        const data = await resp.json();
+      try {
+        const data = await callClaude({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 256,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: texto }],
+        });
         const raw = data.content[0].text;
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -150,7 +139,7 @@ export default function DiarioVisual({ onBack }: Props) {
           sintomas = Array.isArray(parsed.sintomas_detectados) ? parsed.sintomas_detectados : [];
           estado = parsed.estado_animo_visual ?? 'regular';
         }
-      }
+      } catch { /* classification error — continue with defaults */ }
 
       await sql`
         INSERT INTO diario_visual (user_id, texto, clasificacion, sintomas_detectados, estado_animo_visual, created_at)

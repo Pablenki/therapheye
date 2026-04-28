@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Sparkles, RefreshCw, Calendar, Clock, CheckCircle2, ChevronDown, ChevronUp, Play, Loader2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql, localISOString } from '../neonCliente';
+import { callClaude } from '../utils/claudeApi';
 
 interface Props {
   onBack: () => void;
@@ -112,24 +113,12 @@ export default function RutinasIA({ onBack, onStartExercise }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 2048,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: sintomas }],
-        }),
+      const data = await callClaude({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2048,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: sintomas }],
       });
-      if (!resp.ok) throw new Error('Error al contactar la IA');
-      const data = await resp.json();
       const text = data.content[0].text;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('Respuesta de IA inválida');

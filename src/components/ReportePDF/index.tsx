@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { pdf, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { FileText, Loader2 } from 'lucide-react';
 import { sql } from '../../neonCliente';
+import { callClaude } from '../../utils/claudeApi';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -432,7 +433,6 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
 
   const handleDownload = async () => {
     if (!userId || loading) return;
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
     setLoading(true);
     try {
       const now = new Date();
@@ -478,8 +478,8 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
       ].join('\n• ');
 
       // Análisis clínico con IA
-      let analisisClinico = 'No disponible (sin clave de API configurada).';
-      if (apiKey) {
+      let analisisClinico = 'No disponible.';
+      {
         const prompt = `Eres un asistente médico de salud visual. Genera un párrafo de análisis clínico formal (máximo 120 palabras, en español, lenguaje médico) basado en estos datos de un paciente:
 
 - Fatiga visual promedio: ${avgFatiga}% (${avgFatiga < 40 ? 'leve' : avgFatiga < 70 ? 'moderada' : 'severa'})
@@ -493,17 +493,8 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
 Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisis, sin encabezado ni markdown.`;
 
         try {
-          const res = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-              'anthropic-dangerous-direct-browser-access': 'true',
-            },
-            body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 250, messages: [{ role: 'user', content: prompt }] }),
-          });
-          if (res.ok) { const d = await res.json(); analisisClinico = d.content?.[0]?.text ?? analisisClinico; }
+          const d = await callClaude({ model: 'claude-haiku-4-5-20251001', max_tokens: 250, messages: [{ role: 'user', content: prompt }] });
+          analisisClinico = d.content?.[0]?.text ?? analisisClinico;
         } catch { /* usar fallback */ }
       }
 

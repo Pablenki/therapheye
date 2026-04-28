@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { ArrowLeft, AlertTriangle, Send, ChevronDown, ChevronUp, Phone } from 'lucide-react';
+import { callClaude } from '../utils/claudeApi';
 
 interface Props { onBack: () => void; }
 
@@ -123,23 +124,11 @@ Responde en este formato JSON exacto:
 Usa "inmediata" solo si hay riesgo real de pérdida de visión. Sé conservador pero útil.`;
 
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY ?? '',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 800,
-          messages: [{ role: 'user', content: prompt }],
-        }),
+      const data = await callClaude({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }],
       });
-
-      if (!resp.ok) throw new Error(`API error ${resp.status}`);
-      const data = await resp.json();
       const text: string = data.content[0]?.text ?? '';
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('No JSON in response');
