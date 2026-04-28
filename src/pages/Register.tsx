@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useLanguage } from '../i18n';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/authHash';
 import { generarCodigo, enviarCorreoVerificacion } from '../utils/emailService';
 
 interface FormData {
@@ -80,8 +80,7 @@ const Register = ({ onBack, onVerify }: { onBack: () => void; onVerify: (data: {
       }
 
       // Hashear contraseña
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(formData.password, salt);
+      const passwordHash = await hashPassword(formData.password);
 
       // Generar código de verificación
       const codigo = generarCodigo();

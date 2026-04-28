@@ -3,7 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
-import bcrypt from 'bcryptjs';
+import { comparePassword } from '../utils/authHash';
 
 const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavigateToRegister: () => void }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -36,7 +36,7 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
       const user = result[0];
 
       // Comparar contraseña con bcrypt
-      const passwordValida = await bcrypt.compare(password, user.password_hash);
+      const passwordValida = await comparePassword(password, user.password_hash);
 
       if (passwordValida) {
         // Generar token de sesión único para control de sesión única

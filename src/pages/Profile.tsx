@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera, Bell, BellOff, BellRing, Download } from 'lucide-react';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/authHash';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
@@ -127,7 +127,7 @@ export default function Profile({ onBack, onLogout }: Props) {
     if (newPwd !== confirmPwd) { setPwdMsg({ type: 'err', text: es ? 'Las contraseñas no coinciden' : 'Passwords do not match' }); return; }
     setPwdLoading(true);
     try {
-      const hash = await bcrypt.hash(newPwd, 10);
+      const hash = await hashPassword(newPwd);
       await sql`UPDATE users SET password_hash = ${hash} WHERE id = ${user!.id}`;
       setPwdMsg({ type: 'ok', text: es ? 'Contraseña actualizada' : 'Password updated' });
       setNewPwd(''); setConfirmPwd('');
