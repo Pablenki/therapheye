@@ -91,12 +91,6 @@ export default function ContrastTest({ onBack }: Props) {
     setPhase('resultado');
 
     if (user?.id) {
-      sql`CREATE TABLE IF NOT EXISTS contrast_tests (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        nivel_final INTEGER NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )`.catch(() => {});
       sql`INSERT INTO contrast_tests (user_id, nivel_final, created_at)
           VALUES (${user.id}, ${nivel}, NOW())`.then(() => setSavedOk(true)).catch(() => {});
     }

@@ -60,13 +60,6 @@ export default function TestAcomodacion({ onBack }: Props) {
     setPhase('resultado');
 
     if (user?.id) {
-      sql`CREATE TABLE IF NOT EXISTS test_acomodacion (
-        id SERIAL PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        ojo TEXT NOT NULL,
-        ppa_cm INTEGER NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )`.catch(() => {});
       sql`INSERT INTO test_acomodacion (user_id, ojo, ppa_cm, created_at)
           VALUES (${user.id}, ${ojo}, ${dist}, NOW())`
         .then(() => setSaved(true)).catch(() => {});

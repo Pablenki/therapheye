@@ -350,10 +350,6 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     saveTimerToDB(user.id, state, getWebSourceId());
   }, [user?.id]);
 
-  // ── Migración: agregar columna source si no existe ────────────────────────
-  useEffect(() => {
-    sql`ALTER TABLE timer_state ADD COLUMN IF NOT EXISTS source VARCHAR(64)`.catch(() => {});
-  }, []);
 
   // ── Inicializar: cargar desde BD primero, luego localStorage como fallback ──
   useEffect(() => {

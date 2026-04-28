@@ -70,14 +70,6 @@ export default function ReaccionVisual({ onBack }: Props) {
         const avg = Math.round(newTiempos.reduce((a, b) => a + b, 0) / newTiempos.length);
         const best = Math.min(...newTiempos);
         if (user?.id) {
-          sql`CREATE TABLE IF NOT EXISTS reaccion_visual_tests (
-            id SERIAL PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            promedio_ms INTEGER NOT NULL,
-            mejor_ms INTEGER NOT NULL,
-            tiempos_json TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-          )`.catch(() => {});
           sql`INSERT INTO reaccion_visual_tests (user_id, promedio_ms, mejor_ms, tiempos_json, created_at)
               VALUES (${user.id}, ${avg}, ${best}, ${JSON.stringify(newTiempos)}, NOW())`
             .then(() => setSaved(true)).catch(() => {});

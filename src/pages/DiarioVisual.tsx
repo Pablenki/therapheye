@@ -68,17 +68,6 @@ export default function DiarioVisual({ onBack }: Props) {
     if (!user?.id) return;
     setLoadingEntradas(true);
     try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS diario_visual (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          texto TEXT NOT NULL,
-          clasificacion TEXT,
-          sintomas_detectados JSONB DEFAULT '[]',
-          estado_animo_visual TEXT DEFAULT 'regular',
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `;
       await cargarEntradas();
     } catch (e) {
       console.error('Error init diario:', e);

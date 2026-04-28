@@ -97,16 +97,6 @@ export default function PomodoroVisual({ onBack, onStartExercise }: Props) {
       if (user?.id) {
         try {
           await sql`
-            CREATE TABLE IF NOT EXISTS pomodoro_sessions (
-              id SERIAL PRIMARY KEY,
-              user_id TEXT NOT NULL,
-              tipo TEXT NOT NULL,
-              duracion_min INT NOT NULL,
-              ronda INT NOT NULL,
-              created_at TIMESTAMPTZ DEFAULT NOW()
-            )
-          `;
-          await sql`
             INSERT INTO pomodoro_sessions (user_id, tipo, duracion_min, ronda, created_at)
             VALUES (${user.id}, 'trabajo', ${config.workMin}, ${round}, ${localISOString()})
           `;

@@ -237,17 +237,6 @@ export default function LecturaVisual({ onBack }: Props) {
     if (!user?.id || saving) return;
     setSaving(true);
     try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS historial_lectura_visual (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          eye_tested TEXT NOT NULL,
-          nivel_maximo INTEGER NOT NULL,
-          score_promedio NUMERIC(5,1) NOT NULL,
-          resultados_json JSONB,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `;
       const avgScore = results.length > 0
         ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length)
         : 0;

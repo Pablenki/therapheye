@@ -145,21 +145,6 @@ export default function CampoVisual({ onBack }: Props) {
   const guardarResultado = async () => {
     if (!user?.id) return;
     try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS campo_visual_tests (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          ojo TEXT NOT NULL,
-          total_destellos INT,
-          detectados INT,
-          tasa_deteccion FLOAT,
-          tiempo_reaccion_avg FLOAT,
-          resultados_json JSONB,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `;
-    } catch {}
-    try {
       const detectados = resultados.filter(r => r.detected).length + 1; // +1 por el último que aún no se contó
       const tiempos = resultados.filter(r => r.reactionMs !== null).map(r => r.reactionMs!);
       const avgReaction = tiempos.length > 0 ? tiempos.reduce((a, b) => a + b, 0) / tiempos.length : 0;

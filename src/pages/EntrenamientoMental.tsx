@@ -220,15 +220,6 @@ export default function EntrenamientoMental({ onBack }: Props) {
     markExerciseDone();
 
     if (user?.id) {
-      sql`CREATE TABLE IF NOT EXISTS entrenamiento_mental (
-        id SERIAL PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        juego TEXT NOT NULL,
-        score INTEGER NOT NULL,
-        total INTEGER NOT NULL,
-        avg_ms INTEGER NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )`.catch(() => {});
       sql`INSERT INTO entrenamiento_mental (user_id, juego, score, total, avg_ms, created_at)
           VALUES (${user.id}, ${gameType}, ${score}, ${total}, ${avgMs}, NOW())`.catch(() => {});
     }

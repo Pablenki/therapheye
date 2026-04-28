@@ -56,24 +56,10 @@ export default function NotasMedicas({ onBack, onNavigate }: Props) {
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
 
-  const initDB = async () => {
-    if (!user?.id) return;
-    await sql`CREATE TABLE IF NOT EXISTS notas_medicas (
-      id SERIAL PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      tipo TEXT NOT NULL,
-      titulo TEXT NOT NULL,
-      contenido TEXT NOT NULL,
-      fecha TEXT NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )`;
-  };
-
   const loadNotas = async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      await initDB();
       const rows = await sql`
         SELECT * FROM notas_medicas WHERE user_id = ${user.id}
         ORDER BY fecha DESC, created_at DESC

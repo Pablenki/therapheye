@@ -137,16 +137,6 @@ Si no puedes leer un campo, usa cadena vacía. Si no hay medicamentos visibles, 
     if (!resultado || !user?.id) return;
     setGuardando(true);
     try {
-      await sql`CREATE TABLE IF NOT EXISTS notas_medicas (
-        id SERIAL PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        tipo TEXT NOT NULL,
-        titulo TEXT NOT NULL,
-        contenido TEXT NOT NULL,
-        fecha TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )`;
-
       const today = new Date().toISOString().slice(0, 10);
       for (const med of resultado.medicamentos) {
         if (!med.nombre) continue;

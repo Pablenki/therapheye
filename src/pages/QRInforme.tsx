@@ -59,15 +59,6 @@ export default function QRInforme({ onBack }: Props) {
     if (!user?.id) return;
     const load = async () => {
       try {
-        await sql`CREATE TABLE IF NOT EXISTS notas_medicas (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          tipo TEXT NOT NULL,
-          titulo TEXT NOT NULL,
-          contenido TEXT NOT NULL,
-          fecha TEXT NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )`;
         const rows = await sql`
           SELECT id, tipo, titulo, contenido, fecha FROM notas_medicas
           WHERE user_id = ${user.id}

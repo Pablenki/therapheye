@@ -110,16 +110,6 @@ export default function VergenciaTraining({ onBack }: Props) {
     setDone(false);
     setRunning(true);
 
-    if (user?.id) {
-      sql`CREATE TABLE IF NOT EXISTS vergencia_sessions (
-        id SERIAL PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        ejercicio_id TEXT NOT NULL,
-        duracion_seg INTEGER NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )`.catch(() => {});
-    }
-
     const startMs = Date.now();
     intervalRef.current = setInterval(() => {
       const sec = Math.floor((Date.now() - startMs) / 1000);

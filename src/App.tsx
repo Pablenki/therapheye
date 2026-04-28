@@ -13,6 +13,7 @@ import FeatureShowcase, { isShowcaseDone } from './components/FeatureShowcase'
 import PresenceDetector from './components/PresenceDetector'
 import BuenosDias, { shouldShowBuenosDias } from './components/BuenosDias'
 import { useReporteSemanal } from './hooks/useReporteSemanal'
+import { runMigrations } from './utils/migrations'
 
 // ── Eager (shell crítico) ────────────────────────────────────────────────────
 import Login from './pages/Login'
@@ -161,6 +162,11 @@ function AppContent() {
     window.addEventListener('popstate', handler)
     return () => window.removeEventListener('popstate', handler)
   }, [])
+
+  // Ejecutar migraciones al autenticar
+  useEffect(() => {
+    if (isAuthenticated) runMigrations();
+  }, [isAuthenticated])
 
   // Cuando se restaura la sesión, ir al dashboard
   useEffect(() => {

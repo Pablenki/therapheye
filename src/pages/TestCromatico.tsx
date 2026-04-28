@@ -142,13 +142,6 @@ export default function TestCromatico({ onBack }: Props) {
       setPhase('resultado');
       if (user?.id) {
         const score = nuevas.filter(r => r.correcto).length;
-        sql`CREATE TABLE IF NOT EXISTS test_cromatico (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          score INTEGER NOT NULL,
-          total INTEGER NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )`.catch(() => {});
         sql`INSERT INTO test_cromatico (user_id, score, total, created_at)
             VALUES (${user.id}, ${score}, ${PLACAS.length}, NOW())`
           .then(() => setSaved(true)).catch(() => {});

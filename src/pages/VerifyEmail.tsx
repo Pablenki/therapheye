@@ -86,13 +86,6 @@ const VerifyEmail = ({ name, email, passwordHash, codigo, onBack, onVerified }: 
       try {
         const sessionToken = crypto.randomUUID();
         await sql`
-          CREATE TABLE IF NOT EXISTS user_sessions (
-            user_id TEXT PRIMARY KEY,
-            session_token TEXT NOT NULL,
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-          )
-        `;
-        await sql`
           INSERT INTO user_sessions (user_id, session_token, updated_at)
           VALUES (${userId}, ${sessionToken}, NOW())
           ON CONFLICT (user_id)

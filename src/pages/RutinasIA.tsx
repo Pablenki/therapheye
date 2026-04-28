@@ -84,16 +84,6 @@ export default function RutinasIA({ onBack, onStartExercise }: Props) {
     if (!user?.id) return;
     setLoadingHistory(true);
     try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS rutinas_personalizadas (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          objetivo TEXT NOT NULL,
-          rutina_json JSONB NOT NULL,
-          consejos JSONB NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `;
       const rows = await sql`
         SELECT id, objetivo, rutina_json, consejos, created_at
         FROM rutinas_personalizadas

@@ -81,18 +81,6 @@ export default function BlinkDetector({ onBack }: Props) {
     if (save && user?.id && sessionStartRef.current && totalBlinksRef.current > 0) {
       setSaving(true);
       try {
-        await sql`
-          CREATE TABLE IF NOT EXISTS sesiones_parpadeo (
-            id SERIAL PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            started_at TIMESTAMPTZ NOT NULL,
-            ended_at TIMESTAMPTZ NOT NULL,
-            duration_sec INTEGER NOT NULL,
-            total_blinks INTEGER NOT NULL,
-            avg_blinks_per_min NUMERIC(5,1) NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-          )
-        `;
         const endedAt = new Date();
         const durSec = Math.round((endedAt.getTime() - sessionStartRef.current.getTime()) / 1000);
         const avgBpm = durSec > 0 ? Math.round((totalBlinksRef.current / durSec) * 60 * 10) / 10 : 0;

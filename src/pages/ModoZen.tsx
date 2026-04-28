@@ -179,17 +179,6 @@ export default function ModoZen({ onBack }: Props) {
     setRunning(true);
     setScreenOff(true);
 
-    // Init DB table
-    if (user?.id) {
-      sql`CREATE TABLE IF NOT EXISTS modo_zen_sessions (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL,
-        rutina_id TEXT NOT NULL,
-        rutina_nombre TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )`.catch(() => {});
-    }
-
     // Countdown beep + announce
     if (!mutedRef.current) {
       speak(`Comenzando ${rutina.nombre}. Cierra los ojos y escucha las instrucciones.`);

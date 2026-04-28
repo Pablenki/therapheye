@@ -69,15 +69,6 @@ export default function Profile({ onBack, onLogout }: Props) {
   const [perfilMsg,       setPerfilMsg]     = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Migración columnas (una sola vez al montar) ────────────────────────────
-  useEffect(() => {
-    sql`
-      DO $$ BEGIN
-        BEGIN ALTER TABLE users ADD COLUMN foto_perfil TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-        BEGIN ALTER TABLE users ADD COLUMN fecha_nacimiento DATE; EXCEPTION WHEN duplicate_column THEN NULL; END;
-      END $$
-    `.catch(() => {/* noop si ya existen */});
-  }, []);
 
   // ── Estado tab Contraseña ─────────────────────────────────────────────────
   const [newPwd,     setNewPwd]     = useState('');

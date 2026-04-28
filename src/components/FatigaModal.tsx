@@ -45,17 +45,6 @@ export default function FatigaModal({ userId, exerciseId, onClose }: Props) {
     setSaving(true);
     try {
       await sql`
-        CREATE TABLE IF NOT EXISTS fatiga_post_ejercicio (
-          id         SERIAL PRIMARY KEY,
-          user_id    TEXT NOT NULL,
-          exercise_id TEXT NOT NULL,
-          burning    SMALLINT NOT NULL,
-          blur       SMALLINT NOT NULL,
-          headache   SMALLINT NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `;
-      await sql`
         INSERT INTO fatiga_post_ejercicio (user_id, exercise_id, burning, blur, headache)
         VALUES (${userId}, ${exerciseId}, ${answers.burning!}, ${answers.blur!}, ${answers.headache!})
       `;

@@ -349,15 +349,6 @@ export default function JuegosVisuales({ onBack }: Props) {
     if (!user?.id) return;
     const load = async () => {
       try {
-        await sql`CREATE TABLE IF NOT EXISTS minijuegos_scores (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          game_id TEXT NOT NULL,
-          score INTEGER NOT NULL,
-          duration INTEGER NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        )`.catch(() => {/* tabla ya existe */});
-
         const rows = await sql`
           SELECT game_id, MAX(score) as best
           FROM minijuegos_scores

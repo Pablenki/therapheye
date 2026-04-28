@@ -237,14 +237,6 @@ const ImageCapture = ({ onBack }: Props) => {
       if (user?.id) {
         const sintomaGuardar = getMostSevere(data.sintomas)
         await sql`
-          CREATE TABLE IF NOT EXISTS image_capture_history (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            sintoma VARCHAR(100) NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-          )
-        `.catch(() => {})
-        await sql`
           INSERT INTO image_capture_history (user_id, sintoma)
           VALUES (${user.id}, ${sintomaGuardar})
         `.catch(err => console.warn('[ImageCapture] Error guardando historial:', err))

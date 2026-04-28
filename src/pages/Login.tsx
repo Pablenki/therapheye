@@ -44,13 +44,6 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
         // Guardar token en BD (sobrescribe el anterior → invalida otros navegadores)
         try {
           await sql`
-            CREATE TABLE IF NOT EXISTS user_sessions (
-              user_id TEXT PRIMARY KEY,
-              session_token TEXT NOT NULL,
-              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-          `;
-          await sql`
             INSERT INTO user_sessions (user_id, session_token, updated_at)
             VALUES (${user.id}, ${sessionToken}, NOW())
             ON CONFLICT (user_id)
@@ -64,14 +57,6 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
 
         // Cargar preferencias del usuario desde BD → guardarlas en localStorage
         try {
-          await sql`
-            CREATE TABLE IF NOT EXISTS user_preferences (
-              user_id TEXT PRIMARY KEY,
-              notify_on_login BOOLEAN NOT NULL DEFAULT false,
-              onboarding_completed BOOLEAN NOT NULL DEFAULT false,
-              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )
-          `;
           const prefRows = await sql`
             SELECT notify_on_login, onboarding_completed
             FROM user_preferences

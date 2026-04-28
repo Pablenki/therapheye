@@ -557,18 +557,6 @@ const VisualHealth = ({ onBack }: Props) => {
     }
 
     try {
-      // Crear tabla si no existe (idempotente)
-      await sql`
-        CREATE TABLE IF NOT EXISTS sesiones_salud_visual (
-          id          SERIAL PRIMARY KEY,
-          user_id     TEXT        NOT NULL,
-          started_at  TIMESTAMPTZ NOT NULL,
-          ended_at    TIMESTAMPTZ NOT NULL,
-          duration_ms BIGINT      NOT NULL,
-          created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `;
-
       const rows = await sql`
         SELECT id, started_at, ended_at, duration_ms
         FROM   sesiones_salud_visual
