@@ -224,6 +224,12 @@ function TherapeyeReport({ data }: { data: ReportData }) {
 
 // ─── INFORME MÉDICO SOAP ────────────────────────────────────────────────────
 
+interface SpecializedTest {
+  nombre: string;
+  fecha: string;
+  resultado: string;
+}
+
 interface MedicalReportData {
   userName: string;
   period: string;
@@ -238,6 +244,7 @@ interface MedicalReportData {
   ejerciciosTotal: number;
   testsVision: number;
   tasaParpadeo: number | null;
+  testsEspecializados: SpecializedTest[];
   // A — Análisis (generado por IA)
   analisisClinico: string;
   // P — Plan
@@ -352,6 +359,23 @@ function MedicalReport({ data }: { data: MedicalReportData }) {
               </Text>
             </View>
           )}
+          {data.testsEspecializados.length > 0 && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={[SM.bodyBold, { marginBottom: 6 }]}>Tests clínicos especializados:</Text>
+              <View style={S.tableHeader}>
+                <Text style={[S.tableHeaderCell, { width: '25%' }]}>Test</Text>
+                <Text style={[S.tableHeaderCell, { width: '25%' }]}>Fecha</Text>
+                <Text style={[S.tableHeaderCell, { flex: 1 }]}>Resultado</Text>
+              </View>
+              {data.testsEspecializados.map((t, i) => (
+                <View key={i} style={[S.tableRow, i % 2 === 1 ? S.tableRowEven : {}]}>
+                  <Text style={[S.tableCell, { width: '25%' }]}>{t.nombre}</Text>
+                  <Text style={[S.tableCell, { width: '25%' }]}>{t.fecha}</Text>
+                  <Text style={[S.tableCell, { flex: 1 }]}>{t.resultado}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* ── A: Análisis ── */}
@@ -414,11 +438,16 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
       const now = new Date();
       const from30 = new Date(now.getTime() - 30 * 86_400_000);
 
-      const [evals, exs, visions, parpadeos] = await Promise.all([
+      const [evals, exs, visions, parpadeos, contrastRows, campoRows, cromaticoRows, acomodacionRows, amslerRows] = await Promise.all([
         sql`SELECT created_at, puntaje_fatiga, sintoma_dominante FROM respuestas_cuestionario WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC`,
         sql`SELECT status FROM historial_ejercicios WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
         sql`SELECT id FROM historial_vision_test WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
         sql`SELECT blinks_per_minute FROM sesiones_parpadeo WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`.catch(() => []),
+        sql`SELECT created_at, nivel_detectado, porcentaje FROM contrast_test_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
+        sql`SELECT created_at, puntos_detectados, puntos_totales FROM campo_visual_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
+        sql`SELECT created_at, correctas, total, tipo FROM test_cromatico_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
+        sql`SELECT created_at, score, nivel FROM test_acomodacion_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
+        sql`SELECT created_at, distorsion_detectada, cuadrantes_afectados FROM amsler_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
       ]);
 
       const evalList = evals as any[];
@@ -459,6 +488,7 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
 - Tests de visión: ${(visions as any[]).length}
 - Tasa de parpadeo: ${tasaParpadeo !== null ? tasaParpadeo + ' ppm' : 'no evaluada'}
 - Adherencia: ${diasActivos}/${totalDias30} días activos
+- Tests especializados realizados: ${testsEspecializados.length > 0 ? testsEspecializados.map(t => `${t.nombre}: ${t.resultado}`).join('; ') : 'ninguno'}
 
 Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisis, sin encabezado ni markdown.`;
 
@@ -477,6 +507,29 @@ Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisi
         } catch { /* usar fallback */ }
       }
 
+      // Construir tests especializados
+      const testsEspecializados: SpecializedTest[] = [];
+      (contrastRows as any[]).forEach((r: any) => testsEspecializados.push({
+        nombre: 'Contraste', fecha: fmtDate(new Date(r.created_at)),
+        resultado: `Nivel ${r.nivel_detectado} — ${r.porcentaje}%`,
+      }));
+      (campoRows as any[]).forEach((r: any) => testsEspecializados.push({
+        nombre: 'Campo Visual', fecha: fmtDate(new Date(r.created_at)),
+        resultado: `${r.puntos_detectados}/${r.puntos_totales} puntos detectados`,
+      }));
+      (cromaticoRows as any[]).forEach((r: any) => testsEspecializados.push({
+        nombre: 'Cromático', fecha: fmtDate(new Date(r.created_at)),
+        resultado: `${r.correctas}/${r.total} correctas (${r.tipo ?? 'general'})`,
+      }));
+      (acomodacionRows as any[]).forEach((r: any) => testsEspecializados.push({
+        nombre: 'Acomodación', fecha: fmtDate(new Date(r.created_at)),
+        resultado: `Score ${r.score} — ${r.nivel}`,
+      }));
+      (amslerRows as any[]).forEach((r: any) => testsEspecializados.push({
+        nombre: 'Amsler', fecha: fmtDate(new Date(r.created_at)),
+        resultado: r.distorsion_detectada ? `Distorsión en ${r.cuadrantes_afectados ?? '?'} cuadrantes` : 'Sin distorsión detectada',
+      }));
+
       const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
       const medData: MedicalReportData = {
         userName,
@@ -490,6 +543,7 @@ Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisi
         ejerciciosTotal: exList.length,
         testsVision: (visions as any[]).length,
         tasaParpadeo,
+        testsEspecializados,
         analisisClinico,
         recomendaciones: '• ' + recomendaciones,
         adherencia,

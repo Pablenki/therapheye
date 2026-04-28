@@ -4,8 +4,33 @@ import type { Theme } from '../themes';
 import {
   Flame, TrendingDown, TrendingUp, Minus, Bell,
   ChevronRight, ChevronLeft, Play, Pause, BookOpen, Clock,
-  Activity, Camera, Glasses, HeartPulse, ScanEye, Zap,
+  Activity, Camera, Glasses, HeartPulse, ScanEye, Zap, ChevronDown,
 } from 'lucide-react';
+
+// ─── Secciones colapsables ───────────────────────────────────────────────────
+const COLLAPSE_KEY = 'therapheye_dashboard_collapsed';
+
+type SectionId = 'fatiga' | 'acciones' | 'coach' | 'reto' | 'progreso' | 'timer' | 'predictor' | 'articulo' | 'tips' | 'herramientas';
+
+const loadCollapsed = (): Record<string, boolean> => {
+  try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}'); } catch { return {}; }
+};
+
+const toggleCollapsed = (id: SectionId, collapsed: Record<string, boolean>, set: (v: Record<string, boolean>) => void) => {
+  const next = { ...collapsed, [id]: !collapsed[id] };
+  localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next));
+  set(next);
+};
+
+const SectionHeader = ({ id, label, collapsed, onToggle }: { id: SectionId; label: string; collapsed: Record<string, boolean>; onToggle: (id: SectionId) => void }) => (
+  <button
+    onClick={() => onToggle(id)}
+    className="w-full flex items-center justify-between py-1.5 group"
+  >
+    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest group-hover:text-gray-600 transition">{label}</span>
+    <ChevronDown className={`w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-transform duration-200 ${collapsed[id] ? '-rotate-90' : ''}`} />
+  </button>
+);
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { sql } from '../neonCliente';
@@ -15,6 +40,7 @@ import RetoSemanal from '../components/RetoSemanal';
 import FatigaPredictor from '../components/FatigaPredictor';
 import AmbientLightDetector from '../components/AmbientLightDetector';
 import QuickCheck from '../components/QuickCheck';
+import { getUserFocus } from '../components/OnboardingPreference';
 
 const OJOS_DEL_DIA = [
   { emoji: '👁️', dato: 'El ojo humano puede distinguir hasta 10 millones de colores diferentes.' },
@@ -250,6 +276,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [pwaInstalled, setPwaInstalled] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const [showNotif, setShowNotif] = useState(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(loadCollapsed);
+  const handleToggle = useCallback((id: SectionId) => toggleCollapsed(id, collapsed, setCollapsed), [collapsed]);
 
   const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye-%E2%80%93-screen-time/lephmmimjeeeknpgdmnhpjkbbnmplcal';
 
@@ -432,6 +460,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const screenSS    = String(Math.floor((screenTimeMs%60000)/1000)).padStart(2,'0');
 
   const es = lang === 'es';
+  const userFocus = getUserFocus();
 
   // Recomendación basada en nivel de fatiga
   const getRecomendacion = () => {
@@ -546,7 +575,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             return (<>
 
           {/* ── Fila 1: Estado de fatiga + Racha + Recomendación ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <SectionHeader id="fatiga" label={es ? 'Estado y racha' : 'Status & streak'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['fatiga'] && <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
             {/* Tarjeta fatiga — siempre con gradiente propio (color de fatiga) */}
             <div className={`lg:col-span-1 bg-gradient-to-br ${fatiga.bg} rounded-2xl p-5 flex flex-col justify-between min-h-[160px] shadow-lg relative overflow-hidden`}>
@@ -614,11 +644,11 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 <ChevronRight className="w-4 h-4"/>
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* ── Acciones rápidas ── */}
-          <div>
-            <p className={`text-sm font-bold mb-3 ${tc.sectionLabel}`}>{es ? 'Acciones rápidas' : 'Quick actions'}</p>
+          <SectionHeader id="acciones" label={es ? 'Acciones rápidas' : 'Quick actions'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['acciones'] && <div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {([
                 { icon: Activity,   idx: 0, title: es ? 'Ejercicios visuales' : 'Visual exercises',  desc: es ? 'Reduce la fatiga con ejercicios guiados' : 'Reduce fatigue with guided exercises', page: 'exercises' as Page },
@@ -647,16 +677,19 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 );
               })}
             </div>
-          </div>
+          </div>}
 
           {/* ── Coach Visual Semanal ── */}
-          <CoachVisualSemanal />
+          <SectionHeader id="coach" label={es ? 'Coach semanal' : 'Weekly coach'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['coach'] && <CoachVisualSemanal />}
 
           {/* ── Reto Semanal ── */}
-          <RetoSemanal onNavigate={onNavigate} />
+          <SectionHeader id="reto" label={es ? 'Reto semanal' : 'Weekly challenge'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['reto'] && <RetoSemanal onNavigate={onNavigate} />}
 
           {/* ── Fila 3: Progreso semanal + Últimos diagnósticos ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SectionHeader id="progreso" label={es ? 'Progreso y diagnósticos' : 'Progress & diagnostics'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['progreso'] && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Progreso semanal */}
             <div className={`${cardCls(tc.progreso, `p-5 ${tc.flatBorders.prog}`)} p-5`}>
@@ -704,10 +737,11 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 {es ? 'Ver historial completo' : 'View full history'} <ChevronRight className="w-3 h-3"/>
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* ── Timer pantalla (compacto) ── */}
-          <div
+          <SectionHeader id="timer" label={es ? 'Tiempo en pantalla' : 'Screen time'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['timer'] && <div
             onClick={()=>onNavigate('visual-health')}
             className={`${cardCls(tc.timer, `p-4 ${tc.flatBorders.timer}`)} p-4 flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all`}
           >
@@ -743,16 +777,18 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 </button>
               )}
             </div>
-          </div>
+          </div>}
 
             {/* ── Predictor de Fatiga ── */}
-            <FatigaPredictor />
+            <SectionHeader id="predictor" label={es ? 'Predictor de fatiga' : 'Fatigue predictor'} collapsed={collapsed} onToggle={handleToggle} />
+            {!collapsed['predictor'] && <FatigaPredictor />}
 
             </>);
           })()}
 
           {/* ── Artículo del día ── */}
-          {(() => {
+          <SectionHeader id="articulo" label={es ? 'Artículo del día' : 'Article of the day'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['articulo'] && (() => {
             const article = ARTICLES[articleIdx];
             const catMeta = CATEGORY_META[article.category];
             const title   = es ? article.titleEs   : article.titleEn;
@@ -830,7 +866,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           })()}
 
           {/* ── Tip del Día + Ojo del Día ── */}
-          {(() => {
+          <SectionHeader id="tips" label={es ? 'Tips y datos' : 'Tips & facts'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['tips'] && (() => {
             const tip = TIPS_DEL_DIA[tipIndex];
             const ojo = OJOS_DEL_DIA[new Date().getDate() % OJOS_DEL_DIA.length];
             return (
@@ -854,27 +891,43 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           })()}
 
           {/* ── Panel acceso rápido features avanzadas ── */}
-          <div className="mt-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Herramientas avanzadas</p>
+          <SectionHeader id="herramientas" label={es ? 'Herramientas avanzadas' : 'Advanced tools'} collapsed={collapsed} onToggle={handleToggle} />
+          {!collapsed['herramientas'] && <div className="mt-2">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {([
-                { page: 'reaccion-visual',    label: 'Reacción',       emoji: '⚡', color: 'from-violet-500 to-purple-600' },
-                { page: 'vergencia',          label: 'Vergencia',      emoji: '🎯', color: 'from-teal-500 to-cyan-600' },
-                { page: 'campo-visual',       label: 'Campo Visual',   emoji: '🔭', color: 'from-indigo-500 to-blue-600' },
-                { page: 'contrast-test',      label: 'Contraste',      emoji: '⬛', color: 'from-gray-600 to-slate-700' },
-                { page: 'test-cromatico',     label: 'Daltonismo',     emoji: '🎨', color: 'from-rose-500 to-pink-600' },
-                { page: 'test-acomodacion',   label: 'Acomodación',    emoji: '🔍', color: 'from-cyan-500 to-teal-600' },
-                { page: 'modo-zen',           label: 'Modo Zen',       emoji: '🧘', color: 'from-emerald-500 to-green-600' },
-                { page: 'entrenamiento-mental', label: 'Cognitivo',    emoji: '🧠', color: 'from-amber-500 to-orange-500' },
-                { page: 'analizador-sintomas', label: 'Síntomas IA',  emoji: '🚨', color: 'from-red-500 to-rose-600' },
-                { page: 'simulador',          label: 'Simulador',      emoji: '👓', color: 'from-slate-500 to-gray-600' },
-                { page: 'carga-visual',       label: 'Carga Visual',   emoji: '📊', color: 'from-blue-500 to-indigo-600' },
-                { page: 'notas-medicas',      label: 'Notas',          emoji: '📋', color: 'from-orange-500 to-amber-600' },
-                { page: 'amsler-grid',        label: 'Amsler',         emoji: '🔲', color: 'from-slate-600 to-gray-700'    },
-                { page: 'dominancia-ocular',  label: 'Dominancia',     emoji: '👁️', color: 'from-indigo-500 to-violet-600' },
-                { page: 'respiracion-478',    label: 'Respiración',    emoji: '💨', color: 'from-sky-500 to-cyan-600'      },
-                { page: 'evolucion-tests',   label: 'Evolución',      emoji: '📈', color: 'from-violet-600 to-purple-700'  },
-              ] as { page: Page; label: string; emoji: string; color: string }[]).map(item => (
+              {(() => {
+                const allTools: { page: Page; label: string; emoji: string; color: string }[] = [
+                  { page: 'reaccion-visual',    label: 'Reacción',       emoji: '⚡', color: 'from-violet-500 to-purple-600' },
+                  { page: 'vergencia',          label: 'Vergencia',      emoji: '🎯', color: 'from-teal-500 to-cyan-600' },
+                  { page: 'campo-visual',       label: 'Campo Visual',   emoji: '🔭', color: 'from-indigo-500 to-blue-600' },
+                  { page: 'contrast-test',      label: 'Contraste',      emoji: '⬛', color: 'from-gray-600 to-slate-700' },
+                  { page: 'test-cromatico',     label: 'Daltonismo',     emoji: '🎨', color: 'from-rose-500 to-pink-600' },
+                  { page: 'test-acomodacion',   label: 'Acomodación',    emoji: '🔍', color: 'from-cyan-500 to-teal-600' },
+                  { page: 'modo-zen',           label: 'Modo Zen',       emoji: '🧘', color: 'from-emerald-500 to-green-600' },
+                  { page: 'entrenamiento-mental', label: 'Cognitivo',    emoji: '🧠', color: 'from-amber-500 to-orange-500' },
+                  { page: 'analizador-sintomas', label: 'Síntomas IA',  emoji: '🚨', color: 'from-red-500 to-rose-600' },
+                  { page: 'simulador',          label: 'Simulador',      emoji: '👓', color: 'from-slate-500 to-gray-600' },
+                  { page: 'carga-visual',       label: 'Carga Visual',   emoji: '📊', color: 'from-blue-500 to-indigo-600' },
+                  { page: 'notas-medicas',      label: 'Notas',          emoji: '📋', color: 'from-orange-500 to-amber-600' },
+                  { page: 'amsler-grid',        label: 'Amsler',         emoji: '🔲', color: 'from-slate-600 to-gray-700' },
+                  { page: 'dominancia-ocular',  label: 'Dominancia',     emoji: '👁️', color: 'from-indigo-500 to-violet-600' },
+                  { page: 'respiracion-478',    label: 'Respiración',    emoji: '💨', color: 'from-sky-500 to-cyan-600' },
+                  { page: 'evolucion-tests',    label: 'Evolución',      emoji: '📈', color: 'from-violet-600 to-purple-700' },
+                ];
+                // Priorizar según el enfoque del usuario
+                const focusPriority: Record<string, string[]> = {
+                  'fatiga':     ['modo-zen', 'respiracion-478', 'carga-visual', 'entrenamiento-mental'],
+                  'ojo-seco':   ['modo-zen', 'respiracion-478', 'analizador-sintomas', 'notas-medicas'],
+                  'clinica':    ['campo-visual', 'contrast-test', 'test-cromatico', 'amsler-grid', 'evolucion-tests', 'notas-medicas'],
+                  'curiosidad': [],
+                };
+                const priority = userFocus ? focusPriority[userFocus] ?? [] : [];
+                if (priority.length > 0) {
+                  const prioritized = allTools.filter(t => priority.includes(t.page));
+                  const rest = allTools.filter(t => !priority.includes(t.page));
+                  return [...prioritized, ...rest];
+                }
+                return allTools;
+              })().map(item => (
                 <button
                   key={item.page}
                   onClick={() => onNavigate(item.page)}
@@ -885,7 +938,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {/* ── Quick check flotante (mobile) ── */}
           <button

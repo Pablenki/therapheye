@@ -7,6 +7,7 @@ import SessionGuard from './components/SessionGuard'
 import ErrorBoundary from './components/ErrorBoundary'
 import AppShell from './layouts/AppShell'
 import Onboarding, { isOnboardingDone } from './components/Onboarding'
+import OnboardingPreference, { isPreferenceDone } from './components/OnboardingPreference'
 import TourGuide from './components/TourGuide'
 import FeatureShowcase, { isShowcaseDone } from './components/FeatureShowcase'
 import PresenceDetector from './components/PresenceDetector'
@@ -139,6 +140,7 @@ function AppContent() {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
   const [exerciseQueue, setExerciseQueue] = useState<string[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showPreference, setShowPreference] = useState(false)
   const [showBuenosDias, setShowBuenosDias] = useState(false)
   const [showTour, setShowTour] = useState(false)
   const [showShowcase, setShowShowcase] = useState(false)
@@ -416,7 +418,16 @@ function AppContent() {
         <Onboarding
           onDone={() => {
             setShowOnboarding(false);
-            if (!isShowcaseDone()) setTimeout(() => setShowShowcase(true), 500);
+            if (!isPreferenceDone()) setTimeout(() => setShowPreference(true), 400);
+            else if (!isShowcaseDone()) setTimeout(() => setShowShowcase(true), 500);
+          }}
+        />
+      )}
+      {showPreference && (
+        <OnboardingPreference
+          onDone={() => {
+            setShowPreference(false);
+            if (!isShowcaseDone()) setTimeout(() => setShowShowcase(true), 400);
           }}
         />
       )}

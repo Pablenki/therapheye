@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import DistanceMonitor from '../components/DistanceMonitor';
 import CommandPalette from '../components/CommandPalette';
+import ReminderConfig, { scheduleReminders } from '../components/ReminderConfig';
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
@@ -162,6 +163,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
   const [showFab, setShowFab] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [showGoalsConfig, setShowGoalsConfig] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
   const [goalsConfig, setGoalsConfig] = useState<GoalId[]>(loadGoalsConfig);
   const [autoDark, setAutoDark] = useState(() => localStorage.getItem(AUTO_DARK_KEY) === '1');
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -201,6 +203,9 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
     const iv = setInterval(apply, 60_000);
     return () => clearInterval(iv);
   }, [autoDark]);
+
+  // Schedule reminders on mount
+  useEffect(() => { scheduleReminders(); }, []);
 
   // Cmd+K / Ctrl+K → Command Palette
   useEffect(() => {
@@ -444,6 +449,13 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                 Modo oscuro auto {autoDark ? '(activo)' : ''}
               </button>
               <button
+                onClick={() => setShowReminders(true)}
+                className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-gray-500 hover:bg-white/10 hover:text-white transition"
+              >
+                <Bell className="w-3.5 h-3.5"/>
+                Recordatorios
+              </button>
+              <button
                 onClick={() => setShowPalette(true)}
                 className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-gray-500 hover:bg-white/10 hover:text-white transition"
               >
@@ -672,6 +684,9 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
           </div>
         </div>
       )}
+
+      {/* ── Reminder Config Modal ──────────────────────────────────────── */}
+      <ReminderConfig open={showReminders} onClose={() => setShowReminders(false)} />
 
       {/* ── Logout confirm modal ────────────────────────────────────────── */}
       {showLogout && (
