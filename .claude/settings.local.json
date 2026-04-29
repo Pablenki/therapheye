@@ -47,7 +47,11 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('dependencies',{}\\).items\\(\\)}, indent=2\\)\\)\")",
       "Bash(awk '{print $NF}')",
       "Bash(ls src/pages/*.tsx)",
-      "Bash(ls src/components/*.tsx)"
+      "Bash(ls src/components/*.tsx)",
+      "Bash(ls -la C:/Users/OWNER/Desktop/therapheye/netlify*)",
+      "Bash(ls:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://therapheye.netlify.app)",
+      "Bash(git -C /c/Users/OWNER/Desktop/therapheye log --oneline)"
     ]
   }
 }
