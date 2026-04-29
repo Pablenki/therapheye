@@ -51,7 +51,8 @@
       "Bash(ls -la C:/Users/OWNER/Desktop/therapheye/netlify*)",
       "Bash(ls:*)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://therapheye.netlify.app)",
-      "Bash(git -C /c/Users/OWNER/Desktop/therapheye log --oneline)"
+      "Bash(git -C /c/Users/OWNER/Desktop/therapheye log --oneline)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }
