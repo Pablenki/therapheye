@@ -8,9 +8,7 @@ const SERVICE_ID = 'service_l215bdw';
 const PUBLIC_KEY = 'ueY6zLrLJDbWMeCCH';
 const TEMPLATE_VERIFICACION = 'template_dcsyas5';
 const TEMPLATE_BIENVENIDA = 'template_swoo69m';
-const TEMPLATE_ELIMINAR_CUENTA = 'template_dcsyas5'; // Mismo template de verificación — cambia esto al ID del nuevo template cuando lo crees en EmailJS
-const TEMPLATE_REPORTE_SEMANAL = 'template_reporte_semanal'; // Crea este template en EmailJS con variables: email, nombre, semana, ejercicios, racha, puntaje_promedio, resumen
-const TEMPLATE_SOPORTE_TECNICO = 'template_soporte_tecnico'; // Crea este template en EmailJS con variables: to_email, usuario_nombre, usuario_email, transcript, fecha
+const TEMPLATE_ELIMINAR_CUENTA = 'template_dcsyas5';
 
 // Genera código de 6 dígitos
 export const generarCodigo = (): string => {
@@ -49,7 +47,7 @@ export const enviarCorreoEliminacion = async (
   );
 };
 
-// Envía reporte semanal de salud visual
+// Envía reporte semanal de salud visual (via Netlify Function + Gmail)
 export const enviarReporteSemanal = async (
   email: string,
   nombre: string,
@@ -61,10 +59,11 @@ export const enviarReporteSemanal = async (
     resumen: string;
   }
 ): Promise<void> => {
-  await emailjs.send(
-    SERVICE_ID,
-    TEMPLATE_REPORTE_SEMANAL,
-    {
+  const res = await fetch('/.netlify/functions/send-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'reporte',
       email,
       nombre,
       semana: stats.semana,
@@ -72,30 +71,30 @@ export const enviarReporteSemanal = async (
       racha: stats.racha,
       puntaje_promedio: stats.puntajePromedio !== null ? `${stats.puntajePromedio}/100` : 'N/A',
       resumen: stats.resumen,
-    },
-    PUBLIC_KEY
-  );
+    }),
+  });
+  if (!res.ok) throw new Error('Error enviando reporte semanal');
 };
 
-// Envía transcript del chat al soporte técnico
+// Envía transcript del chat al soporte técnico (via Netlify Function + Gmail)
 export const enviarSoporteTecnico = async (
   usuarioNombre: string,
   usuarioEmail: string,
   transcript: string,
   fecha: string
 ): Promise<void> => {
-  await emailjs.send(
-    SERVICE_ID,
-    TEMPLATE_SOPORTE_TECNICO,
-    {
-      to_email: 'therapheye@gmail.com',
+  const res = await fetch('/.netlify/functions/send-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type: 'soporte',
       usuario_nombre: usuarioNombre,
       usuario_email: usuarioEmail,
       transcript,
       fecha,
-    },
-    PUBLIC_KEY
-  );
+    }),
+  });
+  if (!res.ok) throw new Error('Error enviando soporte técnico');
 };
 
 // Envía correo de bienvenida
