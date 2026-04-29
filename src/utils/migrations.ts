@@ -8,7 +8,7 @@ import { sql } from '../neonCliente';
 
 const MIGRATION_KEY = 'therapheye_migrations_v1';
 
-export async function runMigrations(userId?: string) {
+export async function runMigrations(_userId?: string) {
   // Solo ejecutar una vez por sesión del navegador
   if (sessionStorage.getItem(MIGRATION_KEY)) return;
 

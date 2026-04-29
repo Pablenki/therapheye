@@ -685,7 +685,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
 
           {/* ── Reto Semanal ── */}
           <SectionHeader id="reto" label={es ? 'Reto semanal' : 'Weekly challenge'} collapsed={collapsed} onToggle={handleToggle} />
-          {!collapsed['reto'] && <RetoSemanal onNavigate={onNavigate} />}
+          {!collapsed['reto'] && <RetoSemanal onNavigate={(p) => onNavigate(p as Page)} />}
 
           {/* ── Fila 3: Progreso semanal + Últimos diagnósticos ── */}
           <SectionHeader id="progreso" label={es ? 'Progreso y diagnósticos' : 'Progress & diagnostics'} collapsed={collapsed} onToggle={handleToggle} />

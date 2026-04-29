@@ -4,7 +4,7 @@
 // =========================================
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, Contrast, Crosshair, FlaskConical, Focus, Zap, Grid3x3 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Eye, Contrast, Crosshair, FlaskConical, Focus, Zap } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
 

@@ -321,7 +321,7 @@ Identifica correlaciones entre pantalla y síntomas, patrones de fatiga, y da un
               const thisWeekKey = thisMonday.toISOString().slice(0, 10);
               const lastWeekKey = lastMonday.toISOString().slice(0, 10);
               const thisWeekEnd = thisMonday.toISOString().slice(0, 10);
-              const lastWeekEnd = thisWeekKey;
+
 
               const thisWeekDays = dayStats.filter(d => d.fecha >= thisWeekKey);
               const lastWeekDays = dayStats.filter(d => d.fecha >= lastWeekKey && d.fecha < thisWeekEnd);

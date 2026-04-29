@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera, Bell, BellOff, BellRing, Download } from 'lucide-react';
 import { hashPassword } from '../utils/authHash';
 import { useUser } from '../context/UserContext';

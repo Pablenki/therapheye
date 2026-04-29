@@ -477,27 +477,6 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
         'Evaluar necesidad de corrección óptica actualizada si el paciente refiere visión borrosa frecuente.',
       ].join('\n• ');
 
-      // Análisis clínico con IA
-      let analisisClinico = 'No disponible.';
-      {
-        const prompt = `Eres un asistente médico de salud visual. Genera un párrafo de análisis clínico formal (máximo 120 palabras, en español, lenguaje médico) basado en estos datos de un paciente:
-
-- Fatiga visual promedio: ${avgFatiga}% (${avgFatiga < 40 ? 'leve' : avgFatiga < 70 ? 'moderada' : 'severa'})
-- Síntomas predominantes: ${sintomasDominantes.join(', ') || 'no especificados'}
-- Ejercicios completados: ${completed}/${exList.length}
-- Tests de visión: ${(visions as any[]).length}
-- Tasa de parpadeo: ${tasaParpadeo !== null ? tasaParpadeo + ' ppm' : 'no evaluada'}
-- Adherencia: ${diasActivos}/${totalDias30} días activos
-- Tests especializados realizados: ${testsEspecializados.length > 0 ? testsEspecializados.map(t => `${t.nombre}: ${t.resultado}`).join('; ') : 'ninguno'}
-
-Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisis, sin encabezado ni markdown.`;
-
-        try {
-          const d = await callClaude({ model: 'claude-haiku-4-5-20251001', max_tokens: 250, messages: [{ role: 'user', content: prompt }] });
-          analisisClinico = d.content?.[0]?.text ?? analisisClinico;
-        } catch { /* usar fallback */ }
-      }
-
       // Construir tests especializados
       const testsEspecializados: SpecializedTest[] = [];
       (contrastRows as any[]).forEach((r: any) => testsEspecializados.push({
@@ -520,6 +499,27 @@ Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisi
         nombre: 'Amsler', fecha: fmtDate(new Date(r.created_at)),
         resultado: r.distorsion_detectada ? `Distorsión en ${r.cuadrantes_afectados ?? '?'} cuadrantes` : 'Sin distorsión detectada',
       }));
+
+      // Análisis clínico con IA
+      let analisisClinico = 'No disponible.';
+      {
+        const prompt = `Eres un asistente médico de salud visual. Genera un párrafo de análisis clínico formal (máximo 120 palabras, en español, lenguaje médico) basado en estos datos de un paciente:
+
+- Fatiga visual promedio: ${avgFatiga}% (${avgFatiga < 40 ? 'leve' : avgFatiga < 70 ? 'moderada' : 'severa'})
+- Síntomas predominantes: ${sintomasDominantes.join(', ') || 'no especificados'}
+- Ejercicios completados: ${completed}/${exList.length}
+- Tests de visión: ${(visions as any[]).length}
+- Tasa de parpadeo: ${tasaParpadeo !== null ? tasaParpadeo + ' ppm' : 'no evaluada'}
+- Adherencia: ${diasActivos}/${totalDias30} días activos
+- Tests especializados realizados: ${testsEspecializados.length > 0 ? testsEspecializados.map(t => `${t.nombre}: ${t.resultado}`).join('; ') : 'ninguno'}
+
+Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisis, sin encabezado ni markdown.`;
+
+        try {
+          const d = await callClaude({ model: 'claude-haiku-4-5-20251001', max_tokens: 250, messages: [{ role: 'user', content: prompt }] });
+          analisisClinico = d.content?.[0]?.text ?? analisisClinico;
+        } catch { /* usar fallback */ }
+      }
 
       const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
       const medData: MedicalReportData = {

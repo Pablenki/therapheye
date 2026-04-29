@@ -48,7 +48,11 @@ type Page =
   | 'ocr-receta'
   | 'qr-informe'
   | 'recordatorios-wa'
-  | 'plan-premium';
+  | 'plan-premium'
+  | 'amsler-grid'
+  | 'dominancia-ocular'
+  | 'respiracion-478'
+  | 'evolucion-tests';
 
 type Props = {
   currentPage: Page;
