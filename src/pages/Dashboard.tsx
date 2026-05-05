@@ -4,7 +4,7 @@ import type { Theme } from '../themes';
 import {
   Flame, TrendingDown, TrendingUp, Minus, Bell,
   ChevronRight, ChevronLeft, Play, Pause, BookOpen, Clock,
-  Activity, Camera, Glasses, HeartPulse, ScanEye, Zap, ChevronDown, Search,
+  Activity, Camera, Glasses, HeartPulse, ScanEye, Zap, ChevronDown, Search, HelpCircle,
 } from 'lucide-react';
 
 // ─── Secciones colapsables ───────────────────────────────────────────────────
@@ -571,6 +571,19 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 🧩 {es ? 'Agregar extensión' : 'Add extension'}
               </a>
             )}
+            {/* Help icon with tooltip */}
+            <div className="relative group">
+              <button
+                onClick={() => window.dispatchEvent(new Event('therapheye-start-tour'))}
+                className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"
+              >
+                <HelpCircle style={{ width: 18, height: 18 }} className="text-gray-500"/>
+              </button>
+              <span className="absolute right-0 top-full mt-1.5 bg-gray-800 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-lg">
+                {es ? '¿Cómo usar esto?' : 'How to use this?'}
+              </span>
+            </div>
+
             {/* Search button */}
             <button
               onClick={() => window.dispatchEvent(new Event('therapheye-open-search'))}

@@ -271,6 +271,13 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
     return () => window.removeEventListener('therapheye-open-search', handler);
   }, []);
 
+  // Start tour from header ? button
+  useEffect(() => {
+    const handler = () => onStartTour?.();
+    window.addEventListener('therapheye-start-tour', handler);
+    return () => window.removeEventListener('therapheye-start-tour', handler);
+  }, [onStartTour]);
+
   // Close profile dropdown when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
