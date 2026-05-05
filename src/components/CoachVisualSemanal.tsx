@@ -24,7 +24,7 @@ interface CoachAnalysis {
 }
 
 const CACHE_KEY = 'therapheye_coach_semanal_v2';
-const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 horas
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
 
 function loadCache(userId: string): CoachAnalysis | null {
   try {

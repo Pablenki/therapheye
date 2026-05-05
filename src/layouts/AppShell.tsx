@@ -5,7 +5,7 @@ import ReminderConfig, { scheduleReminders } from '../components/ReminderConfig'
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
-  KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
+  KeyRound, Menu, X, ChevronLeft, ChevronDown, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
@@ -165,7 +165,9 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
   const [showReminders, setShowReminders] = useState(false);
   const [goalsConfig, setGoalsConfig] = useState<GoalId[]>(loadGoalsConfig);
   const [autoDark, setAutoDark] = useState(() => localStorage.getItem(AUTO_DARK_KEY) === '1');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Daily progress (% of daily goals completed)
   const [dailyProgress, setDailyProgress] = useState(0);
@@ -260,6 +262,24 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
     const handler = () => setOpen(true);
     window.addEventListener('therapheye-open-sidebar', handler);
     return () => window.removeEventListener('therapheye-open-sidebar', handler);
+  }, []);
+
+  // Open command palette from header search button
+  useEffect(() => {
+    const handler = () => setShowPalette(true);
+    window.addEventListener('therapheye-open-search', handler);
+    return () => window.removeEventListener('therapheye-open-search', handler);
+  }, []);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   // Track viewport for responsive behaviour
@@ -401,66 +421,76 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
         <div className="border-t border-white/10 px-2 py-3 flex-shrink-0">
           {showLabels ? (
             <>
-              <button
-                onClick={() => handleNav('profile')}
-                className="w-full flex items-center gap-3 hover:bg-white/10 rounded-xl px-2 py-2 transition"
-              >
-                <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
-                  {user?.foto_perfil
-                    ? <img src={user.foto_perfil} alt="avatar" className="w-full h-full object-cover"/>
-                    : <span>{user?.nombre?.charAt(0).toUpperCase() ?? '?'}</span>}
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-white text-sm font-semibold truncate">
-                    {user?.nombre?.split(' ').slice(0, 2).join(' ')}
-                  </p>
-                  <p className="text-gray-400 text-xs flex items-center gap-1">
-                    <KeyRound className="w-3 h-3"/> Ver perfil
-                  </p>
-                </div>
-              </button>
-              <button
-                onClick={() => setShowLogout(true)}
-                className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition"
-              >
-                <LogOut className="w-3.5 h-3.5"/> Cerrar sesión
-              </button>
-              {onStartTour && (
+              {/* Profile button with dropdown */}
+              <div ref={profileMenuRef} className="relative">
                 <button
-                  data-tour="tour-help"
-                  onClick={onStartTour}
-                  className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 transition"
+                  onClick={() => setShowProfileMenu(v => !v)}
+                  className="w-full flex items-center gap-3 hover:bg-white/10 rounded-xl px-2 py-2 transition"
                 >
-                  <HelpCircle className="w-3.5 h-3.5"/> ¿Cómo usar esto?
+                  <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
+                    {user?.foto_perfil
+                      ? <img src={user.foto_perfil} alt="avatar" className="w-full h-full object-cover"/>
+                      : <span>{user?.nombre?.charAt(0).toUpperCase() ?? '?'}</span>}
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-white text-sm font-semibold truncate">
+                      {user?.nombre?.split(' ').slice(0, 2).join(' ')}
+                    </p>
+                    <p className="text-gray-400 text-xs flex items-center gap-1">
+                      <KeyRound className="w-3 h-3"/> Mi cuenta
+                    </p>
+                  </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''}`}
+                  />
                 </button>
-              )}
-              <button
-                onClick={() => {
-                  const next = !autoDark;
-                  setAutoDark(next);
-                  localStorage.setItem(AUTO_DARK_KEY, next ? '1' : '0');
-                }}
-                className={`w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs transition ${
-                  autoDark ? 'text-amber-400 hover:bg-amber-500/10' : 'text-gray-500 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <Moon className="w-3.5 h-3.5"/>
-                Modo oscuro auto {autoDark ? '(activo)' : ''}
-              </button>
-              <button
-                onClick={() => setShowReminders(true)}
-                className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-gray-500 hover:bg-white/10 hover:text-white transition"
-              >
-                <Bell className="w-3.5 h-3.5"/>
-                Recordatorios
-              </button>
-              <button
-                onClick={() => setShowPalette(true)}
-                className="w-full mt-1 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs text-gray-500 hover:bg-white/10 hover:text-white transition"
-              >
-                <span className="text-[10px] border border-gray-600 rounded px-1 font-mono">⌘K</span>
-                Buscar herramienta
-              </button>
+
+                {/* Dropdown menu */}
+                {showProfileMenu && (
+                  <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#1a2f5e] border border-white/10 rounded-xl overflow-hidden shadow-2xl z-10">
+                    <button
+                      onClick={() => { handleNav('profile'); setShowProfileMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-indigo-400"/> Ver perfil
+                    </button>
+                    <button
+                      onClick={() => { setShowReminders(true); setShowProfileMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
+                    >
+                      <Bell className="w-3.5 h-3.5 text-indigo-400"/> Recordatorios
+                    </button>
+                    <button
+                      onClick={() => {
+                        const next = !autoDark;
+                        setAutoDark(next);
+                        localStorage.setItem(AUTO_DARK_KEY, next ? '1' : '0');
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs transition text-left ${
+                        autoDark ? 'text-amber-400 hover:bg-amber-500/10' : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <Moon className="w-3.5 h-3.5"/> Modo oscuro auto {autoDark ? '(activo)' : ''}
+                    </button>
+                    {onStartTour && (
+                      <button
+                        data-tour="tour-help"
+                        onClick={() => { onStartTour?.(); setShowProfileMenu(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5 text-indigo-400"/> ¿Cómo usar esto?
+                      </button>
+                    )}
+                    <div className="border-t border-white/10 mx-2"/>
+                    <button
+                      onClick={() => { setShowLogout(true); setShowProfileMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition text-left"
+                    >
+                      <LogOut className="w-3.5 h-3.5"/> Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             /* Collapsed: just avatar + logout icon */

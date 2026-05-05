@@ -4,7 +4,7 @@ import type { Theme } from '../themes';
 import {
   Flame, TrendingDown, TrendingUp, Minus, Bell,
   ChevronRight, ChevronLeft, Play, Pause, BookOpen, Clock,
-  Activity, Camera, Glasses, HeartPulse, ScanEye, Zap, ChevronDown,
+  Activity, Camera, Glasses, HeartPulse, ScanEye, Zap, ChevronDown, Search,
 } from 'lucide-react';
 
 // ─── Secciones colapsables ───────────────────────────────────────────────────
@@ -318,6 +318,16 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(loadCollapsed);
   const handleToggle = useCallback((id: SectionId) => toggleCollapsed(id, collapsed, setCollapsed), [collapsed]);
 
+  // ── Herramientas avanzadas carousel ───────────────────────────────────────
+  const [toolIdx, setToolIdx] = useState(0);
+  const toolTouchX = useRef(0);
+  const TOOLS_COUNT = 16; // fixed — matches allTools array below
+  useEffect(() => {
+    if (collapsed['herramientas']) return;
+    const id = setInterval(() => setToolIdx(i => (i + 1) % TOOLS_COUNT), 4000);
+    return () => clearInterval(id);
+  }, [collapsed]);
+
   const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye-%E2%80%93-screen-time/lephmmimjeeeknpgdmnhpjkbbnmplcal';
 
   // Detectar extensión
@@ -561,6 +571,15 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 🧩 {es ? 'Agregar extensión' : 'Add extension'}
               </a>
             )}
+            {/* Search button */}
+            <button
+              onClick={() => window.dispatchEvent(new Event('therapheye-open-search'))}
+              className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"
+              title={es ? 'Buscar herramienta' : 'Search tool'}
+            >
+              <Search style={{ width: 18, height: 18 }} className="text-gray-500"/>
+            </button>
+
             {/* Bell */}
             <div className="relative" ref={notifRef}>
               <button onClick={()=>setShowNotif(v=>!v)}
@@ -960,55 +979,101 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             );
           })()}
 
-          {/* ── Panel acceso rápido features avanzadas ── */}
+          {/* ── Panel acceso rápido features avanzadas — Carousel ── */}
           <SectionHeader id="herramientas" label={es ? 'Herramientas avanzadas' : 'Advanced tools'} collapsed={collapsed} onToggle={handleToggle} />
-          {!collapsed['herramientas'] && <div className="mt-2">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {(() => {
-                const allTools: { page: Page; label: string; emoji: string; color: string }[] = [
-                  { page: 'reaccion-visual',    label: 'Reacción',       emoji: '⚡', color: 'from-violet-500 to-purple-600' },
-                  { page: 'vergencia',          label: 'Vergencia',      emoji: '🎯', color: 'from-teal-500 to-cyan-600' },
-                  { page: 'campo-visual',       label: 'Campo Visual',   emoji: '🔭', color: 'from-indigo-500 to-blue-600' },
-                  { page: 'contrast-test',      label: 'Contraste',      emoji: '⬛', color: 'from-gray-600 to-slate-700' },
-                  { page: 'test-cromatico',     label: 'Daltonismo',     emoji: '🎨', color: 'from-rose-500 to-pink-600' },
-                  { page: 'test-acomodacion',   label: 'Acomodación',    emoji: '🔍', color: 'from-cyan-500 to-teal-600' },
-                  { page: 'modo-zen',           label: 'Modo Zen',       emoji: '🧘', color: 'from-emerald-500 to-green-600' },
-                  { page: 'entrenamiento-mental', label: 'Cognitivo',    emoji: '🧠', color: 'from-amber-500 to-orange-500' },
-                  { page: 'analizador-sintomas', label: 'Síntomas IA',  emoji: '🚨', color: 'from-red-500 to-rose-600' },
-                  { page: 'simulador',          label: 'Simulador',      emoji: '👓', color: 'from-slate-500 to-gray-600' },
-                  { page: 'carga-visual',       label: 'Carga Visual',   emoji: '📊', color: 'from-blue-500 to-indigo-600' },
-                  { page: 'notas-medicas',      label: 'Notas',          emoji: '📋', color: 'from-orange-500 to-amber-600' },
-                  { page: 'amsler-grid',        label: 'Amsler',         emoji: '🔲', color: 'from-slate-600 to-gray-700' },
-                  { page: 'dominancia-ocular',  label: 'Dominancia',     emoji: '👁️', color: 'from-indigo-500 to-violet-600' },
-                  { page: 'respiracion-478',    label: 'Respiración',    emoji: '💨', color: 'from-sky-500 to-cyan-600' },
-                  { page: 'evolucion-tests',    label: 'Evolución',      emoji: '📈', color: 'from-violet-600 to-purple-700' },
-                ];
-                // Priorizar según el enfoque del usuario
-                const focusPriority: Record<string, string[]> = {
-                  'fatiga':     ['modo-zen', 'respiracion-478', 'carga-visual', 'entrenamiento-mental'],
-                  'ojo-seco':   ['modo-zen', 'respiracion-478', 'analizador-sintomas', 'notas-medicas'],
-                  'clinica':    ['campo-visual', 'contrast-test', 'test-cromatico', 'amsler-grid', 'evolucion-tests', 'notas-medicas'],
-                  'curiosidad': [],
-                };
-                const priority = userFocus ? focusPriority[userFocus] ?? [] : [];
-                if (priority.length > 0) {
-                  const prioritized = allTools.filter(t => priority.includes(t.page));
-                  const rest = allTools.filter(t => !priority.includes(t.page));
-                  return [...prioritized, ...rest];
-                }
-                return allTools;
-              })().map(item => (
-                <button
-                  key={item.page}
-                  onClick={() => onNavigate(item.page)}
-                  className={`bg-gradient-to-br ${item.color} text-white rounded-2xl p-3 flex flex-col items-start gap-1 hover:opacity-90 transition active:scale-95 shadow-sm`}
+          {!collapsed['herramientas'] && (() => {
+            const allTools: { page: Page; label: string; emoji: string; color: string; desc: string }[] = [
+              { page: 'reaccion-visual',     label: 'Reacción',        emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Mide tu tiempo de reacción visual' },
+              { page: 'vergencia',           label: 'Vergencia',       emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Ejercita la convergencia ocular' },
+              { page: 'campo-visual',        label: 'Campo Visual',    emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Detecta puntos ciegos en tu visión' },
+              { page: 'contrast-test',       label: 'Contraste',       emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Evalúa tu sensibilidad al contraste' },
+              { page: 'test-cromatico',      label: 'Daltonismo',      emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Test de percepción del color' },
+              { page: 'test-acomodacion',    label: 'Acomodación',     emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evalúa el enfoque de cerca a lejos' },
+              { page: 'modo-zen',            label: 'Modo Zen',        emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Relaja la fatiga ocular con sonidos' },
+              { page: 'entrenamiento-mental',label: 'Cognitivo',       emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Ejercita memoria y atención visual' },
+              { page: 'analizador-sintomas', label: 'Síntomas IA',     emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Analiza síntomas con inteligencia artificial' },
+              { page: 'simulador',           label: 'Simulador',       emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Simula condiciones visuales' },
+              { page: 'carga-visual',        label: 'Carga Visual',    emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: 'Mide la fatiga acumulada hoy' },
+              { page: 'notas-medicas',       label: 'Notas',           emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Registra notas para tu oftalmólogo' },
+              { page: 'amsler-grid',         label: 'Amsler',          emoji: '🔲', color: 'from-slate-600 to-gray-700',     desc: 'Detecta distorsión en la visión central' },
+              { page: 'dominancia-ocular',   label: 'Dominancia',      emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Descubre tu ojo dominante' },
+              { page: 'respiracion-478',     label: 'Respiración',     emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica 4-7-8 para relajar la vista' },
+              { page: 'evolucion-tests',     label: 'Evolución',       emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Sigue tu progreso a lo largo del tiempo' },
+            ];
+            const focusPriority: Record<string, string[]> = {
+              'fatiga':     ['modo-zen', 'respiracion-478', 'carga-visual', 'entrenamiento-mental'],
+              'ojo-seco':   ['modo-zen', 'respiracion-478', 'analizador-sintomas', 'notas-medicas'],
+              'clinica':    ['campo-visual', 'contrast-test', 'test-cromatico', 'amsler-grid', 'evolucion-tests', 'notas-medicas'],
+              'curiosidad': [],
+            };
+            const priority = userFocus ? focusPriority[userFocus] ?? [] : [];
+            const sorted = priority.length > 0
+              ? [...allTools.filter(t => priority.includes(t.page)), ...allTools.filter(t => !priority.includes(t.page))]
+              : allTools;
+            const n = sorted.length;
+            const curr = toolIdx % n;
+
+            return (
+              <div className="mt-2">
+                {/* Slide track */}
+                <div
+                  className="relative overflow-hidden rounded-2xl select-none"
+                  onTouchStart={e => { toolTouchX.current = e.touches[0].clientX; }}
+                  onTouchEnd={e => {
+                    const dx = e.changedTouches[0].clientX - toolTouchX.current;
+                    if (dx < -40) setToolIdx(i => (i + 1) % n);
+                    else if (dx > 40) setToolIdx(i => (i - 1 + n) % n);
+                  }}
                 >
-                  <span className="text-xl">{item.emoji}</span>
-                  <span className="text-xs font-bold leading-tight">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>}
+                  <div
+                    className="flex transition-transform duration-300 ease-in-out"
+                    style={{ transform: `translateX(-${curr * 100}%)` }}
+                  >
+                    {sorted.map(item => (
+                      <div key={item.page} className="w-full flex-none">
+                        <button
+                          onClick={() => onNavigate(item.page)}
+                          className={`w-full bg-gradient-to-br ${item.color} text-white rounded-2xl px-5 py-6 flex flex-col items-start gap-2 hover:opacity-90 transition active:scale-[0.98] shadow-md`}
+                        >
+                          <span className="text-4xl">{item.emoji}</span>
+                          <span className="text-lg font-bold leading-tight">{item.label}</span>
+                          <span className="text-sm text-white/75 leading-snug">{item.desc}</span>
+                          <span className="mt-1 text-xs text-white/60 font-semibold">Abrir →</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Prev */}
+                  <button
+                    onClick={() => setToolIdx(i => (i - 1 + n) % n)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/25 hover:bg-black/40 text-white rounded-full flex items-center justify-center transition"
+                  >
+                    <ChevronLeft className="w-4 h-4"/>
+                  </button>
+
+                  {/* Next */}
+                  <button
+                    onClick={() => setToolIdx(i => (i + 1) % n)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/25 hover:bg-black/40 text-white rounded-full flex items-center justify-center transition"
+                  >
+                    <ChevronRight className="w-4 h-4"/>
+                  </button>
+                </div>
+
+                {/* Progress indicator */}
+                <div className="flex items-center gap-2 mt-3 px-1">
+                  <span className="text-[11px] text-gray-400 tabular-nums w-9">{curr + 1}/{n}</span>
+                  <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                      style={{ width: `${((curr + 1) / n) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Quick check flotante (mobile) ── */}
           <button

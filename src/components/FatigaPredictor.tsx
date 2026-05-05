@@ -19,7 +19,7 @@ interface PredictorResult {
 }
 
 const CACHE_KEY = 'therapheye_fatiga_predictor_v1';
-const CACHE_TTL = 60 * 60 * 1000; // 1 hora
+const CACHE_TTL = 8 * 60 * 60 * 1000; // 8 horas
 
 function loadCache(userId: string): PredictorResult | null {
   try {
@@ -168,7 +168,11 @@ ${resumen}`;
     setLoading(false);
   }, [user?.id]);
 
-  useEffect(() => { runPredictor(false); }, [runPredictor]);
+  // Delay 3 s so Coach loads first — avoids simultaneous Gemini requests (429)
+  useEffect(() => {
+    const t = setTimeout(() => runPredictor(false), 3000);
+    return () => clearTimeout(t);
+  }, [runPredictor]);
 
   if (!user?.id) return null;
 
