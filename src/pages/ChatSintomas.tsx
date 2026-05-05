@@ -140,8 +140,9 @@ export default function ChatSintomas({ onBack }: Props) {
       const reply = data.content?.[0]?.text ?? '...';
 
       setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
-    } catch (e) {
-      setError(lang === 'es' ? 'Error al conectar con la IA. Intenta de nuevo.' : 'Error connecting to AI. Try again.');
+    } catch (e: any) {
+      const msg = e?.message || 'Error desconocido';
+      setError(msg);
     }
     setIsTyping(false);
   }, [messages, isTyping, lang]);
