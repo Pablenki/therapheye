@@ -46,6 +46,11 @@ function clearCache(userId: string) {
   try { localStorage.removeItem(CACHE_KEY + '_' + userId); } catch { /* ignore */ }
 }
 
+const readIsDark = () => {
+  try { const s = localStorage.getItem('therapeye_accessibility_settings'); return s ? JSON.parse(s).theme === 'oscuro' : false; }
+  catch { return false; }
+};
+
 export default function CoachVisualSemanal({ onNavigate: _onNavigate }: Props) {
   const { user } = useUser();
   const [analysis, setAnalysis] = useState<CoachAnalysis | null>(null);
@@ -53,6 +58,12 @@ export default function CoachVisualSemanal({ onNavigate: _onNavigate }: Props) {
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(true);
   const [isFromCache, setIsFromCache] = useState(false);
+  const [isDark, setIsDark] = useState(readIsDark);
+  useEffect(() => {
+    const h = () => setIsDark(readIsDark());
+    window.addEventListener('therapheye-theme-changed', h);
+    return () => window.removeEventListener('therapheye-theme-changed', h);
+  }, []);
 
   const fetchAnalysis = useCallback(async (forceRefresh = false) => {
     if (!user?.id) return;
@@ -227,11 +238,11 @@ ${resumen}`;
 
       {/* Body */}
       {expanded && (
-        <div className="bg-white border-x border-b border-purple-100">
+        <div className={`border-x border-b ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-purple-100'}`}>
           {loading && !analysis && (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="w-10 h-10 rounded-full border-3 border-purple-200 border-t-purple-600 animate-spin" style={{ borderWidth: 3 }} />
-              <p className="text-sm text-gray-500">Analizando tu semana...</p>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Analizando tu semana...</p>
             </div>
           )}
 
@@ -239,8 +250,8 @@ ${resumen}`;
             <div className="flex items-start gap-3 p-5">
               <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-gray-700 font-medium">No se pudo generar el análisis</p>
-                <p className="text-xs text-gray-500 mt-1">{error}</p>
+                <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>No se pudo generar el análisis</p>
+                <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{error}</p>
               </div>
             </div>
           )}
@@ -248,46 +259,46 @@ ${resumen}`;
           {analysis && (
             <div className="p-5 space-y-4">
               {/* Saludo */}
-              <p className="text-gray-800 text-sm leading-relaxed font-medium border-l-4 border-purple-400 pl-3 italic">
+              <p className={`text-sm leading-relaxed font-medium border-l-4 border-purple-400 pl-3 italic ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                 {analysis.saludo}
               </p>
 
               {/* Mejoras / Empeoró */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-                  <p className="text-emerald-700 text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <div className={`rounded-xl p-3 border ${isDark ? 'bg-emerald-950/40 border-emerald-800' : 'bg-emerald-50 border-emerald-100'}`}>
+                  <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                     <span className="text-base">📈</span> Lo que mejoró
                   </p>
-                  <p className="text-emerald-800 text-xs leading-relaxed">{analysis.mejoro}</p>
+                  <p className={`text-xs leading-relaxed ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>{analysis.mejoro}</p>
                 </div>
-                <div className="bg-orange-50 rounded-xl p-3 border border-orange-100">
-                  <p className="text-orange-700 text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                <div className={`rounded-xl p-3 border ${isDark ? 'bg-orange-950/40 border-orange-800' : 'bg-orange-50 border-orange-100'}`}>
+                  <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
                     <span className="text-base">📉</span> A mejorar
                   </p>
-                  <p className="text-orange-800 text-xs leading-relaxed">{analysis.empeoro}</p>
+                  <p className={`text-xs leading-relaxed ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>{analysis.empeoro}</p>
                 </div>
               </div>
 
               {/* Patrón detectado */}
-              <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-100">
-                <p className="text-indigo-700 text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <div className={`rounded-xl p-3 border ${isDark ? 'bg-indigo-950/40 border-indigo-800' : 'bg-indigo-50 border-indigo-100'}`}>
+                <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
                   <span className="text-base">🔍</span> Patrón detectado
                 </p>
-                <p className="text-indigo-800 text-xs leading-relaxed">{analysis.patron}</p>
+                <p className={`text-xs leading-relaxed ${isDark ? 'text-indigo-300' : 'text-indigo-800'}`}>{analysis.patron}</p>
               </div>
 
               {/* Recomendaciones */}
               <div>
-                <p className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <p className={`text-xs font-bold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                   <span className="text-base">🎯</span> Recomendaciones para esta semana
                 </p>
                 <div className="space-y-2">
                   {(analysis.recomendaciones ?? []).map((r, i) => (
                     <div key={i} className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 ${isDark ? 'bg-purple-900/60 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
                         {i + 1}
                       </span>
-                      <p className="text-gray-700 text-xs leading-relaxed">{r}</p>
+                      <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{r}</p>
                     </div>
                   ))}
                 </div>
@@ -298,7 +309,7 @@ ${resumen}`;
           {!analysis && !loading && !error && (
             <div className="flex flex-col items-center justify-center py-10 gap-3 text-center px-6">
               <Brain className="w-10 h-10 text-purple-200" />
-              <p className="text-sm text-gray-500">
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 Tu coach analizará los últimos 7 días de datos para darte recomendaciones personalizadas.
               </p>
               <button

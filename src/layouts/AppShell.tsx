@@ -6,7 +6,7 @@ import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
-  Sparkles, BookMarked, Zap, MoreHorizontal, Crosshair, EarOff, Contrast,
+  Sparkles, BookMarked, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
   Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart,
@@ -88,7 +88,7 @@ type Page =
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
   | 'visual-health' | 'profile' | 'diagnostico-completo' | 'verify-email' | 'learn'
   | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales'
-  | 'rutinas-ia' | 'diario-visual' | 'pomodoro-visual'
+  | 'rutinas-ia' | 'diario-visual'
   | 'campo-visual' | 'modo-zen' | 'contrast-test'
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
@@ -122,7 +122,6 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page; tourId?: 
   { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'     },
   { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'          },
   { icon: BookMarked,         label: 'Diario Visual',     page: 'diario-visual'       },
-  { icon: Zap,                label: 'Pomodoro Visual',   page: 'pomodoro-visual'     },
   { icon: Crosshair,          label: 'Campo Visual',      page: 'campo-visual'        },
   { icon: EarOff,             label: 'Modo Zen',          page: 'modo-zen'            },
   { icon: Contrast,           label: 'Test Contraste',    page: 'contrast-test'       },

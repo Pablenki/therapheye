@@ -82,9 +82,15 @@ const handler: Handler = async (event) => {
     const data = await res.json();
 
     if (!res.ok) {
+      // Normalize to standard HTTP codes — Gemini sometimes returns non-standard ones
+      const normalizedStatus = res.status >= 200 && res.status < 600 ? res.status : 503;
+      const safeStatus = [400, 401, 403, 429, 500, 503].includes(normalizedStatus)
+        ? normalizedStatus
+        : 503;
+      const errMsg = data.error?.message || `Gemini API error (${res.status})`;
       return {
-        statusCode: res.status,
-        body: JSON.stringify({ error: data.error?.message || 'Gemini API error' }),
+        statusCode: safeStatus,
+        body: JSON.stringify({ error: errMsg }),
       };
     }
 

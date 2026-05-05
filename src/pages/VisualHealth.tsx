@@ -44,8 +44,9 @@ type Props = {
   onBack: () => void;
 };
 
-// ─── Configura aquí los intervalos (regla 20-20-20) hola jeje──────────────────────────
-const WORK_MINUTES  = 20; // minutos de trabajo antes de cada descanso
+// ─── Intervalos configurables ─────────────────────────────────────────────────
+const DEFAULT_WORK_MINUTES = 20;
+const WORK_MINUTES_STORAGE_KEY = 'therapheye_work_interval_minutes';
 const BREAK_MINUTES = 1;  // minutos de descanso recomendados
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -533,6 +534,12 @@ const VisualHealth = ({ onBack }: Props) => {
   type ConfirmAction = 'reset' | 'terminate' | null;
   const [confirmAction, setConfirmAction]           = useState<ConfirmAction>(null);
   const [deleteSessionId, setDeleteSessionId]       = useState<string | null>(null);
+  const [workMinutes, setWorkMinutes]               = useState<number>(() => {
+    try { const v = Number(localStorage.getItem(WORK_MINUTES_STORAGE_KEY)); return v >= 5 && v <= 60 ? v : DEFAULT_WORK_MINUTES; }
+    catch { return DEFAULT_WORK_MINUTES; }
+  });
+  const workMinutesRef = useRef(workMinutes);
+  workMinutesRef.current = workMinutes;
 
   const stateRef = useRef<PersistedTimerState>({
     isRunning: false,
@@ -661,7 +668,7 @@ const VisualHealth = ({ onBack }: Props) => {
 
       if (cur.isRunning) {
         if (cur.nextBreakAtMs == null) {
-          const nb = WORK_MINUTES * 60_000;
+          const nb = workMinutesRef.current * 60_000;
           saveState({ ...cur, nextBreakAtMs: nb });
           setNextBreakInMinutes(Math.round((nb - ms) / 60000));
           return;
@@ -670,7 +677,7 @@ const VisualHealth = ({ onBack }: Props) => {
           playBeep();
           // lang from useLanguage destructuring
           speakText(t('visualHealth', 'takeBreakVoice'), lang);
-          const nb = cur.nextBreakAtMs + WORK_MINUTES * 60_000;
+          const nb = cur.nextBreakAtMs + workMinutesRef.current * 60_000;
           saveState({ ...cur, nextBreakAtMs: nb });
           setNextBreakInMinutes(Math.max(0, Math.round((nb - ms) / 60000)));
         } else {
@@ -952,7 +959,7 @@ const VisualHealth = ({ onBack }: Props) => {
             <p className="text-sm text-gray-600 leading-relaxed">{t('visualHealth', 'onboardingDesc')}</p>
             <div className="bg-indigo-50 rounded-xl p-4 text-sm text-indigo-900 space-y-1.5 border border-indigo-100">
               <p className="font-semibold flex items-center gap-2"><AlarmClock className="w-4 h-4 text-indigo-500" /> {t('visualHealth', 'breakReminders')}</p>
-              <p className="text-xs text-indigo-700">{t('visualHealth', 'breakMsg1')} <strong>{WORK_MINUTES}</strong> {t('visualHealth', 'breakMsg2')} <strong>{BREAK_MINUTES}</strong> {t('visualHealth', 'breakMsg3')}</p>
+              <p className="text-xs text-indigo-700">{t('visualHealth', 'breakMsg1')} <strong>{workMinutes}</strong> {t('visualHealth', 'breakMsg2')} <strong>{BREAK_MINUTES}</strong> {t('visualHealth', 'breakMsg3')}</p>
             </div>
             <div className="flex gap-3 justify-end">
               <button
@@ -1069,7 +1076,7 @@ const VisualHealth = ({ onBack }: Props) => {
               <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-900 space-y-2">
                 <p className="font-semibold">{t('visualHealth', 'activeBreak')}</p>
                 <p>
-                  {t('visualHealth', 'breakMsg1')} <span className="font-bold">{WORK_MINUTES}</span> {t('visualHealth', 'breakMsg2')}
+                  {t('visualHealth', 'breakMsg1')} <span className="font-bold">{workMinutes}</span> {t('visualHealth', 'breakMsg2')}
                   <span className="font-bold">{BREAK_MINUTES}</span> {t('visualHealth', 'breakMsg3')}
                 </p>
                 <p className="text-xs text-indigo-700 mt-1">
@@ -1105,6 +1112,34 @@ const VisualHealth = ({ onBack }: Props) => {
                       }`}
                     />
                   </button>
+                </div>
+
+                {/* ── Intervalo de trabajo configurable ── */}
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-gray-700">
+                    {lang === 'es' ? 'Intervalo de trabajo' : 'Work interval'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5 mb-2 leading-relaxed">
+                    {lang === 'es' ? 'Cada cuántos minutos de pantalla se activa el recordatorio de descanso.' : 'How many screen minutes before a break reminder.'}
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    {[10, 15, 20, 25, 30].map(min => (
+                      <button
+                        key={min}
+                        onClick={() => {
+                          setWorkMinutes(min);
+                          try { localStorage.setItem(WORK_MINUTES_STORAGE_KEY, String(min)); } catch {}
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          workMinutes === min
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-indigo-50 hover:text-indigo-700'
+                        }`}
+                      >
+                        {min} min
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

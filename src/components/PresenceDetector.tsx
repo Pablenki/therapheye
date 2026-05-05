@@ -11,6 +11,9 @@ import { AlertCircle, X } from 'lucide-react';
 const INACTIVITY_ALERT_MS  = 45 * 60 * 1000; // 45 min sin ejercicio → alerta suave
 const IDLE_TIMEOUT_MS      = 5  * 60 * 1000; // 5 min sin actividad → user inactive
 const PRESENCE_KEY         = 'therapheye_last_exercise';
+// Timestamp de cuando esta sesión/pestaña inició — no alertar antes de que pasen
+// los 45 min desde que se abrió la app (evita falsos positivos al re-abrir)
+const SESSION_START        = Date.now();
 
 interface Alert {
   id: string;
@@ -82,7 +85,11 @@ export default function PresenceDetector() {
 
       const now = Date.now();
       const idleMs = now - lastActivityRef.current;
-      const sinEjercicioMs = now - (lastExerciseRef.current || now);
+
+      // Usar como referencia el máximo entre el último ejercicio y el inicio de
+      // la sesión actual — así evitamos alertas inmediatas al abrir la app
+      const baselineTs = Math.max(lastExerciseRef.current || 0, SESSION_START);
+      const sinEjercicioMs = now - baselineTs;
 
       // Usuario idle → no molestar
       if (idleMs > IDLE_TIMEOUT_MS) return;

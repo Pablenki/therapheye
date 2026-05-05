@@ -59,6 +59,7 @@ export default function BlinkDetector({ onBack }: Props) {
   const [elapsed, setElapsed] = useState(0);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedBpm, setSavedBpm] = useState(0);
 
   // Timer for elapsed seconds
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function BlinkDetector({ onBack }: Props) {
           VALUES (${user.id}, ${sessionStartRef.current.toISOString()}, ${endedAt.toISOString()}, ${durSec}, ${totalBlinksRef.current}, ${avgBpm})
         `;
         setSaved(true);
+        setSavedBpm(Math.round(avgBpm));
       } catch (e) {
         console.error('Error guardando sesión de parpadeo:', e);
       }
@@ -313,9 +315,36 @@ export default function BlinkDetector({ onBack }: Props) {
               )}
             </div>
             {saved && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                Sesión guardada correctamente en tu historial
+              <div className="mt-3 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  Sesión guardada correctamente en tu historial
+                </div>
+                {/* Explicación del resultado */}
+                <div className={`rounded-xl border px-4 py-3 ${
+                  savedBpm === 0 ? 'bg-gray-50 border-gray-200' :
+                  savedBpm < LOW_BLINK_ALERT ? 'bg-red-50 border-red-200' :
+                  savedBpm < NORMAL_BLINK_MIN ? 'bg-amber-50 border-amber-200' :
+                  'bg-emerald-50 border-emerald-200'
+                }`}>
+                  <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${
+                    savedBpm < LOW_BLINK_ALERT ? 'text-red-600' :
+                    savedBpm < NORMAL_BLINK_MIN ? 'text-amber-600' :
+                    'text-emerald-700'
+                  }`}>
+                    {savedBpm < LOW_BLINK_ALERT ? '⚠️ Tasa de parpadeo muy baja' :
+                     savedBpm < NORMAL_BLINK_MIN ? '🟡 Tasa de parpadeo baja' :
+                     '🟢 Tasa de parpadeo normal'}
+                    {savedBpm > 0 && ` · ${savedBpm} parp/min`}
+                  </p>
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    {savedBpm < LOW_BLINK_ALERT
+                      ? 'Una tasa menor a 8 parpadeos/min indica riesgo alto de ojo seco. Tu córnea no recibe lubricación suficiente. Se recomienda descansar de la pantalla, usar lágrimas artificiales y hacer pausas frecuentes.'
+                      : savedBpm < NORMAL_BLINK_MIN
+                      ? 'Entre 8-12 parpadeos/min es un rango bajo-normal. Intenta parpadear conscientemente, especialmente frente a pantallas. La regla 20-20-20 puede ayudarte a mantener una tasa saludable.'
+                      : 'Entre 12-20 parpadeos/min es una tasa saludable. Tus ojos reciben lubricación adecuada. Sigue practicando buenos hábitos: tomar descansos regulares y parpadear conscientemente durante pantallas.'}
+                  </p>
+                </div>
               </div>
             )}
           </div>

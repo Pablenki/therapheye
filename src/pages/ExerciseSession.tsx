@@ -657,9 +657,9 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             speakIfUnmuted(t('exerciseSession', 'voice1min'), lang);
           }
 
-          // Mitad del ejercicio (solo si > 60s y la mitad no coincide con el aviso de 1min)
+          // Mitad del ejercicio — avisa para cualquier duración > 20s
           const halfwaySecond = Math.floor(d / 2);
-          if (remaining === halfwaySecond && d > 60 && halfwaySecond > 60) {
+          if (remaining === halfwaySecond && d > 20 && halfwaySecond > 5) {
             speakIfUnmuted(t('exerciseSession', 'voice50'), lang);
           }
 

@@ -52,7 +52,13 @@
       "Bash(ls:*)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://therapheye.netlify.app)",
       "Bash(git -C /c/Users/OWNER/Desktop/therapheye log --oneline)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__restore_project",
+      "Bash(psql:*)",
+      "Bash(node -e ':*)",
+      "Bash(wc -l /c/Users/OWNER/Desktop/therapheye/src/pages/*.tsx)"
     ]
   }
 }

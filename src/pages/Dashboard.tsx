@@ -153,10 +153,11 @@ const getDiagColor = (score: number) => {
   return             { dot: 'bg-red-500',    text: 'text-red-600',     label: 'Fatiga severa' };
 };
 
-// ─── Mini gráfica semanal SVG ─────────────────────────────────────────────────
+// ─── Mini gráfica semanal SVG (estilo mercado con tooltip) ───────────────────
 const WeeklyChart = ({ data }: { data: WeekDay[] }) => {
-  const W = 400, H = 110;
-  const PAD = { top: 16, right: 12, bottom: 28, left: 32 };
+  const [hovered, setHovered] = useState<number | null>(null);
+  const W = 400, H = 100;
+  const PAD = { top: 12, right: 12, bottom: 20, left: 12 };
   const cW = W - PAD.left - PAD.right;
   const cH = H - PAD.top - PAD.bottom;
   const points = data.filter(d => d.score !== null);
@@ -167,43 +168,81 @@ const WeeklyChart = ({ data }: { data: WeekDay[] }) => {
   const toY = (v: number) => PAD.top + cH - (v / 100) * cH;
   const dotColor = (v: number) => v < 25 ? '#16a34a' : v < 50 ? '#ca8a04' : v < 75 ? '#ea580c' : '#dc2626';
 
-  const linePts = data.map((d, i) => d.score !== null ? { x: toX(i), y: toY(d.score) } : null).filter(Boolean) as {x:number;y:number}[];
-  const linePath = linePts.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
+  const linePts = data.map((d, i) => d.score !== null ? { x: toX(i), y: toY(d.score), score: d.score, label: d.label } : null).filter(Boolean) as {x:number;y:number;score:number;label:string}[];
+  // Smooth path using cubic bezier
+  const smoothPath = linePts.map((p, i) => {
+    if (i === 0) return `M ${p.x} ${p.y}`;
+    const prev = linePts[i - 1];
+    const cx = (prev.x + p.x) / 2;
+    return `C ${cx} ${prev.y} ${cx} ${p.y} ${p.x} ${p.y}`;
+  }).join(' ');
   const areaPath = linePts.length > 0
-    ? `${linePath} L ${linePts[linePts.length-1].x} ${PAD.top+cH} L ${linePts[0].x} ${PAD.top+cH} Z`
+    ? `${smoothPath} L ${linePts[linePts.length-1].x} ${PAD.top+cH} L ${linePts[0].x} ${PAD.top+cH} Z`
     : '';
 
+  const hoveredPoint = hovered !== null ? linePts[hovered] : null;
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-      <defs>
-        <linearGradient id="wkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25"/>
-          <stop offset="100%" stopColor="#6366f1" stopOpacity="0.02"/>
-        </linearGradient>
-      </defs>
-      {[0,25,50,75,100].map(v => (
-        <g key={v}>
-          <line x1={PAD.left} y1={toY(v)} x2={PAD.left+cW} y2={toY(v)} stroke="#f3f4f6" strokeWidth="1"/>
-          <text x={PAD.left-4} y={toY(v)+4} textAnchor="end" fontSize="8" fill="#d1d5db">{v}%</text>
-        </g>
-      ))}
-      <path d={areaPath} fill="url(#wkGrad)"/>
-      <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      {data.map((d, i) => {
-        if (d.score === null) return null;
-        const x = toX(i), y = toY(d.score);
-        return (
-          <g key={i}>
-            <circle cx={x} cy={y} r={4} fill={dotColor(d.score)} stroke="white" strokeWidth="1.5"/>
-          </g>
-        );
-      })}
-      {data.map((d, i) => (
-        <text key={i} x={toX(i)} y={PAD.top+cH+14} textAnchor="middle" fontSize="8" fill="#9ca3af">
-          {d.label}
-        </text>
-      ))}
-    </svg>
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
+        <defs>
+          <linearGradient id="wkGrad2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.18"/>
+            <stop offset="100%" stopColor="#6366f1" stopOpacity="0.01"/>
+          </linearGradient>
+        </defs>
+        {/* Subtle horizontal grid — sin labels */}
+        {[25,50,75].map(v => (
+          <line key={v} x1={PAD.left} y1={toY(v)} x2={PAD.left+cW} y2={toY(v)} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3"/>
+        ))}
+        <path d={areaPath} fill="url(#wkGrad2)"/>
+        <path d={smoothPath} fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {/* Hover line */}
+        {hoveredPoint && (
+          <line x1={hoveredPoint.x} y1={PAD.top} x2={hoveredPoint.x} y2={PAD.top+cH} stroke="#6366f1" strokeWidth="1" strokeDasharray="3 3" opacity="0.5"/>
+        )}
+        {/* Day labels */}
+        {data.map((d, i) => (
+          <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" fontSize="8" fill={hovered === i ? '#6366f1' : '#cbd5e1'} fontWeight={hovered === i ? 'bold' : 'normal'}>
+            {d.label}
+          </text>
+        ))}
+        {/* Hit areas + dots */}
+        {data.map((d, i) => {
+          if (d.score === null) return null;
+          const x = toX(i), y = toY(d.score);
+          return (
+            <g key={i}>
+              <circle cx={x} cy={y} r={hovered === i ? 6 : 4} fill={dotColor(d.score)} stroke="white" strokeWidth={hovered === i ? 2 : 1.5} style={{ transition: 'r 0.15s' }}/>
+              {/* Invisible large hit area */}
+              <circle cx={x} cy={y} r={18} fill="transparent"
+                onMouseEnter={() => setHovered(i)}
+                onMouseLeave={() => setHovered(null)}
+                onTouchStart={() => setHovered(i)}
+                onTouchEnd={() => setHovered(null)}
+                style={{ cursor: 'crosshair' }}
+              />
+            </g>
+          );
+        })}
+      </svg>
+      {/* Tooltip */}
+      {hoveredPoint && (
+        <div
+          className="absolute pointer-events-none z-10 bg-gray-900/90 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg"
+          style={{
+            left: `${(hoveredPoint.x / W) * 100}%`,
+            top: `${(hoveredPoint.y / H) * 100}%`,
+            transform: 'translate(-50%, -130%)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span className="font-bold">{hoveredPoint.label}</span>
+          <span className="mx-1.5 text-gray-400">·</span>
+          <span style={{ color: dotColor(hoveredPoint.score) }}>{hoveredPoint.score}% fatiga</span>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -574,6 +613,29 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
 
             return (<>
 
+          {/* ── Módulos principales (flujo lógico) ── */}
+          <div className="mb-1">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{es ? 'Tu flujo diario' : 'Your daily flow'}</p>
+            <div className="grid grid-cols-5 gap-2">
+              {([
+                { page: 'questionnaire' as Page,        emoji: '📋', label: es ? 'Evaluación' : 'Assessment',  color: 'from-indigo-500 to-violet-600' },
+                { page: 'exercises' as Page,            emoji: '💪', label: es ? 'Ejercicios' : 'Exercises',   color: 'from-emerald-500 to-teal-600'  },
+                { page: 'diagnostico-completo' as Page, emoji: '🔬', label: es ? 'Diagnóstico' : 'Diagnosis',  color: 'from-blue-500 to-cyan-600'     },
+                { page: 'chat-sintomas' as Page,        emoji: '💬', label: es ? 'Chat IA' : 'AI Chat',       color: 'from-purple-500 to-pink-600'   },
+                { page: 'rutinas-ia' as Page,           emoji: '✨', label: es ? 'Rutinas IA' : 'AI Routines', color: 'from-amber-500 to-orange-500'  },
+              ] as const).map(item => (
+                <button
+                  key={item.page}
+                  onClick={() => onNavigate(item.page)}
+                  className={`bg-gradient-to-br ${item.color} rounded-xl p-2.5 flex flex-col items-center gap-1 hover:opacity-90 transition active:scale-95 shadow-sm`}
+                >
+                  <span className="text-xl">{item.emoji}</span>
+                  <span className="text-white text-[10px] font-bold leading-tight text-center">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── Fila 1: Estado de fatiga + Racha + Recomendación ── */}
           <SectionHeader id="fatiga" label={es ? 'Estado y racha' : 'Status & streak'} collapsed={collapsed} onToggle={handleToggle} />
           {!collapsed['fatiga'] && <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -816,8 +878,16 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => onNavigate('learn')}
-                  onKeyDown={e => e.key === 'Enter' && onNavigate('learn')}
+                  onClick={() => {
+                    try { localStorage.setItem('therapheye_open_article', article.id); } catch {}
+                    onNavigate('learn');
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      try { localStorage.setItem('therapheye_open_article', article.id); } catch {}
+                      onNavigate('learn');
+                    }
+                  }}
                   className={`relative h-52 bg-gradient-to-br ${article.accentFrom} ${article.accentTo} cursor-pointer transition-opacity duration-300 ${articleFading ? 'opacity-0' : 'opacity-100'}`}
                 >
                   {/* Fondo decorativo */}

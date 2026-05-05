@@ -228,21 +228,22 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
     setError(null)
     setFaltantes([])
 
-    // Validar que existan datos en todos los módulos
+    // Validar que existan datos del DÍA DE HOY en todos los módulos
     const missing: string[] = []
+    const today = new Date().toISOString().slice(0, 10) // "2026-05-04"
     const [imgRows, cuestionarioRows, timerRows, ejerciciosRows, visionRows] = await Promise.all([
-      sql`SELECT sintoma FROM image_capture_history WHERE user_id = ${user.id} LIMIT 1`.catch(() => []),
-      sql`SELECT puntaje_fatiga FROM respuestas_cuestionario WHERE user_id = ${user.id} LIMIT 1`.catch(() => []),
-      sql`SELECT accumulated_ms FROM timer_state WHERE user_id = ${user.id} ORDER BY fecha DESC LIMIT 1`.catch(() => []),
-      sql`SELECT COUNT(*) as total FROM historial_ejercicios WHERE user_id = ${user.id} AND status = 'completed'`.catch(() => [{ total: 0 }]),
-      sql`SELECT mejor_nivel, resultados_json FROM historial_vision_test WHERE user_id = ${user.id} ORDER BY created_at DESC LIMIT 1`.catch(() => []),
+      sql`SELECT sintoma FROM image_capture_history WHERE user_id = ${user.id} AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = ${today} LIMIT 1`.catch(() => []),
+      sql`SELECT puntaje_fatiga FROM respuestas_cuestionario WHERE user_id = ${user.id} AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = ${today} LIMIT 1`.catch(() => []),
+      sql`SELECT accumulated_ms FROM timer_state WHERE user_id = ${user.id} AND fecha = ${today} ORDER BY fecha DESC LIMIT 1`.catch(() => []),
+      sql`SELECT COUNT(*) as total FROM historial_ejercicios WHERE user_id = ${user.id} AND status = 'completed' AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = ${today}`.catch(() => [{ total: 0 }]),
+      sql`SELECT mejor_nivel, resultados_json FROM historial_vision_test WHERE user_id = ${user.id} AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = ${today} ORDER BY created_at DESC LIMIT 1`.catch(() => []),
     ])
 
-    if (!imgRows || imgRows.length === 0)         missing.push('Captura de imagen')
-    if (!cuestionarioRows || cuestionarioRows.length === 0) missing.push('Cuestionario')
-    if (!timerRows || timerRows.length === 0)     missing.push('Tiempo en pantalla')
-    if (!ejerciciosRows || ejerciciosRows.length === 0 || Number(ejerciciosRows[0]?.total) === 0) missing.push('Ejercicios visuales')
-    if (!visionRows || visionRows.length === 0)   missing.push('Prueba de visión')
+    if (!imgRows || imgRows.length === 0)         missing.push('Captura de imagen (hoy)')
+    if (!cuestionarioRows || cuestionarioRows.length === 0) missing.push('Cuestionario (hoy)')
+    if (!timerRows || timerRows.length === 0)     missing.push('Tiempo en pantalla (hoy)')
+    if (!ejerciciosRows || ejerciciosRows.length === 0 || Number(ejerciciosRows[0]?.total) === 0) missing.push('Ejercicios visuales (hoy)')
+    if (!visionRows || visionRows.length === 0)   missing.push('Prueba de visión (hoy)')
 
     if (missing.length > 0) {
       setFaltantes(missing)

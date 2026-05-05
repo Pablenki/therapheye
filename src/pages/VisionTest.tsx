@@ -510,8 +510,19 @@ const KeyboardDemoAnim = () => (
 );
 
 // ─── Componente principal ─────────────────────────────────────────────────────
+const readIsDark = () => {
+  try { const s = localStorage.getItem('therapeye_accessibility_settings'); return s ? JSON.parse(s).theme === 'oscuro' : false; }
+  catch { return false; }
+};
+
 const VisionTest = ({ onBack }: { onBack: () => void }) => {
   const { lang: ctxLang } = useLanguage();
+  const [isDark, setIsDark] = useState(readIsDark);
+  useEffect(() => {
+    const h = () => setIsDark(readIsDark());
+    window.addEventListener('therapheye-theme-changed', h);
+    return () => window.removeEventListener('therapheye-theme-changed', h);
+  }, []);
   const [phase, setPhase]                     = useState<Phase>('instructions');
   const [currentRow, setCurrentRow]           = useState(0);
   const [currentLetterIdx, setCurrentLetterIdx] = useState(0);
@@ -959,9 +970,9 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   // ─── INSTRUCCIONES ──────────────────────────────────────────────────────────
   if (phase === 'instructions') {
     return (
-      <div className="vision-test-root min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
-          <button onClick={onBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
+      <div className={`vision-test-root min-h-screen flex items-center justify-center p-4 ${isDark ? 'bg-zinc-950' : 'bg-white'}`}>
+        <div className={`rounded-2xl shadow-xl max-w-2xl w-full p-8 ${isDark ? 'bg-zinc-900' : 'bg-white'}`}>
+          <button onClick={onBack} className={`flex items-center gap-2 mb-6 ${isDark ? 'text-gray-400 hover:text-gray-100' : 'text-gray-600 hover:text-gray-900'}`}>
             <ArrowLeft className="w-4 h-4" /> {language === 'es' ? 'Volver' : 'Back'}
           </button>
 
@@ -986,16 +997,16 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
             <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Eye className="w-8 h-8 text-indigo-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-1">{ui.title}</h1>
-            <p className="text-gray-400 text-sm">{ui.subtitle}</p>
+            <h1 className={`text-2xl font-bold mb-1 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{ui.title}</h1>
+            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{ui.subtitle}</p>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
+          <div className={`border rounded-xl p-4 mb-5 text-sm ${isDark ? 'bg-amber-950/40 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
             ⚠️ {ui.warning}
           </div>
 
           {/* Demo animada según modo de entrada */}
-          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 mb-5">
+          <div className={`rounded-xl p-4 mb-5 ${isDark ? 'bg-zinc-800' : 'bg-gradient-to-br from-indigo-50 to-blue-50'}`}>
             <p className="text-xs text-center text-indigo-400 uppercase font-semibold mb-2 tracking-wider">
               {language === 'es' ? 'Así se realiza la prueba' : 'How to take the test'}
             </p>
@@ -1003,7 +1014,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
           </div>
 
           {/* Instrucciones de uso */}
-          <div className="space-y-2 mb-5 text-sm text-gray-700">
+          <div className={`space-y-2 mb-5 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
             <p className="flex gap-2"><span className="font-bold text-indigo-600">1.</span> {ui.step1}</p>
             {voiceMode ? (
               <>
@@ -1020,18 +1031,18 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
           </div>
 
           {/* Modo de entrada */}
-          <div className="bg-gray-50 rounded-xl p-4 mb-5 space-y-3">
-            <p className="text-sm font-semibold text-gray-700">{ui.inputModeLabel}</p>
+          <div className={`rounded-xl p-4 mb-5 space-y-3 ${isDark ? 'bg-zinc-800' : 'bg-gray-50'}`}>
+            <p className={`text-sm font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{ui.inputModeLabel}</p>
             <div className="flex gap-2">
               <button onClick={() => setVoiceMode(true)} disabled={!voiceAvailable}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 text-sm font-semibold transition
-                  ${voiceMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600'}
+                  ${voiceMode ? 'bg-indigo-600 text-white border-indigo-600' : (isDark ? 'bg-zinc-700 text-indigo-400 border-zinc-600 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600')}
                   ${!voiceAvailable ? 'opacity-40 cursor-not-allowed' : ''}`}>
                 <Mic className="w-4 h-4" /> {ui.voiceBtn} {!voiceAvailable && ui.notAvailable}
               </button>
               <button onClick={() => setVoiceMode(false)}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 text-sm font-semibold transition
-                  ${!voiceMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600'}`}>
+                  ${!voiceMode ? 'bg-indigo-600 text-white border-indigo-600' : (isDark ? 'bg-zinc-700 text-indigo-400 border-zinc-600 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600')}`}>
                 <Keyboard className="w-4 h-4" /> {ui.keyboardBtn}
               </button>
             </div>
@@ -1040,12 +1051,12 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
 
           {/* Distancia */}
           <div className="mb-6">
-            <p className="text-sm font-semibold text-gray-700 mb-2">{ui.distanceLabel}</p>
+            <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{ui.distanceLabel}</p>
             <div className="flex gap-2">
               {(['40', '60', '80'] as const).map(d => (
                 <button key={d} onClick={() => setDistance(d)}
                   className={`flex-1 py-2 rounded-lg border-2 text-sm font-semibold transition
-                    ${distance === d ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600'}`}>
+                    ${distance === d ? 'bg-indigo-600 text-white border-indigo-600' : (isDark ? 'bg-zinc-700 text-indigo-400 border-zinc-600 hover:border-indigo-500' : 'bg-white text-indigo-600 border-indigo-300 hover:border-indigo-600')}`}>
                   {d} cm
                 </button>
               ))}
@@ -1344,23 +1355,23 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   };
 
   return (
-    <div className="vision-test-root min-h-screen bg-white flex items-center justify-center p-4">
+    <div className={`vision-test-root min-h-screen flex items-center justify-center p-4 ${isDark ? 'bg-zinc-950' : 'bg-white'}`}>
 
       {/* ── Modal: Buscar oftalmólogo ── */}
       {showOptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden" style={{ maxHeight: '85vh' }}>
-            <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div className={`rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden ${isDark ? 'bg-zinc-900' : 'bg-white'}`} style={{ maxHeight: '85vh' }}>
+            <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-zinc-700' : ''}`}>
               <div>
-                <h3 className="font-bold text-gray-800 text-base">
+                <h3 className={`font-bold text-base ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                   {language === 'es' ? 'Oftalmólogos y optometristas cerca' : 'Ophthalmologists near you'}
                 </h3>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                   {language === 'es' ? 'Resultados de Google Maps · Selecciona uno para ver detalles' : 'Google Maps results · Select one for details'}
                 </p>
               </div>
               <button onClick={() => setShowOptModal(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-500">
+                className={`p-2 rounded-lg transition ${isDark ? 'hover:bg-zinc-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1382,8 +1393,8 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                   : null
               }
             </div>
-            <div className="px-5 py-3 border-t flex items-center justify-between bg-gray-50">
-              <p className="text-xs text-gray-400">
+            <div className={`px-5 py-3 border-t flex items-center justify-between ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-gray-50'}`}>
+              <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 {language === 'es' ? 'Powered by Google Maps' : 'Powered by Google Maps'}
               </p>
               <a
@@ -1399,7 +1410,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
+      <div className={`rounded-2xl shadow-xl max-w-2xl w-full p-8 ${isDark ? 'bg-zinc-900' : 'bg-white'}`}>
         {/* Header */}
         <div className="text-center mb-5">
           <div className="text-5xl mb-2">{urgencyIcon[resultInfo.urgency]}</div>
@@ -1412,7 +1423,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
           {[1,2,3,4,5,6,7,8,9,10].map(lvl => (
             <div key={lvl}
               className={`h-3 flex-1 rounded-full transition-all ${
-                lvl <= bestLevel ? resultInfo.badgeColor : 'bg-gray-100'
+                lvl <= bestLevel ? resultInfo.badgeColor : (isDark ? 'bg-zinc-700' : 'bg-gray-100')
               }`}
             />
           ))}
@@ -1424,18 +1435,18 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         {/* Categoría + descripción */}
         <div className={`${resultInfo.bg} border ${resultInfo.border} rounded-xl p-5 mb-4`}>
           <p className={`text-lg font-bold ${resultInfo.color} mb-1`}>{resultInfo.label}</p>
-          <p className="text-sm text-gray-600 mb-3">{resultInfo.detail}</p>
-          <p className="text-sm text-gray-700 leading-relaxed">{resultInfo.description}</p>
+          <p className={`text-sm mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{resultInfo.detail}</p>
+          <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{resultInfo.description}</p>
         </div>
 
         {/* Recomendaciones */}
         <div className="mb-4">
-          <p className="text-sm font-semibold text-gray-700 mb-2">
+          <p className={`text-sm font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
             {language === 'es' ? '💡 Recomendaciones para ti' : '💡 Recommendations for you'}
           </p>
           <ul className="space-y-1.5">
             {resultInfo.recommendations.map((rec, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2">
+              <li key={i} className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 ${isDark ? 'text-gray-300 bg-zinc-800' : 'text-gray-700 bg-gray-50'}`}>
                 <span className="text-indigo-400 mt-0.5 flex-shrink-0">→</span>
                 <span>{rec}</span>
               </li>
@@ -1460,15 +1471,15 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
 
         {/* Detalle por nivel (colapsable) */}
         <details className="mb-5 group">
-          <summary className="text-sm font-semibold text-gray-500 cursor-pointer hover:text-gray-700 select-none list-none flex items-center gap-1">
+          <summary className={`text-sm font-semibold cursor-pointer select-none list-none flex items-center gap-1 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}>
             <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
             {ui.detailByLevel}
           </summary>
           <div className="space-y-1 max-h-48 overflow-y-auto pr-1 mt-2">
             {results.map((res, i) => (
-              <div key={i} className="flex items-center justify-between text-sm px-3 py-1.5 rounded-lg bg-gray-50">
-                <span className="text-gray-400 font-mono w-14">{res.acuity}</span>
-                <span className="font-mono text-gray-600 tracking-widest text-xs flex-1 text-center">{testRows[i]?.label}</span>
+              <div key={i} className={`flex items-center justify-between text-sm px-3 py-1.5 rounded-lg ${isDark ? 'bg-zinc-800' : 'bg-gray-50'}`}>
+                <span className={`font-mono w-14 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{res.acuity}</span>
+                <span className={`font-mono tracking-widest text-xs flex-1 text-center ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{testRows[i]?.label}</span>
                 <span className={`ml-2 font-bold w-4 ${res.canRead ? 'text-green-600' : 'text-red-500'}`}>
                   {res.canRead ? '✓' : '✗'}
                 </span>
@@ -1480,7 +1491,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
         {/* Acciones */}
         <div className="flex gap-3">
           <button onClick={handleRestart}
-            className="flex items-center justify-center gap-2 flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold transition">
+            className={`flex items-center justify-center gap-2 flex-1 py-3 rounded-xl font-semibold transition ${isDark ? 'bg-zinc-700 hover:bg-zinc-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}>
             <RefreshCw className="w-4 h-4" /> {ui.repeatBtn}
           </button>
           <button onClick={onBack}

@@ -45,9 +45,20 @@ const HORA_LABEL: Record<string, string> = {
   mañana: 'Mañana (6–12h)', tarde: 'Tarde (12–18h)', noche: 'Noche (18–24h)', variable: 'Variable'
 };
 
+const readIsDark = () => {
+  try { const s = localStorage.getItem('therapeye_accessibility_settings'); return s ? JSON.parse(s).theme === 'oscuro' : false; }
+  catch { return false; }
+};
+
 export default function FatigaPredictor() {
   const { user } = useUser();
   const [result, setResult] = useState<PredictorResult | null>(null);
+  const [isDark, setIsDark] = useState(readIsDark);
+  useEffect(() => {
+    const h = () => setIsDark(readIsDark());
+    window.addEventListener('therapheye-theme-changed', h);
+    return () => window.removeEventListener('therapheye-theme-changed', h);
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -164,11 +175,11 @@ ${resumen}`;
   const colors = result ? probColor(result.probabilidad) : null;
 
   return (
-    <div className={`rounded-2xl border p-4 ${colors ? `${colors.bg} ${colors.border}` : 'bg-gray-50 border-gray-200'}`}>
+    <div className={`rounded-2xl border p-4 ${colors ? `${colors.bg} ${colors.border}` : (isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-gray-50 border-gray-200')}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <TrendingUp className={`w-4 h-4 ${colors ? colors.text : 'text-gray-400'}`} />
-          <p className="text-sm font-bold text-gray-800">Predicción de hoy</p>
+          <p className={`text-sm font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Predicción de hoy</p>
         </div>
         <button
           onClick={() => runPredictor(true)}
@@ -213,7 +224,7 @@ ${resumen}`;
           </div>
 
           <p className={`text-xs leading-relaxed ${colors.text} font-medium`}>{result.mensaje}</p>
-          <p className="text-xs text-gray-600 leading-relaxed">💡 {result.consejo}</p>
+          <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>💡 {result.consejo}</p>
         </div>
       )}
     </div>

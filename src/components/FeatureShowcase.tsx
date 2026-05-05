@@ -96,7 +96,6 @@ const SLIDES: Slide[] = [
     from: 'from-sky-500',
     to: 'to-cyan-600',
     features: [
-      { icon: Zap,           name: 'Pomodoro Visual',     desc: 'Pausas inteligentes mientras trabajas en pantalla', color: 'text-sky-700',  bg: 'bg-sky-100'   },
       { icon: HeartHandshake,name: 'Modo Zen',             desc: 'Relajación y respiración para tus ojos',            color: 'text-cyan-700', bg: 'bg-cyan-100'  },
       { icon: BookOpenCheck, name: 'Lectura Visual',       desc: 'Entrenamiento de velocidad y comprensión lectora',  color: 'text-teal-700', bg: 'bg-teal-100'  },
       { icon: Timer,         name: 'Reacción Visual',      desc: 'Mide tu tiempo de respuesta ocular',                color: 'text-blue-700', bg: 'bg-blue-100'  },
@@ -155,6 +154,16 @@ export default function FeatureShowcase({ active, onClose }: Props) {
   const [visible, setVisible] = useState(true);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
+
+  // Resetear al paso 1 cada vez que se abre (evita quedar en el último slide)
+  useEffect(() => {
+    if (active) {
+      setStep(0);
+      setProgress(0);
+      setVisible(true);
+      setPaused(false);
+    }
+  }, [active]);
 
   const finish = useCallback(() => {
     try { localStorage.setItem(SHOWCASE_KEY, '1'); } catch {}

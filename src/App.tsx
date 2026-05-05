@@ -39,7 +39,6 @@ const MapaOftalmologos   = lazy(() => import('./pages/MapaOftalmologos'))
 const JuegosVisuales     = lazy(() => import('./pages/JuegosVisuales'))
 const RutinasIA          = lazy(() => import('./pages/RutinasIA'))
 const DiarioVisual       = lazy(() => import('./pages/DiarioVisual'))
-const PomodoroVisual     = lazy(() => import('./pages/PomodoroVisual'))
 const CampoVisual        = lazy(() => import('./pages/CampoVisual'))
 const ModoZen            = lazy(() => import('./pages/ModoZen'))
 const ContrastTest       = lazy(() => import('./pages/ContrastTest'))
@@ -99,7 +98,6 @@ type Page =
   | 'juegos-visuales'
   | 'rutinas-ia'
   | 'diario-visual'
-  | 'pomodoro-visual'
   | 'campo-visual'
   | 'modo-zen'
   | 'contrast-test'
@@ -318,8 +316,6 @@ function AppContent() {
         return <RutinasIA onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       case 'diario-visual':
         return <DiarioVisual onBack={() => handleNavigate('dashboard')} />
-      case 'pomodoro-visual':
-        return <PomodoroVisual onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       case 'campo-visual':
         return <CampoVisual onBack={() => handleNavigate('dashboard')} />
       case 'modo-zen':

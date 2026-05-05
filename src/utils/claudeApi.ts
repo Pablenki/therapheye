@@ -33,7 +33,17 @@ export async function callClaude(req: AIRequest): Promise<AIResponse> {
         messages: req.messages,
       }),
     });
-    if (!res.ok) throw new Error(`API ${res.status}`);
+    if (!res.ok) {
+      let errMsg = `API ${res.status}`;
+      try {
+        const errData = await res.json();
+        if (errData?.error) errMsg = errData.error;
+      } catch { /* ignore */ }
+      if (res.status === 429) errMsg = 'Límite de solicitudes alcanzado. Intenta en unos segundos.';
+      if (res.status === 503) errMsg = 'Servicio de IA temporalmente no disponible. Intenta de nuevo.';
+      if (res.status === 401 || res.status === 403) errMsg = 'Error de autenticación con la IA.';
+      throw new Error(errMsg);
+    }
     return res.json();
   }
 

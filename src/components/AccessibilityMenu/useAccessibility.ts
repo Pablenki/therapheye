@@ -12,21 +12,14 @@ import { THEMES } from '../../themes';
 const STORAGE_KEY = 'therapeye_accessibility_settings';
 
 export const useAccessibility = () => {
-  const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
+  const [settings, setSettings] = useState<AccessibilitySettings>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return { ...defaultSettings, ...JSON.parse(saved) };
+    } catch { /* ignore */ }
+    return defaultSettings;
+  });
   const [isOpen, setIsOpen] = useState(false);
-
-  // ==================== CARGAR CONFIGURACIÓN GUARDADA ====================
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSettings({ ...defaultSettings, ...parsed });
-      } catch (error) {
-        console.error('Error cargando configuración:', error);
-      }
-    }
-  }, []);
 
   // ==================== GUARDAR CONFIGURACIÓN ====================
   const saveSettings = useCallback((newSettings: AccessibilitySettings) => {

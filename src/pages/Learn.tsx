@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactElement } from 'react';
+import { useState, useMemo, useEffect, type ReactElement } from 'react';
 import { ArrowLeft, BookOpen, Clock, Search, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { ARTICLES, CATEGORY_META, type Article, type ArticleCategory } from '../data/articles';
@@ -662,6 +662,19 @@ const Learn = ({ onBack }: LearnProps) => {
     setDetailArticleIndex(ARTICLES.findIndex(a => a.id === article.id));
     window.scrollTo(0, 0);
   };
+
+  // Abrir artículo específico cuando se navega desde el Dashboard
+  useEffect(() => {
+    try {
+      const targetId = localStorage.getItem('therapheye_open_article');
+      if (targetId) {
+        localStorage.removeItem('therapheye_open_article');
+        const target = ARTICLES.find(a => a.id === targetId);
+        if (target) openArticle(target);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const categories: { id: Category; labelEs: string; labelEn: string; emoji: string; activeClass: string }[] = [
     { id: 'all',        labelEs: 'Todos',       labelEn: 'All',        emoji: '🔍', activeClass: 'bg-white text-indigo-700'           },

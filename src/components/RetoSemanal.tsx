@@ -4,7 +4,7 @@
 // Progreso trackeado en localStorage + DB queries
 // =========================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Trophy, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
@@ -157,14 +157,25 @@ function pickRetos(weekKey: string): Reto[] {
 
 interface RetoState { reto: Reto; progress: number; done: boolean }
 
+const readIsDark = () => {
+  try { const s = localStorage.getItem('therapeye_accessibility_settings'); return s ? JSON.parse(s).theme === 'oscuro' : false; }
+  catch { return false; }
+};
+
 export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { user } = useUser();
   const [retos, setRetos] = useState<RetoState[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDark, setIsDark] = useState(readIsDark);
+  useEffect(() => {
+    const h = () => setIsDark(readIsDark());
+    window.addEventListener('therapheye-theme-changed', h);
+    return () => window.removeEventListener('therapheye-theme-changed', h);
+  }, []);
   const weekKey = getWeekKey();
   const { start, end } = getWeekBounds();
 
-  useEffect(() => {
+  const fetchProgress = useCallback(() => {
     if (!user?.id) return;
     const selected = pickRetos(weekKey);
     Promise.all(
@@ -175,13 +186,21 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
     ).then(states => { setRetos(states); setLoading(false); });
   }, [user?.id, weekKey, start, end]);
 
+  useEffect(() => { fetchProgress(); }, [fetchProgress]);
+
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) fetchProgress(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchProgress]);
+
   const completed = retos.filter(r => r.done).length;
   const allDone = completed === 3;
 
   if (loading) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+    <div className={`rounded-2xl shadow-sm border overflow-hidden ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-amber-100'}`}>
       {/* Header */}
       <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -197,25 +216,25 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
       </div>
 
       {allDone && (
-        <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center gap-2">
+        <div className={`border-b px-4 py-2 flex items-center gap-2 ${isDark ? 'bg-amber-950/40 border-amber-800' : 'bg-amber-50 border-amber-100'}`}>
           <span className="text-lg">🎉</span>
-          <p className="text-amber-800 text-xs font-semibold">¡Semana perfecta! Completaste todos los retos</p>
+          <p className={`text-xs font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>¡Semana perfecta! Completaste todos los retos</p>
         </div>
       )}
 
-      <div className="divide-y divide-gray-50">
+      <div className={`divide-y ${isDark ? 'divide-zinc-700' : 'divide-gray-50'}`}>
         {retos.map(({ reto, progress, done }) => (
           <div key={reto.id} className="flex items-center gap-3 px-4 py-3">
             <span className="text-xl flex-shrink-0">{reto.emoji}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <p className={`text-sm font-semibold truncate ${done ? 'text-green-700' : 'text-gray-800'}`}>{reto.titulo}</p>
+                <p className={`text-sm font-semibold truncate ${done ? (isDark ? 'text-green-400' : 'text-green-700') : (isDark ? 'text-gray-200' : 'text-gray-800')}`}>{reto.titulo}</p>
                 {done && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
               </div>
-              <p className="text-xs text-gray-400 truncate">{reto.desc}</p>
+              <p className={`text-xs truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{reto.desc}</p>
               {/* Progress bar */}
               <div className="flex items-center gap-2 mt-1.5">
-                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-zinc-700' : 'bg-gray-100'}`}>
                   <div
                     className="h-full rounded-full transition-all duration-700"
                     style={{
@@ -224,7 +243,7 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
                     }}
                   />
                 </div>
-                <span className="text-[10px] text-gray-400 flex-shrink-0">{progress}/{reto.meta}</span>
+                <span className={`text-[10px] flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{progress}/{reto.meta}</span>
               </div>
             </div>
             {!done && onNavigate && (
@@ -238,7 +257,7 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
                   };
                   onNavigate(pageMap[reto.id] ?? 'dashboard');
                 }}
-                className="flex-shrink-0 w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 hover:bg-amber-200 transition"
+                className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition ${isDark ? 'bg-amber-900/40 text-amber-400 hover:bg-amber-900/60' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -248,8 +267,8 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
         ))}
       </div>
 
-      <div className="px-4 py-2 border-t border-gray-50">
-        <p className="text-[10px] text-gray-400 text-center">Semana {weekKey} · Nuevos retos cada lunes</p>
+      <div className={`px-4 py-2 border-t ${isDark ? 'border-zinc-700' : 'border-gray-50'}`}>
+        <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Semana {weekKey} · Nuevos retos cada lunes</p>
       </div>
     </div>
   );
