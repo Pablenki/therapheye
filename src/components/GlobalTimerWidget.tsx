@@ -28,7 +28,7 @@ type Page =
   | 'juegos-visuales'
   | 'rutinas-ia'
   | 'diario-visual'
-  | 'pomodoro-visual'
+
   | 'campo-visual'
   | 'modo-zen'
   | 'contrast-test'

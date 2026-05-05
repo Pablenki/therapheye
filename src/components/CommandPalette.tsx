@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, X, Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, BookOpen, ScanFace, BookOpenCheck,
-  MessageCircleHeart, MapPin, Gamepad2, Sparkles, BookMarked, Zap,
+  MessageCircleHeart, MapPin, Gamepad2, Sparkles, BookMarked,
   Crosshair, EarOff, Contrast, Timer, Orbit, BarChart2, ClipboardCheck,
   Palette, FlaskConical, Focus, Microscope, ScrollText, TriangleAlert,
   ImageIcon, BrainCircuit, AreaChart, Scan, QrCode, MessageCircle, Crown,
@@ -41,7 +41,6 @@ const ALL_ITEMS: NavItem[] = [
   { icon: Gamepad2,          label: 'Juegos Visuales',    page: 'juegos-visuales',      desc: 'Entrena tu visión jugando mini-juegos' },
   { icon: Sparkles,          label: 'Rutinas con IA',     page: 'rutinas-ia',           desc: 'Rutinas semanales generadas por inteligencia artificial' },
   { icon: BookMarked,        label: 'Diario Visual',      page: 'diario-visual',        desc: 'Registra tus molestias y mejoras diarias' },
-  { icon: Zap,               label: 'Pomodoro Visual',    page: 'pomodoro-visual',      desc: 'Pausas inteligentes mientras trabajas en pantalla' },
   { icon: Crosshair,         label: 'Campo Visual',       page: 'campo-visual',         desc: 'Mapeo completo de tu campo de visión' },
   { icon: EarOff,            label: 'Modo Zen',           page: 'modo-zen',             desc: 'Relajación y meditación para tus ojos' },
   { icon: Contrast,          label: 'Test Contraste',     page: 'contrast-test',        desc: 'Sensibilidad al contraste luminoso' },

@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Activity, Camera, Glasses, History, HeartPulse, ScanEye,
   ClipboardList, ScanFace, BookOpenCheck, MessageCircleHeart,
-  MapPin, Gamepad2, Sparkles, BookMarked, Zap, Crosshair, Contrast,
+  MapPin, Gamepad2, Sparkles, BookMarked, Crosshair, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, FlaskConical, Focus,
   Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit,
   AreaChart, Scan, QrCode, MessageCircle, Crown, BookOpen, HeartHandshake,
