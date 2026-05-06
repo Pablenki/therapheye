@@ -108,21 +108,24 @@ interface Props {
 type NavItem = { icon: React.ElementType; label: string; page: Page; tourId?: string };
 
 const MAIN_NAV_ITEMS: NavItem[] = [
-  { icon: Home,          label: 'Inicio',           page: 'dashboard'           },
-  { icon: Activity,      label: 'Ejercicios',        page: 'exercises',            tourId: 'tour-exercises'    },
-  { icon: Camera,        label: 'Captura de imagen', page: 'image-capture'       },
-  { icon: Glasses,       label: 'Prueba de visión',  page: 'vision-test'         },
-  { icon: History,       label: 'Historial',         page: 'history',              tourId: 'tour-history'      },
-  { icon: HeartPulse,    label: 'Salud Visual',      page: 'visual-health'       },
-  { icon: ScanEye,       label: 'Diagnóstico',       page: 'diagnostico-completo', tourId: 'tour-diagnostico'  },
-  { icon: ClipboardList, label: 'Cuestionario',      page: 'questionnaire',        tourId: 'tour-questionnaire'},
-  { icon: BookOpen,      label: 'Aprende',           page: 'learn'               },
-  { icon: ScanFace,      label: 'Parpadeo',          page: 'blink-detector'      },
+  { icon: Home,               label: 'Inicio',             page: 'dashboard'                                 },
+  { icon: Activity,           label: 'Ejercicios',          page: 'exercises',            tourId: 'tour-exercises'    },
+  { icon: Camera,             label: 'Captura de imagen',   page: 'image-capture'                            },
+  { icon: Glasses,            label: 'Prueba de visión',    page: 'vision-test'                              },
+  { icon: History,            label: 'Historial',           page: 'history',              tourId: 'tour-history'      },
+  { icon: HeartPulse,         label: 'Salud Visual',        page: 'visual-health'                            },
+  { icon: ScanEye,            label: 'Diagnóstico',         page: 'diagnostico-completo', tourId: 'tour-diagnostico'  },
+  { icon: ClipboardList,      label: 'Cuestionario',        page: 'questionnaire',        tourId: 'tour-questionnaire'},
+  { icon: MessageCircleHeart, label: 'Asistente IA',        page: 'chat-sintomas',        tourId: 'tour-chat'         },
+  { icon: BookOpen,           label: 'Aprende',             page: 'learn'                                    },
+  { icon: ScanFace,           label: 'Parpadeo',            page: 'blink-detector'                           },
 ];
+
+// Feature flag: ocultar Premium de la UI
+const PREMIUM_ENABLED = false;
 
 const ADVANCED_NAV_ITEMS: NavItem[] = [
   { icon: BookOpenCheck,      label: 'Lectura Visual',    page: 'reading-test'          },
-  { icon: MessageCircleHeart, label: 'Chat Visual',       page: 'chat-sintomas',          tourId: 'tour-chat' },
   { icon: MapPin,             label: 'Oftalmólogos',      page: 'mapa-oftalmologos'     },
   { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'       },
   { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'            },
@@ -146,7 +149,7 @@ const ADVANCED_NAV_ITEMS: NavItem[] = [
   { icon: Scan,               label: 'OCR Receta',        page: 'ocr-receta'            },
   { icon: QrCode,             label: 'QR Informe',        page: 'qr-informe'            },
   { icon: MessageCircle,      label: 'Recordatorios WA',  page: 'recordatorios-wa'      },
-  { icon: Crown,              label: 'Premium',           page: 'plan-premium'          },
+  ...(PREMIUM_ENABLED ? [{ icon: Crown, label: 'Premium', page: 'plan-premium' as Page }] : []),
   { icon: Grid3x3,            label: 'Rejilla Amsler',    page: 'amsler-grid'           },
   { icon: Dot,                label: 'Dom. Ocular',       page: 'dominancia-ocular'     },
   { icon: Wind,               label: 'Respiración 4-7-8', page: 'respiracion-478'       },

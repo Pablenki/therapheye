@@ -7,6 +7,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sun, SunDim, AlertTriangle, X } from 'lucide-react';
 
+// ── Feature flag: desactivar cámara de fondo temporalmente ──────────────────
+const CAMERA_AMBIENT_ENABLED = false;
+
 type LightState = 'optima' | 'oscura' | 'excesiva' | 'sin-camara';
 
 interface LightInfo {
@@ -143,6 +146,7 @@ export default function AmbientLightDetector() {
   }, [measure]);
 
   useEffect(() => {
+    if (!CAMERA_AMBIENT_ENABLED) return; // Feature flag: no iniciar cámara
     initCamera();
     return () => stopCamera();
   }, [initCamera, stopCamera]);
@@ -156,7 +160,7 @@ export default function AmbientLightDetector() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  if (dismissed || !lightInfo) return null;
+  if (!CAMERA_AMBIENT_ENABLED || dismissed || !lightInfo) return null;
 
   const cfg = STATE_CONFIG[lightInfo.state];
   const Icon = cfg.icon;

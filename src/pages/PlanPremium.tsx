@@ -10,6 +10,9 @@ import {
   Download, Infinity, Star, ChevronRight, Lock,
 } from 'lucide-react';
 
+// Feature flag: módulo Premium desactivado temporalmente en la UI
+const PREMIUM_ENABLED = false;
+
 interface Props { onBack: () => void; }
 
 interface Feature {
@@ -37,7 +40,26 @@ const FEATURES: Feature[] = [
 const PLAN_ANUAL_PRECIO = 79;
 const PLAN_MENSUAL_PRECIO = 9.99;
 
+// Componente stub cuando Premium está desactivado
+function PremiumDisabled({ onBack }: Props) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center">
+        <Crown className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-gray-800 mb-2">Premium próximamente</h2>
+        <p className="text-gray-500 text-sm mb-6">El plan Premium estará disponible en una próxima versión.</p>
+        <button onClick={onBack} className="flex items-center gap-2 mx-auto px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition">
+          <ArrowLeft className="w-4 h-4" /> Volver
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function PlanPremium({ onBack }: Props) {
+  // Feature flag: si está desactivado, mostrar placeholder
+  if (!PREMIUM_ENABLED) return <PremiumDisabled onBack={onBack} />;
+
   const [billing, setBilling] = useState<'anual' | 'mensual'>('anual');
   const [hovered, setHovered] = useState<string | null>(null);
 

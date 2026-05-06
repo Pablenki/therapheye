@@ -1,10 +1,64 @@
-import { ArrowLeft, Camera, X, CheckCircle, Loader2, Upload, AlertCircle, Sparkles, Brain } from 'lucide-react'
+import { ArrowLeft, Camera, X, CheckCircle, Loader2, Upload, AlertCircle, Sparkles, Brain, Sun, Zap } from 'lucide-react'
 import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLanguage } from '../i18n'
 import { sql } from '../neonCliente'
 import { callClaude } from '../utils/claudeApi'
+
+// ── Análisis de calidad de frame ──────────────────────────────────────────────
+type FrameQuality = 'poor' | 'fair' | 'good';
+interface QualityInfo { quality: FrameQuality; brightness: number; sharpness: number; reason: string }
+
+function analyzeFrameQuality(video: HTMLVideoElement): QualityInfo {
+  const w = 160, h = 120;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return { quality: 'poor', brightness: 0, sharpness: 0, reason: 'Sin contexto de canvas' };
+  ctx.drawImage(video, 0, 0, w, h);
+  const { data } = ctx.getImageData(0, 0, w, h);
+
+  let totalBrightness = 0;
+  let sharpness = 0;
+  const total = w * h;
+
+  for (let row = 0; row < h; row++) {
+    for (let col = 0; col < w; col++) {
+      const i = (row * w + col) * 4;
+      const luma = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+      totalBrightness += luma;
+      if (col < w - 1 && row < h - 1) {
+        const right = (row * w + col + 1) * 4;
+        const down  = ((row + 1) * w + col) * 4;
+        sharpness += Math.abs(data[i] - data[right]) + Math.abs(data[i] - data[down]);
+      }
+    }
+  }
+
+  const avgBrightness = totalBrightness / total;
+  const avgSharpness  = sharpness / total;
+
+  const brightOk   = avgBrightness >= 55 && avgBrightness <= 210;
+  const sharpOk    = avgSharpness >= 12;
+
+  let reason = '';
+  if (!brightOk) reason = avgBrightness < 55 ? 'Poca iluminación — enciende más luz' : 'Demasiada luz — evita la luz directa';
+  else if (!sharpOk) reason = 'Imagen borrosa — acerca el ojo a la cámara';
+  else reason = '¡Perfecto! Mantén la posición';
+
+  const quality: FrameQuality = (brightOk && sharpOk) ? 'good' : (brightOk || sharpOk) ? 'fair' : 'poor';
+  return { quality, brightness: Math.round(avgBrightness), sharpness: Math.round(avgSharpness), reason };
+}
+
+// ── Voz guía ─────────────────────────────────────────────────────────────────
+function speak(text: string) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'es-MX'; u.rate = 1.1;
+  window.speechSynthesis.speak(u);
+}
 
 interface ClaudeVisionResult {
   analisis: string;
@@ -64,19 +118,33 @@ const ImageCapture = ({ onBack }: Props) => {
   const [isClaudeAnalyzing, setIsClaudeAnalyzing] = useState(false)
   const [errorCamara, setErrorCamara] = useState<string | null>(null)
   const [cargandoCamara, setCargandoCamara] = useState(false)
+  // Smart capture states
+  const [qualityInfo, setQualityInfo] = useState<QualityInfo | null>(null)
+  const [countdown, setCountdown] = useState<number | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const qualityIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const goodSinceRef = useRef<number | null>(null)
+  const lastVoiceQualityRef = useRef<FrameQuality | null>(null)
+  const autoCapturedRef = useRef(false)
 
   // Iniciar cámara cuando se abre el modal
   useEffect(() => {
     if (mostrarCamara) {
+      autoCapturedRef.current = false;
+      goodSinceRef.current = null;
+      lastVoiceQualityRef.current = null;
+      setQualityInfo(null);
+      setCountdown(null);
       iniciarCamara()
     } else {
+      stopQualityAnalysis()
       detenerCamara()
     }
-    return () => { detenerCamara() }
+    return () => { stopQualityAnalysis(); detenerCamara() }
   }, [mostrarCamara])
 
   // Enter para capturar foto
@@ -88,6 +156,54 @@ const ImageCapture = ({ onBack }: Props) => {
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [mostrarCamara])
+
+  const stopQualityAnalysis = useCallback(() => {
+    if (qualityIntervalRef.current) { clearInterval(qualityIntervalRef.current); qualityIntervalRef.current = null; }
+    if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null; }
+    setCountdown(null);
+  }, [])
+
+  const startQualityAnalysis = useCallback(() => {
+    if (qualityIntervalRef.current) clearInterval(qualityIntervalRef.current);
+    speak('Centra tu ojo en el óvalo. Asegúrate de tener buena iluminación.')
+
+    qualityIntervalRef.current = setInterval(() => {
+      if (!videoRef.current || videoRef.current.readyState < 2) return;
+      const info = analyzeFrameQuality(videoRef.current);
+      setQualityInfo(info);
+
+      // Guía de voz solo cuando cambia el estado
+      if (info.quality !== lastVoiceQualityRef.current) {
+        lastVoiceQualityRef.current = info.quality;
+        if (info.quality === 'good') speak('Perfecto. Capturando automáticamente en 3 segundos.');
+        else if (info.quality === 'poor') speak(info.reason);
+      }
+
+      // Auto-captura: si la calidad es buena por 1.5s → countdown 3-2-1
+      if (info.quality === 'good') {
+        if (goodSinceRef.current === null) goodSinceRef.current = Date.now();
+        const elapsed = Date.now() - goodSinceRef.current;
+        if (elapsed >= 1500 && !autoCapturedRef.current) {
+          autoCapturedRef.current = true;
+          setCountdown(3);
+          const step = (n: number) => {
+            setCountdown(n);
+            if (n > 1) { countdownRef.current = setTimeout(() => step(n - 1), 1000); }
+            else { countdownRef.current = setTimeout(() => { capturarImagen(); setCountdown(null); }, 1000); }
+          };
+          step(3);
+        }
+      } else {
+        goodSinceRef.current = null;
+        // Cancelar countdown si la posición se pierde
+        if (autoCapturedRef.current) {
+          autoCapturedRef.current = false;
+          if (countdownRef.current) { clearTimeout(countdownRef.current); countdownRef.current = null; }
+          setCountdown(null);
+        }
+      }
+    }, 600);
+  }, [])  // capturarImagen se referencia por closure — se define después pero funciona por hoisting de useCallback
 
   const iniciarCamara = async () => {
     setErrorCamara(null)
@@ -110,6 +226,7 @@ const ImageCapture = ({ onBack }: Props) => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
+        videoRef.current.onloadeddata = () => startQualityAnalysis()
       }
     } catch (error) {
       console.error('Error al acceder a la cámara:', error)
@@ -134,10 +251,10 @@ const ImageCapture = ({ onBack }: Props) => {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
-    if (videoRef.current) videoRef.current.srcObject = null
+    if (videoRef.current) { videoRef.current.srcObject = null; videoRef.current.onloadeddata = null; }
   }
 
-  const capturarImagen = () => {
+  const capturarImagen = useCallback(() => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current
       const canvas = canvasRef.current
@@ -147,13 +264,16 @@ const ImageCapture = ({ onBack }: Props) => {
         canvas.height = video.videoHeight
         contexto.drawImage(video, 0, 0)
         setImagenCapturada(canvas.toDataURL('image/png'))
+        stopQualityAnalysis()
         detenerCamara()
         setMostrarCamara(false)
+        speak('Imagen capturada. Ahora puedes analizarla.')
       }
     }
-  }
+  }, [stopQualityAnalysis])
 
   const cerrarCamara = () => {
+    stopQualityAnalysis()
     detenerCamara()
     setMostrarCamara(false)
   }
@@ -468,50 +588,118 @@ const ImageCapture = ({ onBack }: Props) => {
             )}
           </div>
 
-          {/* Modal de cámara */}
+          {/* Modal de cámara — flujo inteligente */}
           {mostrarCamara && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl p-6 shadow-2xl max-w-2xl w-full mx-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">{t('imageCapture', 'title')}</h3>
-                  <button onClick={cerrarCamara} className="text-gray-500 hover:text-gray-700 transition">
-                    <X className="w-6 h-6" />
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-3 bg-gray-800">
+                  <div className="flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-indigo-400" />
+                    <span className="text-white text-sm font-semibold">Captura inteligente</span>
+                  </div>
+                  <button onClick={cerrarCamara} className="text-gray-400 hover:text-white transition p-1">
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="flex justify-center mb-2">
-                  <div className="relative bg-gray-900 rounded-lg overflow-hidden" style={{ width: '500px', height: '400px' }}>
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                    <canvas ref={canvasRef} className="hidden" />
-                    {/* Guía de posición: óvalo central */}
+                {/* Video con overlay */}
+                <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
+                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                  <canvas ref={canvasRef} className="hidden" />
+
+                  {/* Óvalo guía — color según calidad */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div
+                      className="rounded-full transition-all duration-500"
+                      style={{
+                        width: '52%', height: '55%',
+                        border: `4px ${countdown !== null ? 'solid' : 'dashed'} ${
+                          !qualityInfo ? '#facc15' :
+                          qualityInfo.quality === 'good' ? '#22c55e' :
+                          qualityInfo.quality === 'fair' ? '#f59e0b' : '#ef4444'
+                        }`,
+                        opacity: 0.85,
+                        boxShadow: qualityInfo?.quality === 'good' ? '0 0 20px rgba(34,197,94,0.4)' : 'none',
+                      }}
+                    />
+                  </div>
+
+                  {/* Countdown overlay */}
+                  {countdown !== null && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div
-                        className="border-4 border-yellow-400 border-dashed rounded-full opacity-70"
-                        style={{ width: '220px', height: '160px' }}
-                      />
+                      <div className="w-20 h-20 rounded-full bg-green-500/80 flex items-center justify-center">
+                        <span className="text-white text-4xl font-black">{countdown}</span>
+                      </div>
                     </div>
-                    <p className="absolute bottom-3 left-0 right-0 text-center text-yellow-300 text-xs font-medium">
-                      Centra tu ojo dentro del óvalo · Presiona Enter o el botón para capturar
-                    </p>
+                  )}
+
+                  {/* Estado de calidad inferior */}
+                  <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-gradient-to-t from-black/80 to-transparent">
+                    {qualityInfo ? (
+                      <p className={`text-xs font-semibold text-center ${
+                        qualityInfo.quality === 'good' ? 'text-green-400' :
+                        qualityInfo.quality === 'fair' ? 'text-amber-400' : 'text-red-400'
+                      }`}>
+                        {countdown !== null ? `Capturando en ${countdown}…` : qualityInfo.reason}
+                      </p>
+                    ) : (
+                      <p className="text-yellow-300 text-xs text-center">Centra tu ojo en el óvalo</p>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex gap-4 justify-center mt-4">
+                {/* Indicadores de calidad */}
+                {qualityInfo && (
+                  <div className="flex items-center justify-center gap-6 px-5 py-2 bg-gray-800">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Sun className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-gray-400">Iluminación</span>
+                      <span className={`font-bold ${qualityInfo.brightness >= 55 && qualityInfo.brightness <= 210 ? 'text-green-400' : 'text-red-400'}`}>
+                        {qualityInfo.brightness >= 55 && qualityInfo.brightness <= 210 ? '✓' : '✗'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Zap className="w-3.5 h-3.5 text-violet-400" />
+                      <span className="text-gray-400">Nitidez</span>
+                      <span className={`font-bold ${qualityInfo.sharpness >= 12 ? 'text-green-400' : 'text-red-400'}`}>
+                        {qualityInfo.sharpness >= 12 ? '✓' : '✗'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Eye className="w-3.5 h-3.5 text-indigo-400" />
+                      <span className="text-gray-400">Calidad</span>
+                      <span className={`font-bold capitalize ${
+                        qualityInfo.quality === 'good' ? 'text-green-400' :
+                        qualityInfo.quality === 'fair' ? 'text-amber-400' : 'text-red-400'
+                      }`}>
+                        {qualityInfo.quality === 'good' ? 'Óptima' : qualityInfo.quality === 'fair' ? 'Regular' : 'Baja'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Botones */}
+                <div className="flex gap-3 px-5 py-4 bg-gray-900">
                   <button
                     onClick={cerrarCamara}
-                    className="flex items-center gap-2 px-6 py-3 rounded-lg bg-gray-500 text-white hover:bg-gray-600 transition"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-700 text-gray-300 hover:bg-gray-600 transition text-sm font-medium"
                   >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span>{t('common', 'back')}</span>
+                    <ArrowLeft className="w-4 h-4" /> Cancelar
                   </button>
                   <button
                     onClick={capturarImagen}
-                    className="flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition text-sm font-semibold shadow-lg"
                   >
-                    <Camera className="w-5 h-5" />
-                    <span>{t('imageCapture', 'capture')} (Enter)</span>
+                    <Camera className="w-4 h-4" />
+                    Capturar ahora (Enter)
                   </button>
                 </div>
+
+                {/* Tip */}
+                <p className="text-center text-[11px] text-gray-500 pb-3 px-4">
+                  La captura automática se activa cuando la imagen es óptima · Habla despacio si activas el asistente de voz
+                </p>
               </div>
             </div>
           )}

@@ -326,11 +326,17 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   const [toolIdx, setToolIdx] = useState(0);
   const toolTouchX = useRef(0);
   const TOOLS_COUNT = 16; // fixed — matches allTools array below
+  // autoplayKey: bump para reiniciar el interval; autoplayDelay: delay del siguiente cambio
+  const [toolAutoKey, setToolAutoKey] = useState(0);
+  const [toolAutoDelay, setToolAutoDelay] = useState(4000);
   useEffect(() => {
     if (collapsed['herramientas']) return;
-    const id = setInterval(() => setToolIdx(i => (i + 1) % TOOLS_COUNT), 4000);
+    const id = setInterval(() => {
+      setToolIdx(i => (i + 1) % TOOLS_COUNT);
+      setToolAutoDelay(4000); // volver a intervalo normal después del auto-avance
+    }, toolAutoDelay);
     return () => clearInterval(id);
-  }, [collapsed]);
+  }, [collapsed, toolAutoKey, toolAutoDelay]);
 
   const extensionUrl = 'https://chromewebstore.google.com/detail/therapheye-%E2%80%93-screen-time/lephmmimjeeeknpgdmnhpjkbbnmplcal';
 
@@ -1000,22 +1006,22 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <SectionHeader id="herramientas" label={es ? 'Herramientas avanzadas' : 'Advanced tools'} collapsed={collapsed} onToggle={handleToggle} />
           {!collapsed['herramientas'] && (() => {
             const allTools: { page: Page; label: string; emoji: string; color: string; desc: string }[] = [
-              { page: 'reaccion-visual',     label: 'Reacción',        emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Mide tu tiempo de reacción visual' },
-              { page: 'vergencia',           label: 'Vergencia',       emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Ejercita la convergencia ocular' },
-              { page: 'campo-visual',        label: 'Campo Visual',    emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Detecta puntos ciegos en tu visión' },
-              { page: 'contrast-test',       label: 'Contraste',       emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Evalúa tu sensibilidad al contraste' },
-              { page: 'test-cromatico',      label: 'Daltonismo',      emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Test de percepción del color' },
-              { page: 'test-acomodacion',    label: 'Acomodación',     emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evalúa el enfoque de cerca a lejos' },
-              { page: 'modo-zen',            label: 'Modo Zen',        emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Relaja la fatiga ocular con sonidos' },
-              { page: 'entrenamiento-mental',label: 'Cognitivo',       emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Ejercita memoria y atención visual' },
-              { page: 'analizador-sintomas', label: 'Síntomas IA',     emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Analiza síntomas con inteligencia artificial' },
-              { page: 'simulador',           label: 'Simulador',       emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Simula condiciones visuales' },
-              { page: 'carga-visual',        label: 'Carga Visual',    emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: 'Mide la fatiga acumulada hoy' },
-              { page: 'notas-medicas',       label: 'Notas',           emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Registra notas para tu oftalmólogo' },
-              { page: 'amsler-grid',         label: 'Amsler',          emoji: '🔲', color: 'from-slate-600 to-gray-700',     desc: 'Detecta distorsión en la visión central' },
-              { page: 'dominancia-ocular',   label: 'Dominancia',      emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Descubre tu ojo dominante' },
-              { page: 'respiracion-478',     label: 'Respiración',     emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica 4-7-8 para relajar la vista' },
-              { page: 'evolucion-tests',     label: 'Evolución',       emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Sigue tu progreso a lo largo del tiempo' },
+              { page: 'reaccion-visual',     label: 'Reacción Visual',  emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Mide la velocidad de respuesta de tus ojos ante estímulos visuales' },
+              { page: 'vergencia',           label: 'Vergencia',        emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Entrena la convergencia y divergencia binocular para reducir fatiga' },
+              { page: 'campo-visual',        label: 'Campo Visual',     emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Mapea tu campo de visión periférica y detecta puntos ciegos' },
+              { page: 'contrast-test',       label: 'Contraste',        emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Evalúa tu capacidad para distinguir contrastes en condiciones variadas' },
+              { page: 'test-cromatico',      label: 'Percepción Color', emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detecta alteraciones en la percepción del color y posible daltonismo' },
+              { page: 'test-acomodacion',    label: 'Acomodación',      emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evalúa la flexibilidad del cristalino para cambiar el enfoque' },
+              { page: 'modo-zen',            label: 'Modo Zen',         emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Sesión de relajación ocular con sonidos binaurales y ejercicios guiados' },
+              { page: 'entrenamiento-mental',label: 'Cognitivo',        emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Fortalece la memoria visual, atención y coordinación ojo-mente' },
+              { page: 'analizador-sintomas', label: 'Síntomas IA',      emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Describe tus molestias y la IA evalúa posibles causas y recomendaciones' },
+              { page: 'simulador',           label: 'Simulador Visual', emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experimenta cómo ven personas con miopía, astigmatismo u otras condiciones' },
+              { page: 'carga-visual',        label: 'Carga Visual',     emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: 'Calcula la carga visual acumulada del día y recibe alertas de fatiga' },
+              { page: 'notas-medicas',       label: 'Notas Médicas',    emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Guarda apuntes de consultas, recetas y evolución para tu oftalmólogo' },
+              { page: 'amsler-grid',         label: 'Rejilla Amsler',   emoji: '🔲', color: 'from-slate-600 to-gray-700',     desc: 'Detecta distorsión o áreas borrosas en tu visión central (mácula)' },
+              { page: 'dominancia-ocular',   label: 'Dominancia Ocular',emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Descubre cuál es tu ojo dominante con una prueba rápida y confiable' },
+              { page: 'respiracion-478',     label: 'Respiración 4-7-8',emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica de respiración que reduce la tensión ocular y el estrés digital' },
+              { page: 'evolucion-tests',     label: 'Evolución Tests',  emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Gráficas y tendencias de todos tus tests a lo largo del tiempo' },
             ];
             const focusPriority: Record<string, string[]> = {
               'fatiga':     ['modo-zen', 'respiracion-478', 'carga-visual', 'entrenamiento-mental'],
@@ -1036,7 +1042,11 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 <div className="flex items-center gap-2">
                   {/* Prev */}
                   <button
-                    onClick={() => setToolIdx(i => (i - 1 + n) % n)}
+                    onClick={() => {
+                      setToolIdx(i => (i - 1 + n) % n);
+                      setToolAutoDelay(8000); // duplicar tiempo antes del siguiente auto-avance
+                      setToolAutoKey(k => k + 1); // reiniciar timer
+                    }}
                     className="flex-shrink-0 w-9 h-9 bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all rounded-xl flex items-center justify-center shadow-md text-white"
                   >
                     <ChevronLeft className="w-5 h-5"/>
@@ -1048,8 +1058,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                     onTouchStart={e => { toolTouchX.current = e.touches[0].clientX; }}
                     onTouchEnd={e => {
                       const dx = e.changedTouches[0].clientX - toolTouchX.current;
-                      if (dx < -40) setToolIdx(i => (i + 1) % n);
-                      else if (dx > 40) setToolIdx(i => (i - 1 + n) % n);
+                      if (dx < -40) { setToolIdx(i => (i + 1) % n); setToolAutoDelay(8000); setToolAutoKey(k => k + 1); }
+                      else if (dx > 40) { setToolIdx(i => (i - 1 + n) % n); setToolAutoDelay(8000); setToolAutoKey(k => k + 1); }
                     }}
                   >
                     <div
@@ -1074,7 +1084,11 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
 
                   {/* Next */}
                   <button
-                    onClick={() => setToolIdx(i => (i + 1) % n)}
+                    onClick={() => {
+                      setToolIdx(i => (i + 1) % n);
+                      setToolAutoDelay(8000); // duplicar tiempo antes del siguiente auto-avance
+                      setToolAutoKey(k => k + 1); // reiniciar timer
+                    }}
                     className="flex-shrink-0 w-9 h-9 bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all rounded-xl flex items-center justify-center shadow-md text-white"
                   >
                     <ChevronRight className="w-5 h-5"/>
