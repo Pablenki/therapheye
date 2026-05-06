@@ -73,11 +73,20 @@ const handler: Handler = async (event) => {
     const model = 'gemini-2.0-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    const res = await fetch(url, {
+    const geminiBodyStr = JSON.stringify(geminiBody);
+    const fetchOnce = () => fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiBody),
+      body: geminiBodyStr,
     });
+
+    let res = await fetchOnce();
+
+    // Retry once after 3 s if rate-limited
+    if (res.status === 429) {
+      await new Promise(r => setTimeout(r, 3000));
+      res = await fetchOnce();
+    }
 
     const data = await res.json();
 

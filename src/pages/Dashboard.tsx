@@ -13,7 +13,11 @@ const COLLAPSE_KEY = 'therapheye_dashboard_collapsed';
 type SectionId = 'fatiga' | 'acciones' | 'coach' | 'reto' | 'progreso' | 'timer' | 'predictor' | 'articulo' | 'tips' | 'herramientas';
 
 const loadCollapsed = (): Record<string, boolean> => {
-  try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}'); } catch { return {}; }
+  const defaults: Record<string, boolean> = { herramientas: true };
+  try {
+    const stored = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '{}');
+    return { ...defaults, ...stored };
+  } catch { return defaults; }
 };
 
 const toggleCollapsed = (id: SectionId, collapsed: Record<string, boolean>, set: (v: Record<string, boolean>) => void) => {
@@ -1028,49 +1032,52 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
 
             return (
               <div className="mt-2 max-w-sm mx-auto">
-                {/* Slide track */}
-                <div
-                  className="relative overflow-hidden rounded-2xl select-none shadow-lg"
-                  onTouchStart={e => { toolTouchX.current = e.touches[0].clientX; }}
-                  onTouchEnd={e => {
-                    const dx = e.changedTouches[0].clientX - toolTouchX.current;
-                    if (dx < -40) setToolIdx(i => (i + 1) % n);
-                    else if (dx > 40) setToolIdx(i => (i - 1 + n) % n);
-                  }}
-                >
-                  <div
-                    className="flex transition-transform duration-350 ease-in-out"
-                    style={{ transform: `translateX(-${curr * 100}%)` }}
-                  >
-                    {sorted.map(item => (
-                      <div key={item.page} className="w-full flex-none">
-                        <button
-                          onClick={() => onNavigate(item.page)}
-                          className={`w-full bg-gradient-to-br ${item.color} text-white px-6 py-5 flex flex-col items-start gap-1.5 hover:brightness-110 transition-all active:scale-[0.98]`}
-                        >
-                          <span className="text-3xl leading-none">{item.emoji}</span>
-                          <span className="text-base font-bold leading-tight mt-1">{item.label}</span>
-                          <span className="text-xs text-white/70 leading-snug">{item.desc}</span>
-                          <span className="mt-2 text-[11px] text-white/50 font-semibold tracking-wide uppercase">Abrir herramienta →</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Prev — visible con buen contraste */}
+                {/* Carousel con flechas externas */}
+                <div className="flex items-center gap-2">
+                  {/* Prev */}
                   <button
                     onClick={() => setToolIdx(i => (i - 1 + n) % n)}
-                    className="absolute left-0 top-0 h-full px-2 flex items-center bg-gradient-to-r from-black/30 to-transparent hover:from-black/50 transition text-white"
+                    className="flex-shrink-0 w-9 h-9 bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all rounded-xl flex items-center justify-center shadow-md text-white"
                   >
-                    <ChevronLeft className="w-6 h-6 drop-shadow"/>
+                    <ChevronLeft className="w-5 h-5"/>
                   </button>
+
+                  {/* Slide track */}
+                  <div
+                    className="flex-1 overflow-hidden rounded-2xl select-none shadow-lg"
+                    onTouchStart={e => { toolTouchX.current = e.touches[0].clientX; }}
+                    onTouchEnd={e => {
+                      const dx = e.changedTouches[0].clientX - toolTouchX.current;
+                      if (dx < -40) setToolIdx(i => (i + 1) % n);
+                      else if (dx > 40) setToolIdx(i => (i - 1 + n) % n);
+                    }}
+                  >
+                    <div
+                      className="flex transition-transform duration-350 ease-in-out"
+                      style={{ transform: `translateX(-${curr * 100}%)` }}
+                    >
+                      {sorted.map(item => (
+                        <div key={item.page} className="w-full flex-none">
+                          <button
+                            onClick={() => onNavigate(item.page)}
+                            className={`w-full bg-gradient-to-br ${item.color} text-white px-5 py-5 flex flex-col items-start gap-1.5 hover:brightness-110 transition-all active:scale-[0.98]`}
+                          >
+                            <span className="text-3xl leading-none">{item.emoji}</span>
+                            <span className="text-base font-bold leading-tight mt-1">{item.label}</span>
+                            <span className="text-xs text-white/70 leading-snug">{item.desc}</span>
+                            <span className="mt-2 text-[11px] text-white/50 font-semibold tracking-wide uppercase">Abrir herramienta →</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
                   {/* Next */}
                   <button
                     onClick={() => setToolIdx(i => (i + 1) % n)}
-                    className="absolute right-0 top-0 h-full px-2 flex items-center bg-gradient-to-l from-black/30 to-transparent hover:from-black/50 transition text-white"
+                    className="flex-shrink-0 w-9 h-9 bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all rounded-xl flex items-center justify-center shadow-md text-white"
                   >
-                    <ChevronRight className="w-6 h-6 drop-shadow"/>
+                    <ChevronRight className="w-5 h-5"/>
                   </button>
                 </div>
 

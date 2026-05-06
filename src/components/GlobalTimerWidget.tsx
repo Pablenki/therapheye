@@ -705,7 +705,8 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           speakText(t('visualHealth', 'breakRule'), lang);
           setBreakAlert(true);
         }
-        const nb = st.nextBreakAtMs + WORK_MINUTES * 60_000;
+        let nb = st.nextBreakAtMs + WORK_MINUTES * 60_000;
+        while (nb <= ms) nb += WORK_MINUTES * 60_000;
         persistState({ ...st, nextBreakAtMs: nb });
         setNextBreakInMinutes(Math.max(0, Math.round((nb - ms) / 60000)));
       } else {
