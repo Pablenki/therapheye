@@ -75,14 +75,14 @@ export default function BlinkDetector({ onBack }: Props) {
     if (!user?.id) return;
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const rows = await sql<BlinkSession[]>`
+      const rows = await sql`
         SELECT id, started_at, duration_sec, total_blinks, avg_blinks_per_min
         FROM sesiones_parpadeo
         WHERE user_id = ${user.id}
           AND started_at::date = ${today}::date
         ORDER BY started_at DESC
       `;
-      setTodaySessions(rows);
+      setTodaySessions(rows as BlinkSession[]);
     } catch (e) {
       console.error('Error cargando historial parpadeo:', e);
     }
