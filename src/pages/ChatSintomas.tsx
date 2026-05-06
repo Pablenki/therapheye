@@ -17,6 +17,7 @@ interface Message {
   role: 'assistant' | 'user';
   content: string;
   timestamp: Date;
+  provider?: string;
 }
 
 const QUICK_SYMPTOMS_ES = [
@@ -79,9 +80,14 @@ function ChatBubble({ msg }: { msg: Message }) {
         }`}>
           {msg.content}
         </div>
-        <p className={`text-[10px] mt-1 text-gray-400 ${isBot ? 'text-left' : 'text-right'}`}>
-          {formattedTime}
-        </p>
+        <div className={`flex items-center gap-2 mt-1 ${isBot ? 'justify-start' : 'justify-end'}`}>
+          <p className="text-[10px] text-gray-400">{formattedTime}</p>
+          {isBot && msg.provider && (
+            <span className="text-[9px] bg-indigo-50 text-indigo-400 px-1.5 py-0.5 rounded-full font-medium">
+              {msg.provider}
+            </span>
+          )}
+        </div>
       </div>
       {!isBot && (
         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0 mt-1">
@@ -104,6 +110,7 @@ export default function ChatSintomas({ onBack }: Props) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
+  const [currentProvider, setCurrentProvider] = useState('');
 
   const [supportSent, setSupportSent] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
@@ -138,8 +145,10 @@ export default function ChatSintomas({ onBack }: Props) {
         messages: history,
       });
       const reply = data.content?.[0]?.text ?? '...';
+      const provider = data.provider || '';
+      if (provider) setCurrentProvider(provider);
 
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date(), provider }]);
     } catch (e: any) {
       const msg = e?.message || 'Error desconocido';
       setError(msg);
@@ -209,7 +218,8 @@ export default function ChatSintomas({ onBack }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Claude Haiku
+            <Sparkles className="w-3 h-3" />
+            {currentProvider || 'Therapheye IA'}
           </span>
           <button
             onClick={handleReset}

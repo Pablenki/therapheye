@@ -14,6 +14,7 @@ interface AIRequest {
 
 interface AIResponse {
   content: { type: string; text: string }[];
+  provider?: string;
   [key: string]: any;
 }
 

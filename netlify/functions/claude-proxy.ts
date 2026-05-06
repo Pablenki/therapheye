@@ -230,16 +230,16 @@ const handler: Handler = async (event) => {
   // ── Cascada: Gemini flash-latest → Gemini 2.5-flash → Groq → xAI ───────────
   const errors: string[] = [];
 
+  const ok = (text: string, provider: string) => ({
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: [{ type: 'text', text }], provider }),
+  });
+
   if (geminiKey) {
     for (const model of ['gemini-flash-latest', 'gemini-2.5-flash']) {
       const r = await callGemini(geminiKey, model, body);
-      if (r.ok) {
-        return {
-          statusCode: 200,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: [{ type: 'text', text: r.text }] }),
-        };
-      }
+      if (r.ok) return ok(r.text!, model === 'gemini-flash-latest' ? 'Gemini 3 Flash' : 'Gemini 2.5 Flash');
       errors.push(`${model}: ${r.error}`);
       if (r.status === 401 || r.status === 403) break;
     }
@@ -247,25 +247,13 @@ const handler: Handler = async (event) => {
 
   if (groqKey) {
     const r = await callGroq(groqKey, body);
-    if (r.ok) {
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: [{ type: 'text', text: r.text }] }),
-      };
-    }
+    if (r.ok) return ok(r.text!, 'Groq · LLaMA 3.1');
     errors.push(`Groq: ${r.error}`);
   }
 
   if (xaiKey) {
     const r = await callXAI(xaiKey, body);
-    if (r.ok) {
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: [{ type: 'text', text: r.text }] }),
-      };
-    }
+    if (r.ok) return ok(r.text!, 'xAI Grok');
     errors.push(`xAI: ${r.error}`);
   }
 
