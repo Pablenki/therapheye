@@ -65,7 +65,7 @@ async function callGemini(
   const geminiBody: any = {
     contents: geminiContents,
     generationConfig: {
-      maxOutputTokens: Math.min(body.max_tokens || 512, 2048),
+      maxOutputTokens: Math.min(body.max_tokens || 1024, 4096),
       temperature: 0.7,
     },
   };
@@ -236,6 +236,13 @@ const handler: Handler = async (event) => {
     body: JSON.stringify({ content: [{ type: 'text', text }], provider }),
   });
 
+  // Groq primero — más rápido y 14,400 RPD gratis
+  if (groqKey) {
+    const r = await callGroq(groqKey, body);
+    if (r.ok) return ok(r.text!, 'Groq · LLaMA 3.1');
+    errors.push(`Groq: ${r.error}`);
+  }
+
   if (geminiKey) {
     for (const model of ['gemini-flash-latest', 'gemini-2.5-flash']) {
       const r = await callGemini(geminiKey, model, body);
@@ -243,12 +250,6 @@ const handler: Handler = async (event) => {
       errors.push(`${model}: ${r.error}`);
       if (r.status === 401 || r.status === 403) break;
     }
-  }
-
-  if (groqKey) {
-    const r = await callGroq(groqKey, body);
-    if (r.ok) return ok(r.text!, 'Groq · LLaMA 3.1');
-    errors.push(`Groq: ${r.error}`);
   }
 
   if (xaiKey) {

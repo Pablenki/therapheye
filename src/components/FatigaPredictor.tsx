@@ -168,12 +168,13 @@ ${resumen}`;
     setLoading(false);
   }, [user?.id]);
 
-  // Solo carga caché al montar — la API se llama únicamente cuando el usuario hace clic en actualizar
+  // Carga caché al montar; si no hay caché, genera automáticamente
   useEffect(() => {
     if (!user?.id) return;
     const cached = loadCache(user.id);
     if (cached) { setResult(cached); }
-  }, [user?.id]);
+    else { runPredictor(false); }
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user?.id) return null;
 

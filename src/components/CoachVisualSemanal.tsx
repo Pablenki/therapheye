@@ -91,7 +91,7 @@ export default function CoachVisualSemanal({ onNavigate: _onNavigate }: Props) {
             WHERE user_id = ${user.id} AND created_at >= NOW() - INTERVAL '7 days'
             ORDER BY created_at DESC`.catch(() => []),
 
-        sql`SELECT blinks_per_minute, duration_seconds, created_at
+        sql`SELECT avg_blinks_per_min, duration_sec, created_at
             FROM sesiones_parpadeo
             WHERE user_id = ${user.id} AND created_at >= NOW() - INTERVAL '7 days'
             ORDER BY created_at DESC`.catch(() => []),
@@ -129,7 +129,7 @@ ${(parpadeos as any[]).length === 0 ? 'Sin sesiones de parpadeo esta semana.' :
   (parpadeos as any[]).map(r => {
     const d = new Date(r.created_at);
     const dia = d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' });
-    return `• ${dia}: ${r.blinks_per_minute} parpadeos/min — ${r.duration_seconds}s de sesión`;
+    return `• ${dia}: ${r.avg_blinks_per_min} parpadeos/min — ${r.duration_sec}s de sesión`;
   }).join('\n')}
 
 === PRUEBA DE LECTURA VISUAL (${(lecturas as any[]).length} registros) ===
@@ -183,12 +183,13 @@ ${resumen}`;
     setLoading(false);
   }, [user?.id, user?.nombre]);
 
-  // Solo carga caché al montar — la API se llama únicamente cuando el usuario hace clic en "Regenerar"
+  // Carga caché al montar; si no hay caché, genera automáticamente
   useEffect(() => {
     if (!user?.id) return;
     const cached = loadCache(user.id);
     if (cached) { setAnalysis(cached); setIsFromCache(true); }
-  }, [user?.id]);
+    else { fetchAnalysis(false); }
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user?.id) return null;
 
