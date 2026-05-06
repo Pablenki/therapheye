@@ -11,17 +11,22 @@ import type { Handler } from '@netlify/functions';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-/** Retry con backoff exponencial */
+/**
+ * Retry con backoff exponencial.
+ * retryOn429: si false, devuelve inmediatamente en 429 (Gemini: reintentar 429 genera más 429).
+ */
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
   maxRetries = 3,
   baseDelayMs = 2000,
+  retryOn429 = true,
 ): Promise<Response> {
   let lastRes: Response | null = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const res = await fetch(url, init);
-    if (res.status !== 429 && res.status !== 503) return res;
+    const shouldRetry = res.status === 503 || (retryOn429 && res.status === 429);
+    if (!shouldRetry) return res;
     lastRes = res;
     if (attempt < maxRetries) {
       const delay = baseDelayMs * Math.pow(2, attempt); // 2s, 4s, 8s
@@ -135,8 +140,9 @@ async function callGemini(apiKey: string, body: any): Promise<{ ok: boolean; tex
   const res = await fetchWithRetry(
     url,
     { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(geminiBody) },
-    2,    // max 2 reintentos (Gemini es más lento)
-    2500, // 2.5s base delay
+    1,     // max 1 reintento — solo para 503, nunca para 429
+    2500,  // 2.5s base delay
+    false, // NO reintentar en 429: reintentar solo empeora el rate-limit
   );
 
   const data = await res.json();

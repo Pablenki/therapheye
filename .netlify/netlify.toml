@@ -1,16 +1,15 @@
+functionsDirectory = "C:\\Users\\OWNER\\Desktop\\therapheye\\netlify\\functions"
+functionsDirectoryOrigin = "config-v1"
+redirectsOrigin = "config"
 plugins = []
 headers = []
-redirects = []
-
-[functions]
-
-[functions."*"]
 
 [build]
 publish = "C:\\Users\\OWNER\\Desktop\\therapheye\\dist"
-publishOrigin = "ui"
-commandOrigin = "ui"
+publishOrigin = "config"
+commandOrigin = "config"
 command = "npm run build"
+functions = "C:\\Users\\OWNER\\Desktop\\therapheye\\netlify\\functions"
 
 [build.environment]
 
@@ -25,3 +24,26 @@ command = "npm run build"
 [build.processing.js]
 
 [build.services]
+
+[dev]
+command = "npm run dev"
+port = 8888.0
+
+[functions]
+
+[functions.push-cron]
+schedule = "0 20 * * *"
+
+[functions."*"]
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
