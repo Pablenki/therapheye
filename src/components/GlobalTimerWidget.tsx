@@ -496,11 +496,22 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         // Usar accumulatedMs directamente — NO calcElapsedMs(), porque si la BD tiene
         // un startTimestamp viejo (pause/finalize no sincronizó) sumaría tiempo fantasma.
         const accMs = baseState.accumulatedMs;
+
+        // Avanzar nextBreakAtMs si ya quedó en el pasado (el descanso ya se disparó antes
+        // de este login). Así al reanudar el timer no re-dispara la alerta vieja.
+        let nextBreakAtMs = baseState.nextBreakAtMs;
+        if (nextBreakAtMs !== null && accMs >= nextBreakAtMs) {
+          let nb = nextBreakAtMs + WORK_MINUTES * 60_000;
+          while (nb <= accMs) nb += WORK_MINUTES * 60_000;
+          nextBreakAtMs = nb;
+        }
+
         const paused: PersistedTimerState = {
           ...baseState,
           isRunning: false,
           startTimestamp: null,
           accumulatedMs: accMs,
+          nextBreakAtMs,
           userId: user?.id ?? null,
         };
         persistState(paused);

@@ -105,7 +105,9 @@ interface Props {
   children: React.ReactNode;
 }
 
-const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page; tourId?: string }[] = [
+type NavItem = { icon: React.ElementType; label: string; page: Page; tourId?: string };
+
+const MAIN_NAV_ITEMS: NavItem[] = [
   { icon: Home,          label: 'Inicio',           page: 'dashboard'           },
   { icon: Activity,      label: 'Ejercicios',        page: 'exercises',            tourId: 'tour-exercises'    },
   { icon: Camera,        label: 'Captura de imagen', page: 'image-capture'       },
@@ -116,27 +118,30 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page; tourId?: 
   { icon: ClipboardList, label: 'Cuestionario',      page: 'questionnaire',        tourId: 'tour-questionnaire'},
   { icon: BookOpen,      label: 'Aprende',           page: 'learn'               },
   { icon: ScanFace,      label: 'Parpadeo',          page: 'blink-detector'      },
-  { icon: BookOpenCheck,      label: 'Lectura Visual',    page: 'reading-test'        },
-  { icon: MessageCircleHeart, label: 'Chat Visual',       page: 'chat-sintomas',        tourId: 'tour-chat'         },
-  { icon: MapPin,             label: 'Oftalmólogos',      page: 'mapa-oftalmologos'   },
-  { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'     },
-  { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'          },
-  { icon: BookMarked,         label: 'Diario Visual',     page: 'diario-visual'       },
-  { icon: Crosshair,          label: 'Campo Visual',      page: 'campo-visual'        },
-  { icon: EarOff,             label: 'Modo Zen',          page: 'modo-zen'            },
-  { icon: Contrast,           label: 'Test Contraste',    page: 'contrast-test'       },
-  { icon: Timer,              label: 'Reacción Visual',   page: 'reaccion-visual'     },
-  { icon: Orbit,              label: 'Vergencia',         page: 'vergencia'           },
-  { icon: BarChart2,          label: 'Carga Visual',      page: 'carga-visual'        },
-  { icon: ClipboardCheck,     label: 'Notas Médicas',     page: 'notas-medicas'       },
-  { icon: Palette,            label: 'Simulador Visual',  page: 'simulador'           },
-  { icon: FlaskConical,       label: 'Test Cromático',    page: 'test-cromatico'      },
-  { icon: Focus,              label: 'Test Acomodación',  page: 'test-acomodacion'    },
-  { icon: Microscope,         label: 'Ejerc. Avanzados',  page: 'ejercicios-avanzados'},
-  { icon: ScrollText,         label: 'Historial Ocular',  page: 'historial-ocular'    },
+];
+
+const ADVANCED_NAV_ITEMS: NavItem[] = [
+  { icon: BookOpenCheck,      label: 'Lectura Visual',    page: 'reading-test'          },
+  { icon: MessageCircleHeart, label: 'Chat Visual',       page: 'chat-sintomas',          tourId: 'tour-chat' },
+  { icon: MapPin,             label: 'Oftalmólogos',      page: 'mapa-oftalmologos'     },
+  { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'       },
+  { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'            },
+  { icon: BookMarked,         label: 'Diario Visual',     page: 'diario-visual'         },
+  { icon: Crosshair,          label: 'Campo Visual',      page: 'campo-visual'          },
+  { icon: EarOff,             label: 'Modo Zen',          page: 'modo-zen'              },
+  { icon: Contrast,           label: 'Test Contraste',    page: 'contrast-test'         },
+  { icon: Timer,              label: 'Reacción Visual',   page: 'reaccion-visual'       },
+  { icon: Orbit,              label: 'Vergencia',         page: 'vergencia'             },
+  { icon: BarChart2,          label: 'Carga Visual',      page: 'carga-visual'          },
+  { icon: ClipboardCheck,     label: 'Notas Médicas',     page: 'notas-medicas'         },
+  { icon: Palette,            label: 'Simulador Visual',  page: 'simulador'             },
+  { icon: FlaskConical,       label: 'Test Cromático',    page: 'test-cromatico'        },
+  { icon: Focus,              label: 'Test Acomodación',  page: 'test-acomodacion'      },
+  { icon: Microscope,         label: 'Ejerc. Avanzados',  page: 'ejercicios-avanzados'  },
+  { icon: ScrollText,         label: 'Historial Ocular',  page: 'historial-ocular'      },
   { icon: TriangleAlert,      label: 'Analizador Síntomas', page: 'analizador-sintomas' },
-  { icon: ImageIcon,          label: 'Galería Capturas',  page: 'galeria-captures'    },
-  { icon: BrainCircuit,       label: 'Entrena. Mental',   page: 'entrenamiento-mental'},
+  { icon: ImageIcon,          label: 'Galería Capturas',  page: 'galeria-captures'      },
+  { icon: BrainCircuit,       label: 'Entrena. Mental',   page: 'entrenamiento-mental'  },
   { icon: AreaChart,          label: 'Stats Avanzadas',   page: 'estadisticas-avanzadas'},
   { icon: Scan,               label: 'OCR Receta',        page: 'ocr-receta'            },
   { icon: QrCode,             label: 'QR Informe',        page: 'qr-informe'            },
@@ -145,8 +150,10 @@ const NAV_ITEMS: { icon: React.ElementType; label: string; page: Page; tourId?: 
   { icon: Grid3x3,            label: 'Rejilla Amsler',    page: 'amsler-grid'           },
   { icon: Dot,                label: 'Dom. Ocular',       page: 'dominancia-ocular'     },
   { icon: Wind,               label: 'Respiración 4-7-8', page: 'respiracion-478'       },
-  { icon: LineChart,           label: 'Evolución Tests',   page: 'evolucion-tests'       },
+  { icon: LineChart,          label: 'Evolución Tests',   page: 'evolucion-tests'       },
 ];
+
+const ADVANCED_SIDEBAR_KEY = 'therapheye_sidebar_advanced_open';
 
 const SIDEBAR_W  = 240; // px — expanded
 const ICON_W     = 64;  // px — collapsed (desktop only)
@@ -166,6 +173,11 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
   const [goalsConfig, setGoalsConfig] = useState<GoalId[]>(loadGoalsConfig);
   const [autoDark, setAutoDark] = useState(() => localStorage.getItem(AUTO_DARK_KEY) === '1');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(() => {
+    // Auto-expand if current page is in the advanced section
+    if (ADVANCED_NAV_ITEMS.some(i => i.page === currentPage)) return true;
+    try { return localStorage.getItem(ADVANCED_SIDEBAR_KEY) === '1'; } catch { return false; }
+  });
   const overlayRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -301,10 +313,25 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
     return () => window.removeEventListener('resize', handler);
   }, []);
 
+  // Auto-expand advanced section when navigating to an advanced page
+  useEffect(() => {
+    if (ADVANCED_NAV_ITEMS.some(i => i.page === currentPage)) {
+      setShowAdvanced(true);
+    }
+  }, [currentPage]);
+
   // Close overlay on mobile when navigating
   const handleNav = (page: Page) => {
     onNavigate(page);
     if (isMobile) setOpen(false);
+  };
+
+  const toggleAdvanced = () => {
+    setShowAdvanced(v => {
+      const next = !v;
+      try { localStorage.setItem(ADVANCED_SIDEBAR_KEY, next ? '1' : '0'); } catch {}
+      return next;
+    });
   };
 
   // Derived sidebar width
@@ -401,7 +428,44 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
 
         {/* Nav */}
         <nav data-tour="tour-nav" className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
-          {NAV_ITEMS.map(({ icon: Icon, label, page, tourId }) => {
+          {/* ── Ítems principales ── */}
+          {MAIN_NAV_ITEMS.map(({ icon: Icon, label, page, tourId }) => {
+            const active = currentPage === page;
+            return (
+              <button
+                key={page}
+                data-tour={tourId}
+                onClick={() => handleNav(page)}
+                title={collapsed && !isMobile ? label : undefined}
+                className={`
+                  w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all
+                  ${collapsed && !isMobile ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}
+                  ${active
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
+                    : 'text-gray-400 hover:bg-white/10 hover:text-white'}
+                `}
+              >
+                <Icon style={{ width: 18, height: 18 }} className="flex-shrink-0"/>
+                {showLabels && <span className="truncate">{label}</span>}
+              </button>
+            );
+          })}
+
+          {/* ── Toggle "Herramientas avanzadas" (solo en modo expandido) ── */}
+          {showLabels && (
+            <button
+              onClick={toggleAdvanced}
+              className="w-full flex items-center gap-2 px-3 py-2 mt-1 rounded-xl text-[11px] font-semibold uppercase tracking-widest text-gray-500 hover:bg-white/10 hover:text-gray-300 transition-all select-none"
+            >
+              <ChevronDown
+                className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${showAdvanced ? '' : '-rotate-90'}`}
+              />
+              <span className="truncate">Herramientas avanzadas</span>
+            </button>
+          )}
+
+          {/* ── Ítems avanzados (colapsables en expanded; siempre visibles en icon-only) ── */}
+          {(showAdvanced || (!showLabels)) && ADVANCED_NAV_ITEMS.map(({ icon: Icon, label, page, tourId }) => {
             const active = currentPage === page;
             return (
               <button
