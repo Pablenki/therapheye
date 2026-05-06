@@ -5,7 +5,7 @@
 // =========================================
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, Eye, EyeOff, AlertTriangle, CheckCircle2, Info, Camera, CameraOff, Save } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, AlertTriangle, CheckCircle2, Info, Camera, CameraOff, Save, Clock } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 
@@ -14,6 +14,14 @@ interface Props {
 }
 
 type Status = 'idle' | 'loading' | 'running' | 'error' | 'no-camera';
+
+interface BlinkSession {
+  id: number;
+  started_at: string;
+  duration_sec: number;
+  total_blinks: number;
+  avg_blinks_per_min: number;
+}
 
 const BLINK_THRESHOLD = 0.45;       // Blend shape score que indica ojo cerrado
 const WINDOW_SEC = 60;              // Ventana de cálculo de BPM
@@ -60,6 +68,27 @@ export default function BlinkDetector({ onBack }: Props) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedBpm, setSavedBpm] = useState(0);
+  const [todaySessions, setTodaySessions] = useState<BlinkSession[]>([]);
+
+  // Cargar historial de hoy
+  const loadTodaySessions = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const rows = await sql<BlinkSession[]>`
+        SELECT id, started_at, duration_sec, total_blinks, avg_blinks_per_min
+        FROM sesiones_parpadeo
+        WHERE user_id = ${user.id}
+          AND started_at::date = ${today}::date
+        ORDER BY started_at DESC
+      `;
+      setTodaySessions(rows);
+    } catch (e) {
+      console.error('Error cargando historial parpadeo:', e);
+    }
+  }, [user]);
+
+  useEffect(() => { loadTodaySessions(); }, [loadTodaySessions]);
 
   // Timer for elapsed seconds
   useEffect(() => {
@@ -91,12 +120,13 @@ export default function BlinkDetector({ onBack }: Props) {
         `;
         setSaved(true);
         setSavedBpm(Math.round(avgBpm));
+        await loadTodaySessions();
       } catch (e) {
         console.error('Error guardando sesión de parpadeo:', e);
       }
       setSaving(false);
     }
-  }, [user]);
+  }, [user, loadTodaySessions]);
 
   const startSession = useCallback(async () => {
     setStatus('loading');
@@ -434,6 +464,43 @@ export default function BlinkDetector({ onBack }: Props) {
             )}
           </div>
         </div>
+
+        {/* Historial de hoy */}
+        {todaySessions.length > 0 && (
+          <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-500" />
+              Sesiones de hoy
+            </h2>
+            <div className="space-y-2">
+              {todaySessions.map(s => {
+                const hora = new Date(s.started_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                const durMin = Math.floor(s.duration_sec / 60);
+                const durSec = s.duration_sec % 60;
+                const bpm = Math.round(s.avg_blinks_per_min);
+                const color = bpm < LOW_BLINK_ALERT ? 'text-red-600 bg-red-50 border-red-200'
+                  : bpm < NORMAL_BLINK_MIN ? 'text-amber-600 bg-amber-50 border-amber-200'
+                  : 'text-green-700 bg-green-50 border-green-200';
+                const emoji = bpm < LOW_BLINK_ALERT ? '⚠️' : bpm < NORMAL_BLINK_MIN ? '🟡' : '🟢';
+                return (
+                  <div key={s.id} className={`flex items-center justify-between rounded-xl border px-4 py-3 ${color}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{emoji}</span>
+                      <div>
+                        <p className="text-sm font-semibold">{hora} · {durMin > 0 ? `${durMin}m ` : ''}{durSec}s</p>
+                        <p className="text-xs opacity-80">{s.total_blinks} parpadeos totales</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold">{bpm}</p>
+                      <p className="text-xs opacity-70">parp/min</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* How it works */}
         <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

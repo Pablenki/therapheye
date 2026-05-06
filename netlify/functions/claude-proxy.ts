@@ -1,8 +1,9 @@
 // =========================================
 // Netlify Function: claude-proxy
-// Cascada: Gemini 3 Flash → Gemini 2.5 Flash → xAI Grok
-// Gemini free tier: 5 RPM / 250K TPM / 20 RPD por modelo
-// xAI: $25/mes gratis, API compatible OpenAI
+// Cascada: Gemini flash-latest → Gemini 2.5-flash → Groq → xAI
+// Gemini free: 5 RPM / 20 RPD por modelo
+// Groq free: 30 RPM / 14,400 RPD (llama-3.1-8b-instant)
+// xAI: último recurso (requiere créditos)
 // =========================================
 
 import type { Handler } from '@netlify/functions';
@@ -92,6 +93,60 @@ async function callGemini(
   return { ok: true, text };
 }
 
+// ── Groq (OpenAI-compatible) ──────────────────────────────────────────────────
+
+async function callGroq(
+  apiKey: string,
+  body: any,
+): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
+  const messages: any[] = [];
+
+  if (body.system) messages.push({ role: 'system', content: body.system });
+
+  for (const msg of (body.messages || [])) {
+    let content: string;
+    if (typeof msg.content === 'string') {
+      content = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      content = msg.content
+        .filter((b: any) => b.type === 'text')
+        .map((b: any) => b.text)
+        .join('\n') || '[imagen adjunta]';
+    } else {
+      content = String(msg.content);
+    }
+    messages.push({ role: msg.role, content });
+  }
+
+  const res = await fetchWithRetry(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages,
+        max_tokens: Math.min(body.max_tokens || 512, 8192),
+        temperature: 0.7,
+      }),
+    },
+    1,
+    1000,
+    false,
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    const errMsg = data.error?.message || data.error?.type || `Groq HTTP ${res.status}`;
+    console.warn('[claude-proxy] Groq falló:', res.status, errMsg);
+    return { ok: false, error: errMsg, status: res.status };
+  }
+
+  const text = data.choices?.[0]?.message?.content || '';
+  return { ok: true, text };
+}
+
 // ── xAI / Grok ────────────────────────────────────────────────────────────────
 
 async function callXAI(
@@ -165,13 +220,14 @@ const handler: Handler = async (event) => {
   }
 
   const geminiKey = process.env.GEMINI_API_KEY;
+  const groqKey   = process.env.GROQ_API_KEY;
   const xaiKey    = process.env.XAI_API_KEY;
 
-  if (!geminiKey && !xaiKey) {
+  if (!geminiKey && !groqKey && !xaiKey) {
     return { statusCode: 503, body: JSON.stringify({ error: 'AI_UNAVAILABLE' }) };
   }
 
-  // ── Cascada: Gemini 3 Flash → Gemini 2.5 Flash → xAI Grok ──────────────────
+  // ── Cascada: Gemini flash-latest → Gemini 2.5-flash → Groq → xAI ───────────
   const errors: string[] = [];
 
   if (geminiKey) {
@@ -185,9 +241,20 @@ const handler: Handler = async (event) => {
         };
       }
       errors.push(`${model}: ${r.error}`);
-      // Si es error de quota/auth no vale la pena intentar el siguiente Gemini
       if (r.status === 401 || r.status === 403) break;
     }
+  }
+
+  if (groqKey) {
+    const r = await callGroq(groqKey, body);
+    if (r.ok) {
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: [{ type: 'text', text: r.text }] }),
+      };
+    }
+    errors.push(`Groq: ${r.error}`);
   }
 
   if (xaiKey) {
