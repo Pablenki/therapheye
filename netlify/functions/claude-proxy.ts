@@ -1,8 +1,8 @@
 // =========================================
 // Netlify Function: claude-proxy
-// Proxy seguro para IA — usa Groq (primario) con fallback a Gemini
-// Groq: 30 RPM gratis, respuestas <1s, modelos Llama 3.1
-// Gemini: 15 RPM gratis, usado si Groq no está configurado
+// Proxy seguro para IA — usa xAI/Grok (primario) con fallback a Gemini
+// xAI: $25/mes gratis, API compatible OpenAI, modelos Grok
+// Gemini: 15 RPM gratis, usado si xAI no está configurado
 // =========================================
 
 import type { Handler } from '@netlify/functions';
@@ -37,12 +37,12 @@ async function fetchWithRetry(
   return lastRes!;
 }
 
-// ── Groq (OpenAI-compatible) ─────────────────────────────────────────────────
+// ── xAI / Grok (OpenAI-compatible) ──────────────────────────────────────────
 
-async function callGroq(apiKey: string, body: any): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
-  const model = 'llama-3.1-8b-instant'; // rápido y eficiente; cambiar a llama-3.3-70b-versatile para respuestas más largas
+async function callXAI(apiKey: string, body: any): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
+  const model = 'grok-3-mini'; // rápido y económico; cambiar a grok-3 para respuestas más elaboradas
 
-  // Convertir formato Claude → OpenAI/Groq
+  // Convertir formato Claude → OpenAI/xAI
   const messages: any[] = [];
 
   if (body.system) {
@@ -54,7 +54,7 @@ async function callGroq(apiKey: string, body: any): Promise<{ ok: boolean; text?
     if (typeof msg.content === 'string') {
       content = msg.content;
     } else if (Array.isArray(msg.content)) {
-      // Groq no soporta imágenes en todos los modelos — extraer solo texto
+      // Extraer solo texto de bloques mixtos
       content = msg.content
         .filter((b: any) => b.type === 'text')
         .map((b: any) => b.text)
@@ -65,7 +65,7 @@ async function callGroq(apiKey: string, body: any): Promise<{ ok: boolean; text?
     messages.push({ role: msg.role, content });
   }
 
-  const groqBody = {
+  const xaiBody = {
     model,
     messages,
     max_tokens: Math.min(body.max_tokens || 512, 8192),
@@ -73,24 +73,24 @@ async function callGroq(apiKey: string, body: any): Promise<{ ok: boolean; text?
   };
 
   const res = await fetchWithRetry(
-    'https://api.groq.com/openai/v1/chat/completions',
+    'https://api.x.ai/v1/chat/completions',
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(groqBody),
+      body: JSON.stringify(xaiBody),
     },
     3,    // max 3 reintentos
-    1500, // 1.5s base delay (Groq es rápido)
+    1500, // 1.5s base delay
   );
 
   const data = await res.json();
 
   if (!res.ok) {
-    const errMsg = data.error?.message || data.error?.type || `Groq HTTP ${res.status}`;
-    console.error('[claude-proxy] Groq error:', res.status, JSON.stringify(data));
+    const errMsg = data.error?.message || data.error?.type || `xAI HTTP ${res.status}`;
+    console.error('[claude-proxy] xAI error:', res.status, JSON.stringify(data));
     return { ok: false, error: errMsg, status: res.status };
   }
 
@@ -175,16 +175,16 @@ const handler: Handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'messages is required' }) };
   }
 
-  const groqKey   = process.env.GROQ_API_KEY;
+  const xaiKey    = process.env.XAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
 
-  if (!groqKey && !geminiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'No AI API key configured (GROQ_API_KEY or GEMINI_API_KEY)' }) };
+  if (!xaiKey && !geminiKey) {
+    return { statusCode: 500, body: JSON.stringify({ error: 'No AI API key configured (XAI_API_KEY or GEMINI_API_KEY)' }) };
   }
 
-  // Intentar Groq primero (si está configurado)
-  if (groqKey) {
-    const result = await callGroq(groqKey, body);
+  // Intentar xAI primero (si está configurado)
+  if (xaiKey) {
+    const result = await callXAI(xaiKey, body);
     if (result.ok) {
       return {
         statusCode: 200,
@@ -192,8 +192,8 @@ const handler: Handler = async (event) => {
         body: JSON.stringify({ content: [{ type: 'text', text: result.text }] }),
       };
     }
-    console.warn('[claude-proxy] Groq falló, intentando Gemini:', result.error);
-    // Si Groq falla y no hay Gemini, retornar el error de Groq
+    console.warn('[claude-proxy] xAI falló, intentando Gemini:', result.error);
+    // Si xAI falla y no hay Gemini, retornar el error de xAI
     if (!geminiKey) {
       const safeStatus = result.status === 429 ? 429 : result.status && result.status >= 500 ? 503 : 400;
       return { statusCode: safeStatus, body: JSON.stringify({ error: result.error }) };
