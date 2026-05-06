@@ -12,6 +12,10 @@
   to     = "/index.html"
   status = 200
 
+# ── Timeout extendido para proxy de IA (reintentos con backoff) ─────────────
+[functions."claude-proxy"]
+  timeout = 26
+
 # ── Scheduled notifications (daily at 20:00 UTC ≈ 2pm CST) ─────────────────
 [functions."push-cron"]
   schedule = "0 20 * * *"
