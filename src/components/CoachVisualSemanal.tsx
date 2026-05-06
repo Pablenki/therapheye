@@ -183,8 +183,12 @@ ${resumen}`;
     setLoading(false);
   }, [user?.id, user?.nombre]);
 
-  // Cargar al montar — sin forzar
-  useEffect(() => { fetchAnalysis(false); }, [fetchAnalysis]);
+  // Solo carga caché al montar — la API se llama únicamente cuando el usuario hace clic en "Regenerar"
+  useEffect(() => {
+    if (!user?.id) return;
+    const cached = loadCache(user.id);
+    if (cached) { setAnalysis(cached); setIsFromCache(true); }
+  }, [user?.id]);
 
   if (!user?.id) return null;
 
@@ -243,6 +247,15 @@ ${resumen}`;
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="w-10 h-10 rounded-full border-3 border-purple-200 border-t-purple-600 animate-spin" style={{ borderWidth: 3 }} />
               <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Analizando tu semana...</p>
+            </div>
+          )}
+
+          {!loading && !error && !analysis && (
+            <div className="flex flex-col items-center gap-3 py-8 px-5 text-center">
+              <Sparkles className={`w-8 h-8 ${isDark ? 'text-purple-400' : 'text-purple-400'}`} />
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                Haz clic en <strong className="text-purple-500">Regenerar</strong> para generar tu análisis semanal con IA
+              </p>
             </div>
           )}
 

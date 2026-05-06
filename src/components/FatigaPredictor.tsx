@@ -168,11 +168,12 @@ ${resumen}`;
     setLoading(false);
   }, [user?.id]);
 
-  // Delay 3 s so Coach loads first — avoids simultaneous Gemini requests (429)
+  // Solo carga caché al montar — la API se llama únicamente cuando el usuario hace clic en actualizar
   useEffect(() => {
-    const t = setTimeout(() => runPredictor(false), 3000);
-    return () => clearTimeout(t);
-  }, [runPredictor]);
+    if (!user?.id) return;
+    const cached = loadCache(user.id);
+    if (cached) { setResult(cached); }
+  }, [user?.id]);
 
   if (!user?.id) return null;
 
@@ -200,6 +201,12 @@ ${resumen}`;
           <div className="w-4 h-4 rounded-full border-2 border-indigo-300 border-t-indigo-600 animate-spin" />
           <p className="text-xs text-gray-500">Calculando predicción...</p>
         </div>
+      )}
+
+      {!loading && !error && !result && (
+        <p className="text-xs text-gray-400 py-2">
+          Haz clic en <span className="text-indigo-500 font-medium">↻</span> para predecir tu fatiga de hoy con IA
+        </p>
       )}
 
       {error && !loading && (

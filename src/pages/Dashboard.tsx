@@ -1027,10 +1027,10 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             const curr = toolIdx % n;
 
             return (
-              <div className="mt-2">
+              <div className="mt-2 max-w-sm mx-auto">
                 {/* Slide track */}
                 <div
-                  className="relative overflow-hidden rounded-2xl select-none"
+                  className="relative overflow-hidden rounded-2xl select-none shadow-lg"
                   onTouchStart={e => { toolTouchX.current = e.touches[0].clientX; }}
                   onTouchEnd={e => {
                     const dx = e.changedTouches[0].clientX - toolTouchX.current;
@@ -1039,45 +1039,45 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                   }}
                 >
                   <div
-                    className="flex transition-transform duration-300 ease-in-out"
+                    className="flex transition-transform duration-350 ease-in-out"
                     style={{ transform: `translateX(-${curr * 100}%)` }}
                   >
                     {sorted.map(item => (
                       <div key={item.page} className="w-full flex-none">
                         <button
                           onClick={() => onNavigate(item.page)}
-                          className={`w-full bg-gradient-to-br ${item.color} text-white rounded-2xl px-5 py-6 flex flex-col items-start gap-2 hover:opacity-90 transition active:scale-[0.98] shadow-md`}
+                          className={`w-full bg-gradient-to-br ${item.color} text-white px-6 py-5 flex flex-col items-start gap-1.5 hover:brightness-110 transition-all active:scale-[0.98]`}
                         >
-                          <span className="text-4xl">{item.emoji}</span>
-                          <span className="text-lg font-bold leading-tight">{item.label}</span>
-                          <span className="text-sm text-white/75 leading-snug">{item.desc}</span>
-                          <span className="mt-1 text-xs text-white/60 font-semibold">Abrir →</span>
+                          <span className="text-3xl leading-none">{item.emoji}</span>
+                          <span className="text-base font-bold leading-tight mt-1">{item.label}</span>
+                          <span className="text-xs text-white/70 leading-snug">{item.desc}</span>
+                          <span className="mt-2 text-[11px] text-white/50 font-semibold tracking-wide uppercase">Abrir herramienta →</span>
                         </button>
                       </div>
                     ))}
                   </div>
 
-                  {/* Prev */}
+                  {/* Prev — visible con buen contraste */}
                   <button
                     onClick={() => setToolIdx(i => (i - 1 + n) % n)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/25 hover:bg-black/40 text-white rounded-full flex items-center justify-center transition"
+                    className="absolute left-0 top-0 h-full px-2 flex items-center bg-gradient-to-r from-black/30 to-transparent hover:from-black/50 transition text-white"
                   >
-                    <ChevronLeft className="w-4 h-4"/>
+                    <ChevronLeft className="w-6 h-6 drop-shadow"/>
                   </button>
 
                   {/* Next */}
                   <button
                     onClick={() => setToolIdx(i => (i + 1) % n)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/25 hover:bg-black/40 text-white rounded-full flex items-center justify-center transition"
+                    className="absolute right-0 top-0 h-full px-2 flex items-center bg-gradient-to-l from-black/30 to-transparent hover:from-black/50 transition text-white"
                   >
-                    <ChevronRight className="w-4 h-4"/>
+                    <ChevronRight className="w-6 h-6 drop-shadow"/>
                   </button>
                 </div>
 
                 {/* Progress indicator */}
-                <div className="flex items-center gap-2 mt-3 px-1">
-                  <span className="text-[11px] text-gray-400 tabular-nums w-9">{curr + 1}/{n}</span>
-                  <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="flex items-center gap-2 mt-2.5 px-0.5">
+                  <span className="text-[11px] text-gray-400 tabular-nums w-9 flex-shrink-0">{curr + 1}/{n}</span>
+                  <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-indigo-500 rounded-full transition-all duration-300"
                       style={{ width: `${((curr + 1) / n) * 100}%` }}

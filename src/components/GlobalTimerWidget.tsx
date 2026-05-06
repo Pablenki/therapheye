@@ -322,6 +322,8 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const [isMobile, setIsMobile]                     = useState(isMobileDevice);
   /** Banner "timer activo en otra ventana/extensión" */
   const [foreignSessionMs, setForeignSessionMs]     = useState<number | null>(null);
+  // Persiste entre re-renders y navegación para no re-disparar la alerta de descanso
+  const lastFiredBreakRef = useRef<number | null>(null);
   const foreignSessionDismissedRef                  = useRef(false);
   /** Modal: la extensión estaba corriendo al iniciar sesión */
   const [showExtActivePrompt, setShowExtActivePrompt] = useState<{ accMs: number } | null>(null);
@@ -573,7 +575,13 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   useEffect(() => {
     if (isAuthPage) return;
 
-    let lastFiredBreakAtMs: number | null = null;
+    // Inicializar desde localStorage para sobrevivir navegación
+    if (lastFiredBreakRef.current === null) {
+      try {
+        const stored = localStorage.getItem('therapeye_last_break_fired');
+        if (stored) lastFiredBreakRef.current = Number(stored);
+      } catch { /* noop */ }
+    }
     let lastTickTs = Date.now();
     const SLEEP_THRESHOLD_MS = 30_000; // Si pasan >30s entre ticks → la máquina estuvo dormida
 
@@ -690,8 +698,9 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       }
 
       if (ms >= st.nextBreakAtMs) {
-        if (st.nextBreakAtMs !== lastFiredBreakAtMs) {
-          lastFiredBreakAtMs = st.nextBreakAtMs;
+        if (st.nextBreakAtMs !== lastFiredBreakRef.current) {
+          lastFiredBreakRef.current = st.nextBreakAtMs;
+          try { localStorage.setItem('therapeye_last_break_fired', String(st.nextBreakAtMs)); } catch { /* noop */ }
           playBeep();
           speakText(t('visualHealth', 'breakRule'), lang);
           setBreakAlert(true);
