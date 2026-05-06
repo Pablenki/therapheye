@@ -1,8 +1,8 @@
 // =========================================
 // Netlify Function: claude-proxy
-// Proxy seguro para IA — usa xAI/Grok (primario) con fallback a Gemini
-// xAI: $25/mes gratis, API compatible OpenAI, modelos Grok
-// Gemini: 15 RPM gratis, usado si xAI no está configurado
+// Cascada: Gemini 3 Flash → Gemini 2.5 Flash → xAI Grok
+// Gemini free tier: 5 RPM / 250K TPM / 20 RPD por modelo
+// xAI: $25/mes gratis, API compatible OpenAI
 // =========================================
 
 import type { Handler } from '@netlify/functions';
@@ -11,16 +11,12 @@ import type { Handler } from '@netlify/functions';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-/**
- * Retry con backoff exponencial.
- * retryOn429: si false, devuelve inmediatamente en 429 (Gemini: reintentar 429 genera más 429).
- */
 async function fetchWithRetry(
   url: string,
   init: RequestInit,
-  maxRetries = 3,
-  baseDelayMs = 2000,
-  retryOn429 = true,
+  maxRetries = 1,
+  baseDelayMs = 1500,
+  retryOn429 = false,
 ): Promise<Response> {
   let lastRes: Response | null = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -29,7 +25,7 @@ async function fetchWithRetry(
     if (!shouldRetry) return res;
     lastRes = res;
     if (attempt < maxRetries) {
-      const delay = baseDelayMs * Math.pow(2, attempt); // 2s, 4s, 8s
+      const delay = baseDelayMs * Math.pow(2, attempt);
       console.warn(`[claude-proxy] ${res.status} — reintento ${attempt + 1}/${maxRetries} en ${delay}ms`);
       await sleep(delay);
     }
@@ -37,72 +33,14 @@ async function fetchWithRetry(
   return lastRes!;
 }
 
-// ── xAI / Grok (OpenAI-compatible) ──────────────────────────────────────────
+// ── Gemini ────────────────────────────────────────────────────────────────────
 
-async function callXAI(apiKey: string, body: any): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
-  const model = 'grok-3-mini'; // rápido y económico; cambiar a grok-3 para respuestas más elaboradas
-
-  // Convertir formato Claude → OpenAI/xAI
-  const messages: any[] = [];
-
-  if (body.system) {
-    messages.push({ role: 'system', content: body.system });
-  }
-
-  for (const msg of (body.messages || [])) {
-    let content: string;
-    if (typeof msg.content === 'string') {
-      content = msg.content;
-    } else if (Array.isArray(msg.content)) {
-      // Extraer solo texto de bloques mixtos
-      content = msg.content
-        .filter((b: any) => b.type === 'text')
-        .map((b: any) => b.text)
-        .join('\n') || '[imagen adjunta]';
-    } else {
-      content = String(msg.content);
-    }
-    messages.push({ role: msg.role, content });
-  }
-
-  const xaiBody = {
-    model,
-    messages,
-    max_tokens: Math.min(body.max_tokens || 512, 8192),
-    temperature: 0.7,
-  };
-
-  const res = await fetchWithRetry(
-    'https://api.x.ai/v1/chat/completions',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(xaiBody),
-    },
-    3,    // max 3 reintentos
-    1500, // 1.5s base delay
-  );
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    const errMsg = data.error?.message || data.error?.type || `xAI HTTP ${res.status}`;
-    console.error('[claude-proxy] xAI error:', res.status, JSON.stringify(data));
-    return { ok: false, error: errMsg, status: res.status };
-  }
-
-  const text = data.choices?.[0]?.message?.content || '';
-  return { ok: true, text };
-}
-
-// ── Gemini (fallback) ────────────────────────────────────────────────────────
-
-async function callGemini(apiKey: string, body: any): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
+async function callGemini(
+  apiKey: string,
+  model: string,
+  body: any,
+): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
   const geminiContents: any[] = [];
-  const systemInstruction = body.system || undefined;
 
   for (const msg of (body.messages || [])) {
     const role = msg.role === 'assistant' ? 'model' : 'user';
@@ -130,26 +68,23 @@ async function callGemini(apiKey: string, body: any): Promise<{ ok: boolean; tex
       temperature: 0.7,
     },
   };
-  if (systemInstruction) {
-    geminiBody.systemInstruction = { parts: [{ text: systemInstruction }] };
+  if (body.system) {
+    geminiBody.systemInstruction = { parts: [{ text: body.system }] };
   }
 
-  const model = 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  const res = await fetchWithRetry(
-    url,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(geminiBody) },
-    1,     // max 1 reintento — solo para 503, nunca para 429
-    2500,  // 2.5s base delay
-    false, // NO reintentar en 429: reintentar solo empeora el rate-limit
-  );
+  const res = await fetchWithRetry(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(geminiBody),
+  });
 
   const data = await res.json();
 
   if (!res.ok) {
-    const errMsg = data.error?.message || data.error?.status || `Gemini HTTP ${res.status}`;
-    console.error('[claude-proxy] Gemini error:', res.status, JSON.stringify(data));
+    const errMsg = data.error?.message || data.error?.status || `Gemini ${model} HTTP ${res.status}`;
+    console.warn(`[claude-proxy] ${model} falló (${res.status}):`, errMsg);
     return { ok: false, error: errMsg, status: res.status };
   }
 
@@ -157,7 +92,61 @@ async function callGemini(apiKey: string, body: any): Promise<{ ok: boolean; tex
   return { ok: true, text };
 }
 
-// ── Handler principal ────────────────────────────────────────────────────────
+// ── xAI / Grok ────────────────────────────────────────────────────────────────
+
+async function callXAI(
+  apiKey: string,
+  body: any,
+): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
+  const messages: any[] = [];
+
+  if (body.system) messages.push({ role: 'system', content: body.system });
+
+  for (const msg of (body.messages || [])) {
+    let content: string;
+    if (typeof msg.content === 'string') {
+      content = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      content = msg.content
+        .filter((b: any) => b.type === 'text')
+        .map((b: any) => b.text)
+        .join('\n') || '[imagen adjunta]';
+    } else {
+      content = String(msg.content);
+    }
+    messages.push({ role: msg.role, content });
+  }
+
+  const res = await fetchWithRetry(
+    'https://api.x.ai/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'grok-3-mini',
+        messages,
+        max_tokens: Math.min(body.max_tokens || 512, 8192),
+        temperature: 0.7,
+      }),
+    },
+    2,    // 2 reintentos para 503
+    1500,
+    false,
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    const errMsg = data.error?.message || data.error?.type || `xAI HTTP ${res.status}`;
+    console.warn('[claude-proxy] xAI falló:', res.status, errMsg);
+    return { ok: false, error: errMsg, status: res.status };
+  }
+
+  const text = data.choices?.[0]?.message?.content || '';
+  return { ok: true, text };
+}
+
+// ── Handler principal ─────────────────────────────────────────────────────────
 
 const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -175,46 +164,49 @@ const handler: Handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'messages is required' }) };
   }
 
-  const xaiKey    = process.env.XAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
+  const xaiKey    = process.env.XAI_API_KEY;
 
-  if (!xaiKey && !geminiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'No AI API key configured (XAI_API_KEY or GEMINI_API_KEY)' }) };
+  if (!geminiKey && !xaiKey) {
+    return { statusCode: 503, body: JSON.stringify({ error: 'AI_UNAVAILABLE' }) };
   }
 
-  // Intentar xAI primero (si está configurado)
-  if (xaiKey) {
-    const result = await callXAI(xaiKey, body);
-    if (result.ok) {
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: [{ type: 'text', text: result.text }] }),
-      };
-    }
-    console.warn('[claude-proxy] xAI falló, intentando Gemini:', result.error);
-    // Si xAI falla y no hay Gemini, retornar el error de xAI
-    if (!geminiKey) {
-      const safeStatus = result.status === 429 ? 429 : result.status && result.status >= 500 ? 503 : 400;
-      return { statusCode: safeStatus, body: JSON.stringify({ error: result.error }) };
-    }
-  }
+  // ── Cascada: Gemini 3 Flash → Gemini 2.5 Flash → xAI Grok ──────────────────
+  const errors: string[] = [];
 
-  // Fallback: Gemini
   if (geminiKey) {
-    const result = await callGemini(geminiKey, body);
-    if (result.ok) {
+    for (const model of ['gemini-flash-latest', 'gemini-2.5-flash']) {
+      const r = await callGemini(geminiKey, model, body);
+      if (r.ok) {
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: [{ type: 'text', text: r.text }] }),
+        };
+      }
+      errors.push(`${model}: ${r.error}`);
+      // Si es error de quota/auth no vale la pena intentar el siguiente Gemini
+      if (r.status === 401 || r.status === 403) break;
+    }
+  }
+
+  if (xaiKey) {
+    const r = await callXAI(xaiKey, body);
+    if (r.ok) {
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: [{ type: 'text', text: result.text }] }),
+        body: JSON.stringify({ content: [{ type: 'text', text: r.text }] }),
       };
     }
-    const safeStatus = result.status === 429 ? 429 : result.status && result.status >= 500 ? 503 : 400;
-    return { statusCode: safeStatus, body: JSON.stringify({ error: result.error }) };
+    errors.push(`xAI: ${r.error}`);
   }
 
-  return { statusCode: 500, body: JSON.stringify({ error: 'No provider available' }) };
+  console.error('[claude-proxy] Todos los proveedores fallaron:', errors);
+  return {
+    statusCode: 503,
+    body: JSON.stringify({ error: 'AI_UNAVAILABLE' }),
+  };
 };
 
 export { handler };

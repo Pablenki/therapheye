@@ -237,7 +237,23 @@ export default function ChatSintomas({ onBack }: Props) {
           </div>
         )}
         {error && (
-          <p className="text-center text-xs text-red-500 mb-4">{error}</p>
+          <div className="mx-4 mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
+            <span className="text-lg leading-none mt-0.5">
+              {error === 'AI_BUSY' ? '⏳' : '🔧'}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                {error === 'AI_BUSY'
+                  ? (lang === 'es' ? 'El asistente está muy ocupado' : 'Assistant is busy right now')
+                  : (lang === 'es' ? 'El asistente no está disponible' : 'Assistant unavailable')}
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                {error === 'AI_BUSY'
+                  ? (lang === 'es' ? 'Demasiadas consultas al mismo tiempo. Intenta de nuevo en unos segundos.' : 'Too many requests. Try again in a few seconds.')
+                  : (lang === 'es' ? 'Estamos teniendo problemas técnicos. Inténtalo de nuevo en un momento.' : 'We\'re having technical issues. Please try again shortly.')}
+              </p>
+            </div>
+          </div>
         )}
         <div ref={bottomRef} />
       </div>
