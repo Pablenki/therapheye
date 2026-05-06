@@ -134,7 +134,7 @@ async function callGemini(apiKey: string, body: any): Promise<{ ok: boolean; tex
     geminiBody.systemInstruction = { parts: [{ text: systemInstruction }] };
   }
 
-  const model = 'gemini-2.0-flash';
+  const model = 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const res = await fetchWithRetry(
