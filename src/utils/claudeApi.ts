@@ -40,8 +40,10 @@ export async function callClaude(req: AIRequest): Promise<AIResponse> {
         if (errData?.error) errMsg = errData.error;
       } catch { /* ignore */ }
       if (res.status === 429) errMsg = 'Límite de solicitudes alcanzado. Intenta en unos segundos.';
-      if (res.status === 503) errMsg = 'Servicio de IA temporalmente no disponible. Intenta de nuevo.';
-      if (res.status === 401 || res.status === 403) errMsg = 'Error de autenticación con la IA.';
+      if (res.status === 503) errMsg = `Servicio no disponible: ${errMsg}`;
+      if (res.status === 401) errMsg = `API key inválida o sin permiso: ${errMsg}`;
+      if (res.status === 403) errMsg = `Acceso denegado: ${errMsg}`;
+      if (res.status === 400) errMsg = `Solicitud inválida: ${errMsg}`;
       throw new Error(errMsg);
     }
     return res.json();

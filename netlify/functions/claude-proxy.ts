@@ -70,7 +70,7 @@ const handler: Handler = async (event) => {
       geminiBody.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
 
-    const model = 'gemini-1.5-flash';
+    const model = 'gemini-2.0-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const res = await fetch(url, {
@@ -82,18 +82,18 @@ const handler: Handler = async (event) => {
     const data = await res.json();
 
     if (!res.ok) {
-      const normalizedStatus = res.status >= 200 && res.status < 600 ? res.status : 503;
-      const safeStatus = [400, 401, 403, 429, 500, 503].includes(normalizedStatus)
-        ? normalizedStatus
-        : 503;
-      // Include full error detail so the client can show what's actually wrong
       const errMsg = data.error?.message
         || data.error?.status
         || `Gemini HTTP ${res.status}`;
       console.error('[claude-proxy] Gemini error:', res.status, JSON.stringify(data));
+      // Map any Gemini status to a safe HTTP status the client understands
+      const safeStatus = res.status === 401 || res.status === 403 ? 401
+        : res.status === 429 ? 429
+        : res.status >= 500 ? 503
+        : 400;
       return {
         statusCode: safeStatus,
-        body: JSON.stringify({ error: errMsg, detail: data }),
+        body: JSON.stringify({ error: errMsg }),
       };
     }
 
