@@ -9,7 +9,7 @@ import {
   Sparkles, BookMarked, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
-  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart, Accessibility,
+  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -169,7 +169,6 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
   const [open, setOpen]         = useState(() => window.innerWidth >= 768);
   const [collapsed, setCollapsed] = useState(false); // desktop icon-only mode
   const [showLogout, setShowLogout] = useState(false);
-  const [showFab, setShowFab] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [showGoalsConfig, setShowGoalsConfig] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
@@ -555,13 +554,6 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                         <HelpCircle className="w-3.5 h-3.5 text-indigo-400"/> ¿Cómo usar esto?
                       </button>
                     )}
-                    <button
-                      onClick={() => { window.dispatchEvent(new CustomEvent('therapheye-open-accessibility')); setShowProfileMenu(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
-                      title="Accesibilidad"
-                    >
-                      <Accessibility className="w-3.5 h-3.5 text-indigo-400"/> Accesibilidad
-                    </button>
                     <div className="border-t border-white/10 mx-2"/>
                     <button
                       onClick={() => { setShowLogout(true); setShowProfileMenu(false); }}
@@ -703,38 +695,6 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
           })}
         </nav>
       )}
-
-      {/* ── FAB Acceso rápido ───────────────────────────────────────────── */}
-      <div className={`fixed z-[8500] transition-all duration-300 ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'}`}>
-        {/* Mini menu */}
-        {showFab && (
-          <div className="absolute bottom-16 right-0 flex flex-col gap-2 items-end">
-            {[
-              { icon: Activity,      label: 'Ejercicios',    page: 'exercises'    as const },
-              { icon: ClipboardList, label: 'Cuestionario',  page: 'questionnaire'as const },
-              { icon: MessageCircleHeart, label: 'Chat IA',  page: 'chat-sintomas'as const },
-              { icon: Wind,          label: 'Respiración',   page: 'respiracion-478' as const },
-            ].map(({ icon: Icon, label, page }) => (
-              <button
-                key={page}
-                onClick={() => { handleNav(page); setShowFab(false); }}
-                className="flex items-center gap-2.5 bg-white shadow-xl border border-gray-100 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-2xl hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition whitespace-nowrap"
-              >
-                <Icon style={{ width: 16, height: 16 }} className="flex-shrink-0 text-indigo-500"/>
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-        {/* Main FAB button */}
-        <button
-          onClick={() => setShowFab(v => !v)}
-          className={`w-14 h-14 rounded-2xl shadow-xl flex items-center justify-center transition-all duration-300 ${showFab ? 'bg-gray-700 rotate-45' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-          title="Acceso rápido"
-        >
-          <Sparkles className="w-6 h-6 text-white" style={{ transform: showFab ? 'rotate(-45deg)' : 'none', transition: 'transform 0.3s' }}/>
-        </button>
-      </div>
 
       {/* ── Command Palette ─────────────────────────────────────────────── */}
       <CommandPalette
