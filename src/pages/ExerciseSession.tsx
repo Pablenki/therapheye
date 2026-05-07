@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback, type ReactElement } from 'react';
-import { ArrowLeft, Play, Pause, RotateCcw, Volume2, VolumeX, SkipForward, Music2, X } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, Volume2, VolumeX, SkipForward, Music2, X, Camera, CameraOff } from 'lucide-react';
 import FatigaModal from '../components/FatigaModal';
 import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
+import { useExerciseValidator } from '../hooks/useExerciseValidator';
+import ExerciseValidatorPanel from '../components/ExerciseValidatorPanel';
 
 // ─── Utilidad de audio via Web Audio API ─────────────────────────────────────
 const playTone = (
@@ -544,6 +546,10 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const musicStyleRef = useRef<MusicStyle>('zen');
   musicStyleRef.current = musicStyle;
 
+  // ── Validación con cámara (opt-in) ────────────────────────────────────────
+  const [validatorOn, setValidatorOn] = useState(false);
+  const validator = useExerciseValidator();
+
   // Ref para silencio — disponible dentro del intervalo sin stale closure
   const mutedRef     = useRef(muted);
   const timeLeftRef  = useRef(timeLeft);
@@ -592,6 +598,9 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     ambientMusic.stop();
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    // Apagar validación al cambiar ejercicio
+    setValidatorOn(false);
+    validator.stop();
 
     // Detectar sesión incompleta previa para ofrecer "Continuar"
     try {
@@ -784,6 +793,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const handleBack = () => {
     cancelCountdown();
     ambientMusic.stop();
+    validator.stop();
     if (isRunning || (timeLeft > 0 && timeLeft < currentExercise.defaultDuration)) {
       saveExerciseToDatabase('incomplete');
     }
@@ -858,6 +868,16 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     } else {
       // Resumir desde pausa — sin countdown
       setIsRunning(true);
+    }
+  };
+
+  const handleToggleValidator = () => {
+    if (validatorOn) {
+      setValidatorOn(false);
+      validator.stop();
+    } else {
+      setValidatorOn(true);
+      validator.start();
     }
   };
 
@@ -992,6 +1012,14 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             <ArrowLeft className="w-5 h-5" /> {t('common', 'back')}
           </button>
           <div className="flex items-center gap-2">
+            {/* Botón validación con cámara */}
+            <button
+              onClick={handleToggleValidator}
+              title={validatorOn ? 'Apagar validación' : 'Activar validación con cámara'}
+              className={`p-2 rounded-lg transition ${validatorOn ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+            >
+              {validatorOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
+            </button>
             {/* Botón selector de música */}
             {!muted && (
               <button
@@ -1159,6 +1187,16 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── Panel de validación con cámara (opt-in) ── */}
+        {validatorOn && (
+          <ExerciseValidatorPanel
+            exerciseId={exerciseId}
+            state={validator.state}
+            videoRef={validator.videoRef}
+            onStop={() => { setValidatorOn(false); validator.stop(); }}
+          />
         )}
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
