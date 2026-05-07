@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Eye, ScanEye, Loader2, RefreshCw, BarChart2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Eye, ScanEye, Loader2, RefreshCw, BarChart2, AlertCircle, CheckCircle2, Navigation } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { sql } from '../neonCliente'
 
-type Props = { onBack: () => void }
+type DiagPage = 'image-capture' | 'questionnaire' | 'visual-health' | 'exercises' | 'vision-test'
+type Props = { onBack: () => void; onNavigate?: (page: DiagPage) => void }
 
 // ─── Mapas de conversión ──────────────────────────────────────────────────────
 const SINTOMA_VALOR: Record<string, number> = {
@@ -172,11 +173,29 @@ const ScoreCircle = ({ score }: { score: number }) => {
 }
 
 // ─── Módulo principal ─────────────────────────────────────────────────────────
-const DiagnosticoCompleto = ({ onBack }: Props) => {
+// Mapa: nombre del faltante → página a la que navegar
+const FALTANTE_PAGE: Record<string, DiagPage> = {
+  'Captura de imagen (hoy)': 'image-capture',
+  'Cuestionario (hoy)': 'questionnaire',
+  'Tiempo en pantalla (hoy)': 'visual-health',
+  'Ejercicios visuales (hoy)': 'exercises',
+  'Prueba de visión (hoy)': 'vision-test',
+}
+
+const FALTANTE_ICON: Record<string, string> = {
+  'Captura de imagen (hoy)': '📷',
+  'Cuestionario (hoy)': '📋',
+  'Tiempo en pantalla (hoy)': '⏱️',
+  'Ejercicios visuales (hoy)': '🏃',
+  'Prueba de visión (hoy)': '👁️',
+}
+
+const DiagnosticoCompleto = ({ onBack, onNavigate }: Props) => {
   const { user } = useUser()
   const [loading, setLoading]         = useState(true)
   const [generando, setGenerando]     = useState(false)
   const [diagnostico, setDiagnostico] = useState<DiagnosticoGuardado | null>(null)
+  const [historialDiag, setHistorialDiag] = useState<DiagnosticoGuardado[]>([])
   const [faltantes, setFaltantes]     = useState<string[]>([])
   const [error, setError]             = useState<string | null>(null)
   const [progreso, setProgreso]       = useState(0)
@@ -190,12 +209,11 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
           SELECT * FROM diagnostico_completo
           WHERE user_id = ${user.id}
           ORDER BY created_at DESC
-          LIMIT 1
+          LIMIT 5
         `.catch(() => [])
 
         if (rows && rows.length > 0) {
-          const r = rows[0]
-          setDiagnostico({
+          const parseDiag = (r: any): DiagnosticoGuardado => ({
             id:                   String(r.id),
             score_final:          Number(r.score_final),
             nivel:                r.nivel,
@@ -213,6 +231,9 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
             recomendaciones_json: JSON.parse(r.recomendaciones_json || '[]'),
             created_at:           r.created_at,
           })
+          const parsed = rows.map(parseDiag)
+          setHistorialDiag(parsed)
+          setDiagnostico(parsed[0])
         }
       } catch (e) {
         console.error('[DiagnosticoCompleto] init error:', e)
@@ -403,16 +424,33 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
               ))}
             </div>
 
-            {/* Faltantes */}
+            {/* Faltantes con botones de navegación */}
             {faltantes.length > 0 && (
-              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-amber-800 mb-1">Faltan datos en:</p>
-                  <ul className="text-sm text-amber-700 space-y-0.5">
-                    {faltantes.map(f => <li key={f}>• {f}</li>)}
-                  </ul>
-                  <p className="text-xs text-amber-600 mt-2">Completa esos módulos y vuelve a intentarlo.</p>
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                  <p className="text-sm font-semibold text-amber-800">
+                    Falta completar {faltantes.length} módulo{faltantes.length > 1 ? 's' : ''} de hoy:
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {faltantes.map(f => (
+                    <div key={f} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-100">
+                      <span className="text-sm text-amber-800 flex items-center gap-2">
+                        <span>{FALTANTE_ICON[f] ?? '📌'}</span>
+                        <span>{f.replace(' (hoy)', '')}</span>
+                      </span>
+                      {onNavigate && FALTANTE_PAGE[f] && (
+                        <button
+                          onClick={() => onNavigate(FALTANTE_PAGE[f])}
+                          className="flex items-center gap-1 text-xs bg-amber-600 text-white px-2.5 py-1 rounded-lg hover:bg-amber-700 transition font-medium"
+                        >
+                          <Navigation className="w-3 h-3" />
+                          Ir ahora
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -457,6 +495,48 @@ const DiagnosticoCompleto = ({ onBack }: Props) => {
           <>
             {/* Score principal */}
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
+              {/* Última vez realizado */}
+              <div className="flex items-center justify-between mb-5">
+                <p className="text-xs text-gray-400 flex items-center gap-1">
+                  <span>🕐</span>
+                  Último diagnóstico:{' '}
+                  <span className="font-semibold text-gray-600">
+                    {new Date(diagnostico.created_at).toLocaleString('es-MX', {
+                      dateStyle: 'medium', timeStyle: 'short'
+                    })}
+                  </span>
+                </p>
+                {historialDiag.length > 1 && (
+                  <span className="text-[10px] text-indigo-500 font-semibold bg-indigo-50 px-2 py-0.5 rounded-full">
+                    {historialDiag.length} diagnósticos
+                  </span>
+                )}
+              </div>
+              {/* Mini historial de scores */}
+              {historialDiag.length > 1 && (
+                <div className="mb-5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs font-semibold text-gray-500 mb-2">Historial de calificaciones</p>
+                  <div className="flex items-end gap-2 overflow-x-auto pb-1">
+                    {[...historialDiag].reverse().map((h, i) => {
+                      const colors = getNivelColor(h.score_final)
+                      const isLatest = i === historialDiag.length - 1
+                      return (
+                        <div key={h.id} className="flex flex-col items-center gap-1 flex-shrink-0">
+                          <span className={`text-[10px] font-bold ${colors.text}`}>{Math.round(h.score_final)}</span>
+                          <div
+                            className={`w-6 rounded-t transition-all ${colors.bg} border ${colors.border} ${isLatest ? 'ring-2 ring-offset-1 ring-indigo-400' : ''}`}
+                            style={{ height: `${Math.max(8, h.score_final * 0.4)}px` }}
+                            title={new Date(h.created_at).toLocaleDateString('es-MX')}
+                          />
+                          <span className="text-[8px] text-gray-400">
+                            {new Date(h.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row items-center gap-8">
                 <ScoreCircle score={diagnostico.score_final} />
                 <div className="flex-1">

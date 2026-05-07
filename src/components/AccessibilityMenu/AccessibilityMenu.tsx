@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useAccessibility } from './useAccessibility';
 import { createPortal } from 'react-dom';
-import { X, Settings, Eye, Volume2, MousePointer, Globe, Palette, Sparkles } from 'lucide-react';
+import { X, Accessibility, Eye, Volume2, MousePointer, Globe, Palette, Sparkles, Timer } from 'lucide-react';
 import { useLanguage } from '../../i18n';
 import type { FontFamily, ColorBlindMode, AppLanguage } from './accessibility.types';
 import { THEMES } from '../../themes';
@@ -46,7 +46,7 @@ const AccessibilityMenu = () => {
                    hover:scale-110 active:scale-95 transition-all duration-300"
         aria-label={t('accessibility', 'openMenu')}
       >
-        <Settings className="w-7 h-7" />
+        <Accessibility className="w-7 h-7" />
       </button>
 
       {/* Panel desplegable */}
@@ -489,6 +489,26 @@ const AccessibilityMenu = () => {
                 </div>
               </label>
             </div>
+          </div>
+
+          {/* ========== TIMER FLOTANTE ========== */}
+          <div className="mb-6 pb-5 border-b-2 border-gray-200">
+            <h4 className="text-base font-bold text-[#1B396B] mb-4 flex items-center gap-2">
+              <Timer className="w-5 h-5" />
+              {settings.appLanguage === 'es' ? 'Timer flotante' : 'Floating timer'}
+            </h4>
+            <button
+              onClick={() => {
+                try { localStorage.removeItem('therapeye_timer_widget_dismissed'); } catch { /* noop */ }
+                window.dispatchEvent(new Event('therapheye-timer-show'));
+              }}
+              className="w-full py-2.5 px-4 bg-indigo-600 text-white font-semibold rounded-xl text-sm hover:bg-indigo-700 active:scale-95 transition-all"
+            >
+              {settings.appLanguage === 'es' ? '🖥️ Mostrar timer de pantalla' : '🖥️ Show screen timer'}
+            </button>
+            <p className="text-[11px] text-gray-400 mt-2 text-center">
+              {settings.appLanguage === 'es' ? 'Si cerraste el timer con ✕, úsalo para volver a mostrarlo.' : 'If you dismissed the timer with ✕, use this to show it again.'}
+            </p>
           </div>
 
           {/* Botón Resetear */}

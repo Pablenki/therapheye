@@ -299,7 +299,7 @@ function AppContent() {
       case 'profile':
         return <Profile onBack={() => handleNavigate('dashboard')} onLogout={() => { handleNavigate('login') }} />
       case 'diagnostico-completo':
-        return <DiagnosticoCompleto onBack={() => handleNavigate('dashboard')} />
+        return <DiagnosticoCompleto onBack={() => handleNavigate('dashboard')} onNavigate={(p) => handleNavigate(p as any)} />
       case 'learn':
         return <Learn onBack={() => handleNavigate('dashboard')} />
       case 'blink-detector':

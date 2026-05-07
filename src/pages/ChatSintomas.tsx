@@ -47,6 +47,38 @@ Reglas:
 const WELCOME_MSG_ES = `¡Hola! 👋 Soy tu asistente de salud visual.\n\nCuéntame qué molestia o síntoma tienes — puedo orientarte sobre posibles causas y si deberías consultar a un especialista. ¿Qué te pasa?`;
 const WELCOME_MSG_EN = `Hi! 👋 I'm your visual health assistant.\n\nTell me what symptom or discomfort you have — I can guide you on possible causes and whether you should see a specialist. What's going on?`;
 
+// ── Persistencia de chat en localStorage ────────────────────────────────────
+const CHAT_STORAGE_KEY = 'therapheye_chat_v1';
+
+function saveChatMessages(msgs: Message[], userId: string) {
+  try {
+    const serializable = msgs.map(m => ({
+      role: m.role, content: m.content,
+      timestamp: m.timestamp.toISOString(), provider: m.provider,
+    }));
+    localStorage.setItem(`${CHAT_STORAGE_KEY}_${userId}`, JSON.stringify(serializable));
+  } catch { /* noop */ }
+}
+
+function loadChatMessages(userId: string, welcome: string): Message[] {
+  try {
+    const raw = localStorage.getItem(`${CHAT_STORAGE_KEY}_${userId}`);
+    if (!raw) return [{ role: 'assistant', content: welcome, timestamp: new Date() }];
+    const parsed: Array<{ role: string; content: string; timestamp: string; provider?: string }> = JSON.parse(raw);
+    if (!parsed.length) return [{ role: 'assistant', content: welcome, timestamp: new Date() }];
+    return parsed.map(m => ({
+      role: m.role as 'assistant' | 'user',
+      content: m.content,
+      timestamp: new Date(m.timestamp),
+      provider: m.provider,
+    }));
+  } catch { return [{ role: 'assistant', content: welcome, timestamp: new Date() }]; }
+}
+
+function clearChatMessages(userId: string) {
+  try { localStorage.removeItem(`${CHAT_STORAGE_KEY}_${userId}`); } catch { /* noop */ }
+}
+
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-4 py-3">
@@ -104,9 +136,9 @@ export default function ChatSintomas({ onBack }: Props) {
   const quickSymptoms = lang === 'en' ? QUICK_SYMPTOMS_EN : QUICK_SYMPTOMS_ES;
   const welcomeMsg = lang === 'en' ? WELCOME_MSG_EN : WELCOME_MSG_ES;
 
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: welcomeMsg, timestamp: new Date() },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() =>
+    user?.id ? loadChatMessages(user.id, welcomeMsg) : [{ role: 'assistant', content: welcomeMsg, timestamp: new Date() }]
+  );
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
@@ -120,6 +152,13 @@ export default function ChatSintomas({ onBack }: Props) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // Persistir mensajes cada vez que cambien (solo si hay más de 1 mensaje)
+  useEffect(() => {
+    if (user?.id && messages.length > 1) {
+      saveChatMessages(messages, user.id);
+    }
+  }, [messages, user?.id]);
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -164,6 +203,7 @@ export default function ChatSintomas({ onBack }: Props) {
   };
 
   const handleReset = () => {
+    if (user?.id) clearChatMessages(user.id);
     setMessages([{ role: 'assistant', content: welcomeMsg, timestamp: new Date() }]);
     setError('');
     setInput('');
@@ -212,7 +252,9 @@ export default function ChatSintomas({ onBack }: Props) {
             </p>
             <p className="text-xs text-green-500 flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block" />
-              {lang === 'es' ? 'En línea · Therapheye IA' : 'Online · Therapheye AI'}
+              {messages.length > 1
+                ? (lang === 'es' ? `Conversación activa · ${messages.length - 1} mensajes` : `Active chat · ${messages.length - 1} messages`)
+                : (lang === 'es' ? 'En línea · Therapheye IA' : 'Online · Therapheye AI')}
             </p>
           </div>
         </div>

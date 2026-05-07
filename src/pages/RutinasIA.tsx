@@ -4,7 +4,7 @@
 // =========================================
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Sparkles, RefreshCw, Calendar, Clock, CheckCircle2, ChevronDown, ChevronUp, Play, Loader2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, RefreshCw, Calendar, Clock, CheckCircle2, ChevronDown, ChevronUp, Play, Loader2, ChevronRight } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql, localISOString } from '../neonCliente';
 import { callClaude } from '../utils/claudeApi';
@@ -38,6 +38,77 @@ const EXERCISE_IDS: Record<string, string> = {
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+// ── Chips de síntomas preconfigurados ────────────────────────────────────────
+interface SintomaChip {
+  emoji: string;
+  label: string;
+  texto: string;
+  detalles: { label: string; texto: string }[];
+}
+
+const SINTOMAS_CHIPS: SintomaChip[] = [
+  {
+    emoji: '👁️',
+    label: 'Ojo enrojecido',
+    texto: 'Tengo enrojecimiento en los ojos',
+    detalles: [
+      { label: 'Leve', texto: ', leve, que aparece al final del día.' },
+      { label: 'Moderado', texto: ', moderado, durante varias horas del día.' },
+      { label: 'Severo', texto: ', severo y persistente, casi todo el día.' },
+    ],
+  },
+  {
+    emoji: '💧',
+    label: 'Resequedad',
+    texto: 'Mis ojos se sienten secos y con ardor',
+    detalles: [
+      { label: 'Al usar pantallas', texto: ' especialmente frente a pantallas.' },
+      { label: 'Por la mañana', texto: ', especialmente al despertar por la mañana.' },
+      { label: 'Todo el día', texto: ' de manera constante durante todo el día.' },
+    ],
+  },
+  {
+    emoji: '😴',
+    label: 'Cansancio visual',
+    texto: 'Siento cansancio y pesadez en los ojos',
+    detalles: [
+      { label: 'Tras pantallas', texto: ' después de trabajar horas frente a computadora.' },
+      { label: 'Al leer', texto: ' especialmente después de leer por mucho tiempo.' },
+      { label: 'Al final del día', texto: ' que empeora conforme avanza el día.' },
+    ],
+  },
+  {
+    emoji: '🌫️',
+    label: 'Visión borrosa',
+    texto: 'Mi visión se pone borrosa',
+    detalles: [
+      { label: 'De cerca', texto: ' al intentar leer o ver objetos cercanos.' },
+      { label: 'De lejos', texto: ' al mirar objetos o personas a distancia.' },
+      { label: 'Fluctuante', texto: ', que va y viene a lo largo del día.' },
+    ],
+  },
+  {
+    emoji: '🤕',
+    label: 'Dolor ocular',
+    texto: 'Tengo dolor o presión alrededor de los ojos',
+    detalles: [
+      { label: 'Con luz', texto: ', que empeora con la exposición a luz brillante.' },
+      { label: 'Al enfocar', texto: ' que aparece al intentar enfocar objetos.' },
+      { label: 'Con cefalea', texto: ' acompañado de dolor de cabeza.' },
+    ],
+  },
+  {
+    emoji: '⚡',
+    label: 'Destellos / flotantes',
+    texto: 'Veo destellos de luz o puntos flotantes en mi visión',
+    detalles: [
+      { label: 'Ocasionales', texto: ', ocasionalmente, especialmente con cambios de luz.' },
+      { label: 'Frecuentes', texto: ' con frecuencia durante el día.' },
+      { label: 'Al moverse', texto: ' que aparecen al mover los ojos rápidamente.' },
+    ],
+  },
+];
+
 const SYSTEM_PROMPT = `Eres un especialista en salud visual que crea rutinas personalizadas de ejercicios oculares.
 
 El usuario te describirá sus síntomas o metas visuales. Debes crear una rutina semanal de 7 días con ejercicios oculares terapéuticos.
@@ -69,6 +140,7 @@ Adapta la intensidad y tipo de ejercicios según los síntomas. Los fines de sem
 export default function RutinasIA({ onBack, onStartExercise }: Props) {
   const { user } = useUser();
   const [sintomas, setSintomas] = useState('');
+  const [selectedChip, setSelectedChip] = useState<SintomaChip | null>(null);
   const [rutina, setRutina] = useState<Rutina | null>(null);
   const [historial, setHistorial] = useState<Rutina[]>([]);
   const [loading, setLoading] = useState(false);
@@ -163,25 +235,84 @@ export default function RutinasIA({ onBack, onStartExercise }: Props) {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Input de síntomas */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <h2 className="font-semibold text-gray-800 mb-1">¿Cuáles son tus síntomas o metas?</h2>
-          <p className="text-xs text-gray-500 mb-3">Describe cómo se sienten tus ojos, qué actividades haces frente a pantalla, o qué quieres mejorar.</p>
-          <textarea
-            value={sintomas}
-            onChange={e => setSintomas(e.target.value)}
-            rows={4}
-            placeholder="Ej: Me duelen los ojos al final del día después de 8 horas frente a la computadora. Tengo los ojos secos y me cuesta enfocar objetos lejanos..."
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          />
-          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+        {/* Input de síntomas — selección guiada + texto libre */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+          <div>
+            <h2 className="font-semibold text-gray-800 mb-0.5">¿Qué síntoma principal tienes?</h2>
+            <p className="text-xs text-gray-500">Selecciona uno o escribe directamente abajo.</p>
+          </div>
+
+          {/* Chips de síntoma */}
+          <div className="grid grid-cols-2 gap-2">
+            {SINTOMAS_CHIPS.map(chip => (
+              <button
+                key={chip.label}
+                onClick={() => {
+                  setSelectedChip(selectedChip?.label === chip.label ? null : chip);
+                  if (selectedChip?.label !== chip.label) {
+                    setSintomas(chip.texto);
+                  }
+                }}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-sm ${
+                  selectedChip?.label === chip.label
+                    ? 'border-violet-500 bg-violet-50 text-violet-800 font-semibold'
+                    : 'border-gray-200 text-gray-700 hover:border-violet-300 hover:bg-violet-50/50'
+                }`}
+              >
+                <span className="text-lg leading-none flex-shrink-0">{chip.emoji}</span>
+                <span className="leading-tight">{chip.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Sub-chips de detalle cuando hay un síntoma seleccionado */}
+          {selectedChip && (
+            <div className="bg-violet-50 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-violet-700">
+                <ChevronRight className="w-3 h-3 inline" /> ¿Cómo es el {selectedChip.label.toLowerCase()}?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedChip.detalles.map(d => (
+                  <button
+                    key={d.label}
+                    onClick={() => setSintomas(selectedChip.texto + d.texto)}
+                    className="px-3 py-1.5 bg-white text-violet-700 border border-violet-200 rounded-full text-xs font-medium hover:bg-violet-100 transition"
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Textarea — editable libre */}
+          <div>
+            <p className="text-xs text-gray-500 mb-1.5 font-medium">
+              Descripción completa <span className="text-gray-400">(edita o escribe directamente)</span>
+            </p>
+            <textarea
+              value={sintomas}
+              onChange={e => setSintomas(e.target.value)}
+              rows={3}
+              placeholder="Ej: Me duelen los ojos al final del día después de 8 horas frente a la computadora. Tengo los ojos secos y me cuesta enfocar objetos lejanos..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-violet-300 transition"
+            />
+            {!sintomas.trim() && (
+              <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                <span>⚠</span> Selecciona un síntoma o describe tus molestias para continuar.
+              </p>
+            )}
+          </div>
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
           <button
             onClick={generarRutina}
             disabled={loading || !sintomas.trim()}
-            className="mt-3 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-xl py-3 hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-xl py-3 hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {loading ? 'Generando rutina...' : 'Generar mi rutina semanal'}
+            {loading ? 'Generando rutina personalizada...' : 'Generar mi rutina semanal'}
           </button>
         </div>
 

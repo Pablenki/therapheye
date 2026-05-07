@@ -58,7 +58,9 @@
       "mcp__claude_ai_Supabase__restore_project",
       "Bash(psql:*)",
       "Bash(node -e ':*)",
-      "Bash(wc -l /c/Users/OWNER/Desktop/therapheye/src/pages/*.tsx)"
+      "Bash(wc -l /c/Users/OWNER/Desktop/therapheye/src/pages/*.tsx)",
+      "Bash(curl:*)",
+      "Bash(python3 -c ':*)"
     ]
   }
 }

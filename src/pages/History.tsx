@@ -324,6 +324,27 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
   // Y-axis labels
   const yLabels = [0, 25, 50, 75, 100];
 
+  // X-axis: reducción inteligente de etiquetas según período
+  const MAX_X_TICKS: Record<ChartPeriod, number> = { '7d': 7, '1m': 8, '3m': 7, '1a': 12, 'all': 8 };
+  const maxTicks = MAX_X_TICKS[period];
+  const tickIndices = new Set<number>();
+  if (data.length <= maxTicks) {
+    data.forEach((_, i) => tickIndices.add(i));
+  } else {
+    const step = Math.floor(data.length / maxTicks);
+    for (let i = 0; i < data.length; i += step) tickIndices.add(i);
+    tickIndices.add(data.length - 1);
+  }
+
+  const formatXLabel = (rawDate: Date): string => {
+    const locale = lang === 'es' ? 'es-MX' : 'en-US';
+    if (period === '7d') return rawDate.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
+    if (period === '1m') return rawDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+    if (period === '3m') return rawDate.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+    // 1a / all → solo mes + año corto
+    return rawDate.toLocaleDateString(locale, { month: 'short', year: '2-digit' });
+  };
+
   const handleChartMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
@@ -503,17 +524,18 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
               {d.puntaje_fatiga}%
             </text>
 
-            {/* Date label below axis */}
-            <text
-              x={toX(i)}
-              y={PAD.top + chartH + 14}
-              textAnchor="middle"
-              fontSize="8"
-              fill="#6b7280"
-              transform={data.length > 5 ? `rotate(-30, ${toX(i)}, ${PAD.top + chartH + 14})` : undefined}
-            >
-              {d.created_at}
-            </text>
+            {/* Date label below axis — solo en ticks seleccionados */}
+            {tickIndices.has(i) && (
+              <text
+                x={toX(i)}
+                y={PAD.top + chartH + 14}
+                textAnchor="middle"
+                fontSize="8"
+                fill="#6b7280"
+              >
+                {formatXLabel(d.raw_date)}
+              </text>
+            )}
 
             {/* Invisible hit area for hover detection */}
             <circle

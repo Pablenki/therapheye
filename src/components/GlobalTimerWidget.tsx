@@ -82,6 +82,7 @@ const MAX_SESSION_MS = 16 * 60 * 60 * 1000;
 // ─── Preferencias del timer ───────────────────────────────────────────────────
 
 const PREFS_KEY = 'therapeye_timer_prefs';
+const TIMER_DISMISSED_KEY = 'therapeye_timer_widget_dismissed';
 
 type TimerPrefs = {
   /** El usuario activó "preguntarme al iniciar sesión" */
@@ -313,7 +314,9 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const [elapsedSeconds, setElapsedSeconds]         = useState(0);
   const [isRunning, setIsRunning]                   = useState(false);
   const [nextBreakInMinutes, setNextBreakInMinutes] = useState<number | null>(null);
-  const [dismissed, setDismissed]                   = useState(false);
+  const [dismissed, setDismissed]                   = useState(() => {
+    try { return localStorage.getItem(TIMER_DISMISSED_KEY) === '1'; } catch { return false; }
+  });
   const [breakAlert, setBreakAlert]                 = useState(false);
   /** Modal "¿Deseas iniciar tu temporizador de hoy?" */
   const [showStartPrompt, setShowStartPrompt]       = useState(false);
@@ -577,10 +580,15 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     // NOTE: No auto-start on any other page navigation! Only on login transition.
   }, [currentPage, user?.id]);
 
-  // ── Re-mostrar widget al cambiar de página (reset dismissed) ──────────────
+  // ── Escuchar evento de re-activación del timer (desde ajustes) ───────────
   useEffect(() => {
-    setDismissed(false);
-  }, [currentPage]);
+    const handler = () => {
+      setDismissed(false);
+      try { localStorage.removeItem(TIMER_DISMISSED_KEY); } catch { /* noop */ }
+    };
+    window.addEventListener('therapheye-timer-show', handler);
+    return () => window.removeEventListener('therapheye-timer-show', handler);
+  }, []);
 
   // ── Tick cada segundo (solo en páginas autenticadas) ──────────────────────
   useEffect(() => {
@@ -1005,7 +1013,7 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
 
         {/* Botón cerrar */}
         <button
-          onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
+          onClick={(e) => { e.stopPropagation(); setDismissed(true); try { localStorage.setItem(TIMER_DISMISSED_KEY, '1'); } catch { /* noop */ } }}
           className="p-1 rounded-lg hover:bg-white/20 transition opacity-50 hover:opacity-100 flex-shrink-0"
           title={t('visualHealth', 'hideWidget')}
         >
