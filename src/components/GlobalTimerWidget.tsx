@@ -172,11 +172,14 @@ const loadState = (): PersistedTimerState => {
     if (!parsed.stateDate) parsed.stateDate = todayLocalDate();
     // Day change detection: if stateDate != today, reset accumulated time for the new day
     if (parsed.stateDate !== todayLocalDate()) {
-      return {
+      const fresh = {
         ...DEFAULT_STATE,
         stateDate: todayLocalDate(),
         // New day → not finalized, fresh accumulated
       };
+      // Persist immediately so other components (VisualHealth) read the reset state
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh)); } catch { /* noop */ }
+      return fresh;
     }
     return parsed;
   } catch { return { ...DEFAULT_STATE, stateDate: todayLocalDate() }; }

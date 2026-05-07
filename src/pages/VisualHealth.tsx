@@ -603,6 +603,28 @@ const VisualHealth = ({ onBack }: Props) => {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed: PersistedTimerState = JSON.parse(raw);
+
+        // Day-change detection: if saved state is from a different day, reset to 0
+        const todayDate = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+        const startedOnDifferentDay = parsed.startTimestamp
+          ? (() => { const d = new Date(parsed.startTimestamp); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })() !== todayDate
+          : false;
+        if ((parsed.stateDate && parsed.stateDate !== todayDate) || startedOnDifferentDay) {
+          const freshState: PersistedTimerState = {
+            isRunning: false,
+            startTimestamp: null,
+            accumulatedMs: 0,
+            nextBreakAtMs: null,
+            sessionStartTimestamp: null,
+            finalized: false,
+            stateDate: todayDate,
+          };
+          saveState(freshState);
+          setElapsedSeconds(0);
+          setIsRunning(false);
+          return;
+        }
+
         const elapsedMs = calcElapsedMs(parsed);
         setElapsedSeconds(Math.floor(elapsedMs / 1000));
         setIsRunning(parsed.isRunning);
