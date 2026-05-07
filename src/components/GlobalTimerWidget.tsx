@@ -234,6 +234,13 @@ const playBeep = () => {
 const DB_SYNC_INTERVAL_MS = 30_000;
 const DB_POLL_INTERVAL_MS = 5_000; // Poll BD cada 5s para detectar cambios de la extensión
 
+// ─── Detección de inactividad ─────────────────────────────────────────────────
+// Si pasan >30s entre ticks del setInterval → la máquina estuvo dormida (sleep detection)
+// Si el timer monta con startTimestamp viejo (browser restart) → mismo umbral
+const SLEEP_THRESHOLD_MS   = 30_000;         // 30s gap → sleep/restart
+const INACTIVITY_WARN_MS   = 5 * 60_000;     // 5 min sin actividad → push warning
+const INACTIVITY_STOP_MS   = 7 * 60_000;     // 7 min sin actividad → pausar + push "detenido"
+
 // ─── Web source ID (identifica esta instancia del navegador web) ──────────────
 // Distinto al browserId de la extensión, que es 'ext:xxxxx'.
 // Formato: 'web-xxxxxxxx'
@@ -336,6 +343,21 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
+
+  // ── Rastrear actividad del usuario en el navegador ────────────────────────
+  useEffect(() => {
+    const onActivity = () => {
+      lastActivityRef.current = Date.now();
+      // Si el usuario vuelve después de inactividad, resetear flags
+      // (el timer ya fue pausado — debe reiniciarse manualmente)
+      inactivityWarnSentRef.current = false;
+      inactivityStopSentRef.current = false;
+    };
+    const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
+    events.forEach(e => window.addEventListener(e, onActivity, { passive: true }));
+    return () => events.forEach(e => window.removeEventListener(e, onActivity));
+  }, []);
+
   const { t, lang } = useLanguage();
   const { user, wasManualLogin, clearManualLogin } = useUser();
 
@@ -344,6 +366,11 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const lastDbPollRef   = useRef<number>(0);
   const dbLoadedRef     = useRef<boolean>(false);
   const loginHandledRef = useRef<boolean>(false);
+
+  // ── Refs de inactividad ────────────────────────────────────────────────────
+  const lastActivityRef         = useRef<number>(Date.now());
+  const inactivityWarnSentRef   = useRef<boolean>(false);
+  const inactivityStopSentRef   = useRef<boolean>(false);
 
   // isAuthPage: solo para lógica de pausa/reset — visual-health NO cuenta como auth
   const isAuthPage = AUTH_ONLY_PAGES.includes(currentPage);
@@ -377,6 +404,32 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
 
     // Cargar localStorage inmediatamente (solo para mostrar el tiempo, no para arrancar)
     const localSt = loadState();
+
+    // ── Detección de sleep en mount (browser restart / laptop abierto tras cierre) ──
+    // En una SPA activa, el tick cada 1s detenta cualquier gap > 30s.
+    // Si el componente monta FRESCO (browser reiniciado), no hay "tick anterior",
+    // así que necesitamos detectarlo aquí: si el timer "estaba corriendo" pero
+    // su startTimestamp tiene más de SLEEP_THRESHOLD_MS de antigüedad, se asume
+    // que la máquina estuvo dormida y se pausa SIN contar el tiempo dormido.
+    if (!cameFromAuth && localSt.isRunning && localSt.startTimestamp !== null) {
+      const gapSinceStart = Date.now() - localSt.startTimestamp;
+      if (gapSinceStart > SLEEP_THRESHOLD_MS) {
+        const safeMsOnMount = localSt.accumulatedMs; // NO usar calcElapsedMs → no contar el sleep
+        const mountPaused: PersistedTimerState = {
+          ...localSt, isRunning: false, startTimestamp: null, accumulatedMs: safeMsOnMount,
+        };
+        persistState(mountPaused);
+        setElapsedSeconds(Math.floor(safeMsOnMount / 1000));
+        setIsRunning(false);
+        // Sincronizar pausa a BD
+        if (user?.id) {
+          lastDbSyncRef.current = 0;
+          saveTimerToDB(user.id, mountPaused, getWebSourceId()).catch(() => {});
+        }
+        return; // init completa — no continuar con lógica de "isRunning"
+      }
+    }
+
     const localMs = calcElapsedMs(localSt);
     setElapsedSeconds(Math.floor(localMs / 1000));
     // Solo propagar isRunning si NO venimos del login — si venimos del login,
@@ -602,7 +655,6 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       } catch { /* noop */ }
     }
     let lastTickTs = Date.now();
-    const SLEEP_THRESHOLD_MS = 30_000; // Si pasan >30s entre ticks → la máquina estuvo dormida
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -699,6 +751,55 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         return;
       }
 
+      // ═══ Detección de inactividad del usuario ═══
+      // Rastreo vía mousemove/keydown/click/touch/scroll (lastActivityRef).
+      // 5 min sin actividad → push warning. 7 min → pausar timer + push "detenido".
+      const inactiveMs = now - lastActivityRef.current;
+
+      if (inactiveMs >= INACTIVITY_STOP_MS && !inactivityStopSentRef.current) {
+        // ── 7 min → pausar timer + push "detenido" ─────────────────────────
+        inactivityStopSentRef.current = true;
+        const pausedMs = calcElapsedMs(st);
+        const inactPaused: PersistedTimerState = {
+          ...st, isRunning: false, startTimestamp: null, accumulatedMs: pausedMs,
+        };
+        persistState(inactPaused);
+        setIsRunning(false);
+        setNextBreakInMinutes(null);
+        if (user?.id) {
+          lastDbSyncRef.current = 0;
+          saveTimerToDB(user.id, inactPaused, getWebSourceId()).catch(() => {});
+          fetch('/.netlify/functions/push-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              title: '⏸ Timer pausado por inactividad',
+              message: 'No detectamos actividad en 7 minutos. Tu timer de pantalla fue pausado automáticamente.',
+              tag: 'timer-inactivity-stop',
+            }),
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      if (inactiveMs >= INACTIVITY_WARN_MS && !inactivityWarnSentRef.current) {
+        // ── 5 min → push warning ────────────────────────────────────────────
+        inactivityWarnSentRef.current = true;
+        if (user?.id) {
+          fetch('/.netlify/functions/push-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.id,
+              title: '👁 ¿Sigues usando la pantalla?',
+              message: 'Llevas 5 minutos sin actividad. Si dejaste de trabajar, pausaremos el timer en 2 minutos.',
+              tag: 'timer-inactivity-warn',
+            }),
+          }).catch(() => {});
+        }
+      }
+
       // Si VisualHealth está montado → él maneja las alertas
       if (currentPage === 'visual-health') {
         if (st.nextBreakAtMs != null) {
@@ -757,6 +858,9 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     persistState(started);
     setIsRunning(true);
     setElapsedSeconds(Math.floor(baseMs / 1000));
+    lastActivityRef.current = Date.now();
+    inactivityWarnSentRef.current = false;
+    inactivityStopSentRef.current = false;
     if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, started, getWebSourceId()); }
   };
 
@@ -823,6 +927,10 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
       };
       persistState(started);
       setIsRunning(true);
+      // Reiniciar tracking de inactividad al arrancar manualmente
+      lastActivityRef.current = Date.now();
+      inactivityWarnSentRef.current = false;
+      inactivityStopSentRef.current = false;
       if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, started, getWebSourceId()); }
     }
   };
