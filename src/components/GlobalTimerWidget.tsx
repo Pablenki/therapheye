@@ -758,8 +758,9 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
 
       if (inactiveMs >= INACTIVITY_STOP_MS && !inactivityStopSentRef.current) {
         // ── 7 min → pausar timer + push "detenido" ─────────────────────────
+        // Restar el tiempo inactivo medido — el usuario no estaba en pantalla
         inactivityStopSentRef.current = true;
-        const pausedMs = calcElapsedMs(st);
+        const pausedMs = Math.max(0, calcElapsedMs(st) - inactiveMs);
         const inactPaused: PersistedTimerState = {
           ...st, isRunning: false, startTimestamp: null, accumulatedMs: pausedMs,
         };
