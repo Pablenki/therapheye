@@ -18,13 +18,13 @@ const GOALS_CONFIG_KEY = 'therapheye_daily_goals_config';
 const AUTO_DARK_KEY    = 'therapheye_auto_dark';
 
 const GOAL_OPTIONS = [
-  { id: 'timer',       label: 'Tiempo en pantalla (>5 min)', emoji: '⏱️' },
-  { id: 'ejercicio',   label: 'Ejercicio terapéutico',       emoji: '💪' },
-  { id: 'cuestionario',label: 'Cuestionario diario',         emoji: '📋' },
-  { id: 'vision',      label: 'Test de visión',              emoji: '👓' },
-  { id: 'respiracion', label: 'Respiración 4-7-8',           emoji: '💨' },
-  { id: 'chat',        label: 'Chat IA',                     emoji: '💬' },
-  { id: 'diario',      label: 'Diario visual',               emoji: '📓' },
+  { id: 'timer',       label: 'Tiempo en pantalla (>5 min)', labelEn: 'Screen time (>5 min)',    emoji: '⏱️' },
+  { id: 'ejercicio',   label: 'Ejercicio terapéutico',       labelEn: 'Therapeutic exercise',    emoji: '💪' },
+  { id: 'cuestionario',label: 'Cuestionario diario',         labelEn: 'Daily questionnaire',     emoji: '📋' },
+  { id: 'vision',      label: 'Test de visión',              labelEn: 'Vision test',             emoji: '👓' },
+  { id: 'respiracion', label: 'Respiración 4-7-8',           labelEn: '4-7-8 Breathing',         emoji: '💨' },
+  { id: 'chat',        label: 'Chat IA',                     labelEn: 'AI Chat',                 emoji: '💬' },
+  { id: 'diario',      label: 'Diario visual',               labelEn: 'Visual journal',          emoji: '📓' },
 ] as const;
 
 type GoalId = typeof GOAL_OPTIONS[number]['id'];
@@ -105,55 +105,55 @@ interface Props {
   children: React.ReactNode;
 }
 
-type NavItem = { icon: React.ElementType; label: string; page: Page; tourId?: string };
+type NavItem = { icon: React.ElementType; label: string; labelEn?: string; page: Page; tourId?: string };
 
 const MAIN_NAV_ITEMS: NavItem[] = [
-  { icon: Home,               label: 'Inicio',             page: 'dashboard'                                 },
-  { icon: Activity,           label: 'Ejercicios',          page: 'exercises',            tourId: 'tour-exercises'    },
-  { icon: Camera,             label: 'Captura de imagen',   page: 'image-capture'                            },
-  { icon: Glasses,            label: 'Prueba de visión',    page: 'vision-test'                              },
-  { icon: History,            label: 'Historial',           page: 'history',              tourId: 'tour-history'      },
-  { icon: HeartPulse,         label: 'Salud Visual',        page: 'visual-health'                            },
-  { icon: ScanEye,            label: 'Diagnóstico',         page: 'diagnostico-completo', tourId: 'tour-diagnostico'  },
-  { icon: ClipboardList,      label: 'Cuestionario',        page: 'questionnaire',        tourId: 'tour-questionnaire'},
-  { icon: MessageCircleHeart, label: 'Asistente IA',        page: 'chat-sintomas',        tourId: 'tour-chat'         },
-  { icon: BookOpen,           label: 'Aprende',             page: 'learn'                                    },
-  { icon: ScanFace,           label: 'Parpadeo',            page: 'blink-detector'                           },
+  { icon: Home,               label: 'Inicio',             labelEn: 'Home',             page: 'dashboard'                                 },
+  { icon: Activity,           label: 'Ejercicios',          labelEn: 'Exercises',        page: 'exercises',            tourId: 'tour-exercises'    },
+  { icon: Camera,             label: 'Captura de imagen',   labelEn: 'Image Capture',    page: 'image-capture'                            },
+  { icon: Glasses,            label: 'Prueba de visión',    labelEn: 'Vision Test',      page: 'vision-test'                              },
+  { icon: History,            label: 'Historial',           labelEn: 'History',          page: 'history',              tourId: 'tour-history'      },
+  { icon: HeartPulse,         label: 'Salud Visual',        labelEn: 'Visual Health',    page: 'visual-health'                            },
+  { icon: ScanEye,            label: 'Diagnóstico',         labelEn: 'Diagnostics',      page: 'diagnostico-completo', tourId: 'tour-diagnostico'  },
+  { icon: ClipboardList,      label: 'Cuestionario',        labelEn: 'Questionnaire',    page: 'questionnaire',        tourId: 'tour-questionnaire'},
+  { icon: MessageCircleHeart, label: 'Asistente IA',        labelEn: 'AI Assistant',     page: 'chat-sintomas',        tourId: 'tour-chat'         },
+  { icon: BookOpen,           label: 'Aprende',             labelEn: 'Learn',            page: 'learn'                                    },
+  { icon: ScanFace,           label: 'Parpadeo',            labelEn: 'Blink Detector',   page: 'blink-detector'                           },
 ];
 
 // Feature flag: ocultar Premium de la UI
 const PREMIUM_ENABLED = false;
 
 const ADVANCED_NAV_ITEMS: NavItem[] = [
-  { icon: BookOpenCheck,      label: 'Lectura Visual',    page: 'reading-test'          },
-  { icon: MapPin,             label: 'Oftalmólogos',      page: 'mapa-oftalmologos'     },
-  { icon: Gamepad2,           label: 'Juegos Visuales',   page: 'juegos-visuales'       },
-  { icon: Sparkles,           label: 'Rutinas con IA',    page: 'rutinas-ia'            },
-  { icon: BookMarked,         label: 'Diario Visual',     page: 'diario-visual'         },
-  { icon: Crosshair,          label: 'Campo Visual',      page: 'campo-visual'          },
-  { icon: EarOff,             label: 'Modo Zen',          page: 'modo-zen'              },
-  { icon: Contrast,           label: 'Test Contraste',    page: 'contrast-test'         },
-  { icon: Timer,              label: 'Reacción Visual',   page: 'reaccion-visual'       },
-  { icon: Orbit,              label: 'Vergencia',         page: 'vergencia'             },
-  { icon: BarChart2,          label: 'Carga Visual',      page: 'carga-visual'          },
-  { icon: ClipboardCheck,     label: 'Notas Médicas',     page: 'notas-medicas'         },
-  { icon: Palette,            label: 'Simulador Visual',  page: 'simulador'             },
-  { icon: FlaskConical,       label: 'Test Cromático',    page: 'test-cromatico'        },
-  { icon: Focus,              label: 'Test Acomodación',  page: 'test-acomodacion'      },
-  { icon: Microscope,         label: 'Ejerc. Avanzados',  page: 'ejercicios-avanzados'  },
-  { icon: ScrollText,         label: 'Historial Ocular',  page: 'historial-ocular'      },
-  { icon: TriangleAlert,      label: 'Analizador Síntomas', page: 'analizador-sintomas' },
-  { icon: ImageIcon,          label: 'Galería Capturas',  page: 'galeria-captures'      },
-  { icon: BrainCircuit,       label: 'Entrena. Mental',   page: 'entrenamiento-mental'  },
-  { icon: AreaChart,          label: 'Stats Avanzadas',   page: 'estadisticas-avanzadas'},
-  { icon: Scan,               label: 'OCR Receta',        page: 'ocr-receta'            },
-  { icon: QrCode,             label: 'QR Informe',        page: 'qr-informe'            },
-  { icon: MessageCircle,      label: 'Recordatorios WA',  page: 'recordatorios-wa'      },
-  ...(PREMIUM_ENABLED ? [{ icon: Crown, label: 'Premium', page: 'plan-premium' as Page }] : []),
-  { icon: Grid3x3,            label: 'Rejilla Amsler',    page: 'amsler-grid'           },
-  { icon: Dot,                label: 'Dom. Ocular',       page: 'dominancia-ocular'     },
-  { icon: Wind,               label: 'Respiración 4-7-8', page: 'respiracion-478'       },
-  { icon: LineChart,          label: 'Evolución Tests',   page: 'evolucion-tests'       },
+  { icon: BookOpenCheck,      label: 'Lectura Visual',      labelEn: 'Visual Reading',      page: 'reading-test'          },
+  { icon: MapPin,             label: 'Oftalmólogos',        labelEn: 'Ophthalmologists',    page: 'mapa-oftalmologos'     },
+  { icon: Gamepad2,           label: 'Juegos Visuales',     labelEn: 'Visual Games',        page: 'juegos-visuales'       },
+  { icon: Sparkles,           label: 'Rutinas con IA',      labelEn: 'AI Routines',         page: 'rutinas-ia'            },
+  { icon: BookMarked,         label: 'Diario Visual',       labelEn: 'Visual Journal',      page: 'diario-visual'         },
+  { icon: Crosshair,          label: 'Campo Visual',        labelEn: 'Visual Field',        page: 'campo-visual'          },
+  { icon: EarOff,             label: 'Modo Zen',            labelEn: 'Zen Mode',            page: 'modo-zen'              },
+  { icon: Contrast,           label: 'Test Contraste',      labelEn: 'Contrast Test',       page: 'contrast-test'         },
+  { icon: Timer,              label: 'Reacción Visual',     labelEn: 'Visual Reaction',     page: 'reaccion-visual'       },
+  { icon: Orbit,              label: 'Vergencia',           labelEn: 'Vergence',            page: 'vergencia'             },
+  { icon: BarChart2,          label: 'Carga Visual',        labelEn: 'Visual Load',         page: 'carga-visual'          },
+  { icon: ClipboardCheck,     label: 'Notas Médicas',       labelEn: 'Medical Notes',       page: 'notas-medicas'         },
+  { icon: Palette,            label: 'Simulador Visual',    labelEn: 'Visual Simulator',    page: 'simulador'             },
+  { icon: FlaskConical,       label: 'Test Cromático',      labelEn: 'Chromatic Test',      page: 'test-cromatico'        },
+  { icon: Focus,              label: 'Test Acomodación',    labelEn: 'Accommodation Test',  page: 'test-acomodacion'      },
+  { icon: Microscope,         label: 'Ejerc. Avanzados',    labelEn: 'Adv. Exercises',      page: 'ejercicios-avanzados'  },
+  { icon: ScrollText,         label: 'Historial Ocular',    labelEn: 'Ocular History',      page: 'historial-ocular'      },
+  { icon: TriangleAlert,      label: 'Analizador Síntomas', labelEn: 'Symptom Analyzer',    page: 'analizador-sintomas'   },
+  { icon: ImageIcon,          label: 'Galería Capturas',    labelEn: 'Capture Gallery',     page: 'galeria-captures'      },
+  { icon: BrainCircuit,       label: 'Entrena. Mental',     labelEn: 'Mental Training',     page: 'entrenamiento-mental'  },
+  { icon: AreaChart,          label: 'Stats Avanzadas',     labelEn: 'Advanced Stats',      page: 'estadisticas-avanzadas'},
+  { icon: Scan,               label: 'OCR Receta',          labelEn: 'OCR Prescription',    page: 'ocr-receta'            },
+  { icon: QrCode,             label: 'QR Informe',          labelEn: 'QR Report',           page: 'qr-informe'            },
+  { icon: MessageCircle,      label: 'Recordatorios WA',    labelEn: 'WA Reminders',        page: 'recordatorios-wa'      },
+  ...(PREMIUM_ENABLED ? [{ icon: Crown, label: 'Premium', labelEn: 'Premium', page: 'plan-premium' as Page }] : []),
+  { icon: Grid3x3,            label: 'Rejilla Amsler',      labelEn: 'Amsler Grid',         page: 'amsler-grid'           },
+  { icon: Dot,                label: 'Dom. Ocular',         labelEn: 'Eye Dominance',       page: 'dominancia-ocular'     },
+  { icon: Wind,               label: 'Respiración 4-7-8',   labelEn: '4-7-8 Breathing',     page: 'respiracion-478'       },
+  { icon: LineChart,          label: 'Evolución Tests',     labelEn: 'Test Evolution',      page: 'evolucion-tests'       },
 ];
 
 const ADVANCED_SIDEBAR_KEY = 'therapheye_sidebar_advanced_open';
@@ -163,7 +163,7 @@ const ICON_W     = 64;  // px — collapsed (desktop only)
 
 export default function AppShell({ currentPage, onNavigate, onLogout, onStartTour, children }: Props) {
   const { user, logout } = useUser();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   // Desktop: expanded by default; mobile: closed by default
   const [open, setOpen]         = useState(() => window.innerWidth >= 768);
@@ -404,7 +404,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
         {showLabels && (
           <div data-tour="tour-progress" className="px-4 pb-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-white/50 font-medium uppercase tracking-wide">Progreso hoy</span>
+              <span className="text-[10px] text-white/50 font-medium uppercase tracking-wide">{lang === 'en' ? "Today's progress" : 'Progreso hoy'}</span>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] text-white/70 font-bold">{dailyProgress}%</span>
                 <button
@@ -431,14 +431,15 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
         {/* Nav */}
         <nav data-tour="tour-nav" className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
           {/* ── Ítems principales ── */}
-          {MAIN_NAV_ITEMS.map(({ icon: Icon, label, page, tourId }) => {
+          {MAIN_NAV_ITEMS.map(({ icon: Icon, label, labelEn, page, tourId }) => {
             const active = currentPage === page;
+            const displayLabel = lang === 'en' && labelEn ? labelEn : label;
             return (
               <button
                 key={page}
                 data-tour={tourId}
                 onClick={() => handleNav(page)}
-                title={collapsed && !isMobile ? label : undefined}
+                title={collapsed && !isMobile ? displayLabel : undefined}
                 className={`
                   w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all
                   ${collapsed && !isMobile ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}
@@ -448,7 +449,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                 `}
               >
                 <Icon style={{ width: 18, height: 18 }} className="flex-shrink-0"/>
-                {showLabels && <span className="truncate">{label}</span>}
+                {showLabels && <span className="truncate">{displayLabel}</span>}
               </button>
             );
           })}
@@ -462,19 +463,20 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
               <ChevronDown
                 className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${showAdvanced ? '' : '-rotate-90'}`}
               />
-              <span className="truncate">Herramientas avanzadas</span>
+              <span className="truncate">{lang === 'en' ? 'Advanced tools' : 'Herramientas avanzadas'}</span>
             </button>
           )}
 
           {/* ── Ítems avanzados (colapsables en expanded; siempre visibles en icon-only) ── */}
-          {(showAdvanced || (!showLabels)) && ADVANCED_NAV_ITEMS.map(({ icon: Icon, label, page, tourId }) => {
+          {(showAdvanced || (!showLabels)) && ADVANCED_NAV_ITEMS.map(({ icon: Icon, label, labelEn, page, tourId }) => {
             const active = currentPage === page;
+            const displayLabel = lang === 'en' && labelEn ? labelEn : label;
             return (
               <button
                 key={page}
                 data-tour={tourId}
                 onClick={() => handleNav(page)}
-                title={collapsed && !isMobile ? label : undefined}
+                title={collapsed && !isMobile ? displayLabel : undefined}
                 className={`
                   w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all
                   ${collapsed && !isMobile ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}
@@ -484,7 +486,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                 `}
               >
                 <Icon style={{ width: 18, height: 18 }} className="flex-shrink-0"/>
-                {showLabels && <span className="truncate">{label}</span>}
+                {showLabels && <span className="truncate">{displayLabel}</span>}
               </button>
             );
           })}
@@ -510,7 +512,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                       {user?.nombre?.split(' ').slice(0, 2).join(' ')}
                     </p>
                     <p className="text-gray-400 text-xs flex items-center gap-1">
-                      <KeyRound className="w-3 h-3"/> Mi cuenta
+                      <KeyRound className="w-3 h-3"/> {lang === 'en' ? 'My account' : 'Mi cuenta'}
                     </p>
                   </div>
                   <ChevronDown
@@ -525,13 +527,13 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                       onClick={() => { handleNav('profile'); setShowProfileMenu(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
                     >
-                      <KeyRound className="w-3.5 h-3.5 text-indigo-400"/> Ver perfil
+                      <KeyRound className="w-3.5 h-3.5 text-indigo-400"/> {lang === 'en' ? 'View profile' : 'Ver perfil'}
                     </button>
                     <button
                       onClick={() => { setShowReminders(true); setShowProfileMenu(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
                     >
-                      <Bell className="w-3.5 h-3.5 text-indigo-400"/> Recordatorios
+                      <Bell className="w-3.5 h-3.5 text-indigo-400"/> {lang === 'en' ? 'Reminders' : 'Recordatorios'}
                     </button>
                     <button
                       onClick={() => {
@@ -543,7 +545,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                         autoDark ? 'text-amber-400 hover:bg-amber-500/10' : 'text-gray-300 hover:bg-white/10 hover:text-white'
                       }`}
                     >
-                      <Moon className="w-3.5 h-3.5"/> Modo oscuro auto {autoDark ? '(activo)' : ''}
+                      <Moon className="w-3.5 h-3.5"/> {lang === 'en' ? `Auto dark mode${autoDark ? ' (active)' : ''}` : `Modo oscuro auto${autoDark ? ' (activo)' : ''}`}
                     </button>
                     {onStartTour && (
                       <button
@@ -551,7 +553,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                         onClick={() => { onStartTour?.(); setShowProfileMenu(false); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
                       >
-                        <HelpCircle className="w-3.5 h-3.5 text-indigo-400"/> ¿Cómo usar esto?
+                        <HelpCircle className="w-3.5 h-3.5 text-indigo-400"/> {lang === 'en' ? 'How to use this?' : '¿Cómo usar esto?'}
                       </button>
                     )}
                     <div className="border-t border-white/10 mx-2"/>
@@ -559,7 +561,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                       onClick={() => { setShowLogout(true); setShowProfileMenu(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition text-left"
                     >
-                      <LogOut className="w-3.5 h-3.5"/> Cerrar sesión
+                      <LogOut className="w-3.5 h-3.5"/> {lang === 'en' ? 'Log out' : 'Cerrar sesión'}
                     </button>
                   </div>
                 )}
@@ -629,24 +631,26 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
           <div className="bg-white rounded-2xl shadow-2xl border border-indigo-100 overflow-hidden">
             <div className="bg-indigo-600 px-4 py-2 flex items-center gap-2">
               <Bell className="w-4 h-4 text-white animate-[pulse_2s_infinite]"/>
-              <span className="text-white text-xs font-semibold">Mantén tu salud visual al día</span>
+              <span className="text-white text-xs font-semibold">{lang === 'en' ? 'Keep your visual health up to date' : 'Mantén tu salud visual al día'}</span>
             </div>
             <div className="px-4 py-3">
               <p className="text-gray-700 text-sm leading-snug">
-                Activa las <b>notificaciones push</b> para recibir recordatorios de ejercicios y seguimiento de tu racha.
+                {lang === 'en'
+                  ? <>Enable <b>push notifications</b> to receive exercise reminders and streak tracking.</>
+                  : <>Activa las <b>notificaciones push</b> para recibir recordatorios de ejercicios y seguimiento de tu racha.</>}
               </p>
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={() => { onNavigate('profile'); dismissBanner(false); }}
                   className="flex-1 bg-indigo-600 text-white text-xs font-semibold rounded-xl py-1.5 hover:bg-indigo-700 transition"
                 >
-                  Activar ahora
+                  {lang === 'en' ? 'Enable now' : 'Activar ahora'}
                 </button>
                 <button
                   onClick={() => dismissBanner(false)}
                   className="px-3 text-xs text-gray-500 hover:text-gray-700 transition"
                 >
-                  Luego
+                  {lang === 'en' ? 'Later' : 'Luego'}
                 </button>
                 <button
                   onClick={() => dismissBanner(true)}
@@ -668,11 +672,11 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
       {isMobile && (
         <nav className="fixed bottom-0 left-0 right-0 z-[9000] bg-white border-t border-gray-200 flex items-center justify-around px-1 py-1 safe-area-pb shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
           {[
-            { icon: Home,          page: 'dashboard'    as Page, label: 'Inicio'    },
-            { icon: Activity,      page: 'exercises'    as Page, label: 'Ejercicios'},
-            { icon: ClipboardList, page: 'questionnaire'as Page, label: 'Check'     },
-            { icon: History,       page: 'history'      as Page, label: 'Historial' },
-            { icon: MoreHorizontal,page: null           as any,  label: 'Más'       },
+            { icon: Home,          page: 'dashboard'    as Page, label: lang === 'en' ? 'Home'       : 'Inicio'     },
+            { icon: Activity,      page: 'exercises'    as Page, label: lang === 'en' ? 'Exercises'  : 'Ejercicios' },
+            { icon: ClipboardList, page: 'questionnaire'as Page, label: 'Check'                                     },
+            { icon: History,       page: 'history'      as Page, label: lang === 'en' ? 'History'    : 'Historial'  },
+            { icon: MoreHorizontal,page: null           as any,  label: lang === 'en' ? 'More'       : 'Más'        },
           ].map(({ icon: Icon, page, label }) => {
             const isActive = page ? currentPage === page : false;
             const isMore = page === null;
@@ -713,8 +717,8 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                   <Settings className="w-5 h-5 text-indigo-600"/>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-800">Metas diarias</h3>
-                  <p className="text-[11px] text-gray-400">Elige qué actividades cuentan</p>
+                  <h3 className="text-sm font-bold text-gray-800">{lang === 'en' ? 'Daily goals' : 'Metas diarias'}</h3>
+                  <p className="text-[11px] text-gray-400">{lang === 'en' ? 'Choose which activities count' : 'Elige qué actividades cuentan'}</p>
                 </div>
               </div>
               <button onClick={() => setShowGoalsConfig(false)} className="text-gray-400 hover:text-gray-600 transition">
@@ -722,7 +726,8 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
               </button>
             </div>
             <div className="space-y-2 mb-4">
-              {GOAL_OPTIONS.map(({ id, label, emoji }) => {
+              {GOAL_OPTIONS.map((option) => {
+                const { id, label, emoji } = option;
                 const checked = goalsConfig.includes(id);
                 return (
                   <button
@@ -740,7 +745,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                     }`}
                   >
                     <span className="text-lg leading-none">{emoji}</span>
-                    <span className={`text-sm font-medium flex-1 ${checked ? 'text-indigo-700' : 'text-gray-700'}`}>{label}</span>
+                    <span className={`text-sm font-medium flex-1 ${checked ? 'text-indigo-700' : 'text-gray-700'}`}>{lang === 'en' ? option.labelEn : label}</span>
                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                       checked ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'
                     }`}>
@@ -750,7 +755,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                 );
               })}
             </div>
-            <p className="text-[10px] text-gray-400 text-center">El progreso se actualiza cada 30 segundos · Selecciona al menos 1</p>
+            <p className="text-[10px] text-gray-400 text-center">{lang === 'en' ? 'Progress updates every 30 seconds · Select at least 1' : 'El progreso se actualiza cada 30 segundos · Selecciona al menos 1'}</p>
           </div>
         </div>
       )}
@@ -774,13 +779,13 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                 onClick={() => setShowLogout(false)}
                 className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
               >
-                Cancelar
+                {t('common', 'cancel')}
               </button>
               <button
                 onClick={confirmLogout}
                 className="px-5 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow"
               >
-                Cerrar sesión
+                {t('common', 'logout')}
               </button>
             </div>
           </div>

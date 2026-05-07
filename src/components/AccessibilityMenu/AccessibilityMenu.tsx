@@ -174,11 +174,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('highContrast')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
 
@@ -273,11 +270,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('invertColors')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
 
@@ -318,11 +312,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('readingGuide')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
 
@@ -336,11 +327,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('readAloud')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
 
@@ -363,11 +351,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('bigCursor')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
 
@@ -381,11 +366,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('highlightLinks')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
 
@@ -399,11 +381,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('focusMode')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
           </div>
@@ -420,9 +399,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('darkScheduleEnabled')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6"/>
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6"/>
               </label>
             </div>
             {settings.darkScheduleEnabled && (
@@ -467,9 +445,8 @@ const AccessibilityMenu = () => {
                   onChange={() => toggleSetting('showFloatingButton')}
                   className="sr-only peer"
                 />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
+                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300" />
+                <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-6" />
               </label>
             </div>
           </div>

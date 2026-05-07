@@ -9,6 +9,7 @@ import { Brain, RefreshCw, Sparkles, ChevronDown, ChevronUp, AlertTriangle } fro
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
+import { useLanguage } from '../i18n';
 
 interface Props {
   onNavigate?: (page: string) => void;
@@ -53,6 +54,7 @@ const readIsDark = () => {
 
 export default function CoachVisualSemanal({ onNavigate: _onNavigate }: Props) {
   const { user } = useUser();
+  const { lang } = useLanguage();
   const [analysis, setAnalysis] = useState<CoachAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -102,46 +104,73 @@ export default function CoachVisualSemanal({ onNavigate: _onNavigate }: Props) {
             ORDER BY created_at DESC`.catch(() => []),
       ]);
 
+      const locale = lang === 'en' ? 'en-US' : 'es-MX';
       const resumen = `
-DATOS DE SALUD VISUAL — ÚLTIMOS 7 DÍAS
-Usuario: ${user.nombre}
-Fecha de análisis: ${new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+${lang === 'en' ? 'VISUAL HEALTH DATA — LAST 7 DAYS' : 'DATOS DE SALUD VISUAL — ÚLTIMOS 7 DÍAS'}
+${lang === 'en' ? 'User' : 'Usuario'}: ${user.nombre}
+${lang === 'en' ? 'Analysis date' : 'Fecha de análisis'}: ${new Date().toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 
-=== CUESTIONARIOS DE FATIGA (${(cuestionarios as any[]).length} registros) ===
-${(cuestionarios as any[]).length === 0 ? 'Sin evaluaciones esta semana.' :
+=== ${lang === 'en' ? `FATIGUE QUESTIONNAIRES (${(cuestionarios as any[]).length} records)` : `CUESTIONARIOS DE FATIGA (${(cuestionarios as any[]).length} registros)`} ===
+${(cuestionarios as any[]).length === 0 ? (lang === 'en' ? 'No evaluations this week.' : 'Sin evaluaciones esta semana.') :
   (cuestionarios as any[]).map(r => {
     const d = new Date(r.created_at);
-    const dia = d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' });
-    return `• ${dia}: Fatiga ${r.puntaje_fatiga}% — Síntoma: ${r.sintoma_dominante ?? 'no especificado'}`;
+    const dia = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: 'short' });
+    return lang === 'en'
+      ? `• ${dia}: Fatigue ${r.puntaje_fatiga}% — Symptom: ${r.sintoma_dominante ?? 'not specified'}`
+      : `• ${dia}: Fatiga ${r.puntaje_fatiga}% — Síntoma: ${r.sintoma_dominante ?? 'no especificado'}`;
   }).join('\n')}
 
-=== EJERCICIOS OCULARES (${(ejercicios as any[]).length} registros) ===
-${(ejercicios as any[]).length === 0 ? 'Sin ejercicios esta semana.' :
+=== ${lang === 'en' ? `EYE EXERCISES (${(ejercicios as any[]).length} records)` : `EJERCICIOS OCULARES (${(ejercicios as any[]).length} registros)`} ===
+${(ejercicios as any[]).length === 0 ? (lang === 'en' ? 'No exercises this week.' : 'Sin ejercicios esta semana.') :
   (ejercicios as any[]).map(r => {
     const d = new Date(r.created_at);
-    const dia = d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' });
+    const dia = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: 'short' });
     const dur = Math.round(Number(r.duracion) / 1000);
     return `• ${dia}: ${r.tipo_ejercicio} — ${dur}s — ${r.status}`;
   }).join('\n')}
 
-=== DETECCIÓN DE PARPADEO (${(parpadeos as any[]).length} sesiones) ===
-${(parpadeos as any[]).length === 0 ? 'Sin sesiones de parpadeo esta semana.' :
+=== ${lang === 'en' ? `BLINK DETECTION (${(parpadeos as any[]).length} sessions)` : `DETECCIÓN DE PARPADEO (${(parpadeos as any[]).length} sesiones)`} ===
+${(parpadeos as any[]).length === 0 ? (lang === 'en' ? 'No blink sessions this week.' : 'Sin sesiones de parpadeo esta semana.') :
   (parpadeos as any[]).map(r => {
     const d = new Date(r.created_at);
-    const dia = d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' });
-    return `• ${dia}: ${r.avg_blinks_per_min} parpadeos/min — ${r.duration_sec}s de sesión`;
+    const dia = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: 'short' });
+    return lang === 'en'
+      ? `• ${dia}: ${r.avg_blinks_per_min} blinks/min — ${r.duration_sec}s session`
+      : `• ${dia}: ${r.avg_blinks_per_min} parpadeos/min — ${r.duration_sec}s de sesión`;
   }).join('\n')}
 
-=== PRUEBA DE LECTURA VISUAL (${(lecturas as any[]).length} registros) ===
-${(lecturas as any[]).length === 0 ? 'Sin pruebas de lectura esta semana.' :
+=== ${lang === 'en' ? `VISUAL READING TEST (${(lecturas as any[]).length} records)` : `PRUEBA DE LECTURA VISUAL (${(lecturas as any[]).length} registros)`} ===
+${(lecturas as any[]).length === 0 ? (lang === 'en' ? 'No reading tests this week.' : 'Sin pruebas de lectura esta semana.') :
   (lecturas as any[]).map(r => {
     const d = new Date(r.created_at);
-    const dia = d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' });
-    return `• ${dia}: Score ${r.score} — ${r.words_per_minute ?? '?'} palabras/min`;
+    const dia = d.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: 'short' });
+    return lang === 'en'
+      ? `• ${dia}: Score ${r.score} — ${r.words_per_minute ?? '?'} words/min`
+      : `• ${dia}: Score ${r.score} — ${r.words_per_minute ?? '?'} palabras/min`;
   }).join('\n')}
 `.trim();
 
-      const prompt = `Eres el Coach Visual de Therapheye, un experto en salud ocular y bienestar visual. Analiza los datos de la semana del usuario y devuelve un JSON con este formato exacto:
+      const prompt = lang === 'en'
+        ? `You are the Visual Coach of Therapheye, an expert in ocular health and visual wellness. Analyze the user's week data and return a JSON with this exact format:
+
+{
+  "saludo": "Personalized motivating greeting of 1-2 sentences",
+  "mejoro": "What improved this week (if not enough data, say something encouraging about starting to track)",
+  "empeoro": "What worsened or needs attention (be specific but kind)",
+  "patron": "Detected pattern (e.g.: high fatigue on Wednesdays, few exercises on weekends, etc. If no clear pattern, suggest one to watch)",
+  "recomendaciones": ["Concrete recommendation 1", "Concrete recommendation 2", "Concrete recommendation 3"]
+}
+
+RULES:
+- Respond ONLY with the JSON, no markdown or extra explanations
+- Use a warm, empathetic and motivating tone
+- Recommendations must be concrete actions achievable this week
+- If there is little data, focus on building habits and encouraging the user to log more
+- Respond in English
+
+DATA:
+${resumen}`
+        : `Eres el Coach Visual de Therapheye, un experto en salud ocular y bienestar visual. Analiza los datos de la semana del usuario y devuelve un JSON con este formato exacto:
 
 {
   "saludo": "Mensaje de saludo personalizado y motivador de 1-2 oraciones",
@@ -178,10 +207,10 @@ ${resumen}`;
       saveCache(user.id, result);
     } catch (e) {
       console.error('[CoachVisual]', e);
-      setError('No se pudo generar el análisis. Intenta de nuevo.');
+      setError(lang === 'en' ? 'Could not generate analysis. Please try again.' : 'No se pudo generar el análisis. Intenta de nuevo.');
     }
     setLoading(false);
-  }, [user?.id, user?.nombre]);
+  }, [user?.id, user?.nombre, lang]);
 
   // Carga caché al montar; si no hay caché, genera automáticamente
   useEffect(() => {
@@ -197,6 +226,7 @@ ${resumen}`;
     const diff = Date.now() - analysis.generadoEn;
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
+    if (lang === 'en') return h > 0 ? `${h}h ${m}m ago` : `${m} min ago`;
     return h > 0 ? `hace ${h}h ${m}m` : `hace ${m} min`;
   })() : '';
 
@@ -210,14 +240,16 @@ ${resumen}`;
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-white font-bold text-sm leading-tight">Coach Visual Semanal</p>
+              <p className="text-white font-bold text-sm leading-tight">{lang === 'en' ? 'Weekly Visual Coach' : 'Coach Visual Semanal'}</p>
               <span className="flex items-center gap-1 bg-white/20 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
                 <Sparkles className="w-2.5 h-2.5" /> IA
               </span>
             </div>
             {analysis && (
               <p className="text-white/60 text-[10px] mt-0.5">
-                {isFromCache ? `Análisis guardado · ${timeAgo}` : `Generado ${timeAgo}`}
+                {isFromCache
+                  ? (lang === 'en' ? `Saved analysis · ${timeAgo}` : `Análisis guardado · ${timeAgo}`)
+                  : (lang === 'en' ? `Generated ${timeAgo}` : `Generado ${timeAgo}`)}
               </p>
             )}
           </div>
@@ -230,7 +262,7 @@ ${resumen}`;
             title="Regenerar análisis"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Analizando...' : 'Regenerar'}
+            {loading ? (lang === 'en' ? 'Analyzing...' : 'Analizando...') : (lang === 'en' ? 'Regenerate' : 'Regenerar')}
           </button>
           <button
             onClick={() => setExpanded(v => !v)}
@@ -247,7 +279,7 @@ ${resumen}`;
           {loading && !analysis && (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="w-10 h-10 rounded-full border-3 border-purple-200 border-t-purple-600 animate-spin" style={{ borderWidth: 3 }} />
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Analizando tu semana...</p>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{lang === 'en' ? 'Analyzing your week...' : 'Analizando tu semana...'}</p>
             </div>
           )}
 
@@ -264,7 +296,7 @@ ${resumen}`;
             <div className="flex items-start gap-3 p-5">
               <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>No se pudo generar el análisis</p>
+                <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>{lang === 'en' ? 'Could not generate analysis' : 'No se pudo generar el análisis'}</p>
                 <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{error}</p>
               </div>
             </div>
@@ -281,13 +313,13 @@ ${resumen}`;
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className={`rounded-xl p-3 border ${isDark ? 'bg-emerald-950/40 border-emerald-800' : 'bg-emerald-50 border-emerald-100'}`}>
                   <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                    <span className="text-base">📈</span> Lo que mejoró
+                    <span className="text-base">📈</span> {lang === 'en' ? 'What improved' : 'Lo que mejoró'}
                   </p>
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>{analysis.mejoro}</p>
                 </div>
                 <div className={`rounded-xl p-3 border ${isDark ? 'bg-orange-950/40 border-orange-800' : 'bg-orange-50 border-orange-100'}`}>
                   <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
-                    <span className="text-base">📉</span> A mejorar
+                    <span className="text-base">📉</span> {lang === 'en' ? 'To improve' : 'A mejorar'}
                   </p>
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>{analysis.empeoro}</p>
                 </div>
@@ -296,7 +328,7 @@ ${resumen}`;
               {/* Patrón detectado */}
               <div className={`rounded-xl p-3 border ${isDark ? 'bg-indigo-950/40 border-indigo-800' : 'bg-indigo-50 border-indigo-100'}`}>
                 <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 flex items-center gap-1.5 ${isDark ? 'text-indigo-400' : 'text-indigo-700'}`}>
-                  <span className="text-base">🔍</span> Patrón detectado
+                  <span className="text-base">🔍</span> {lang === 'en' ? 'Detected pattern' : 'Patrón detectado'}
                 </p>
                 <p className={`text-xs leading-relaxed ${isDark ? 'text-indigo-300' : 'text-indigo-800'}`}>{analysis.patron}</p>
               </div>
@@ -304,7 +336,7 @@ ${resumen}`;
               {/* Recomendaciones */}
               <div>
                 <p className={`text-xs font-bold uppercase tracking-wide mb-2 flex items-center gap-1.5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <span className="text-base">🎯</span> Recomendaciones para esta semana
+                  <span className="text-base">🎯</span> {lang === 'en' ? 'Recommendations for this week' : 'Recomendaciones para esta semana'}
                 </p>
                 <div className="space-y-2">
                   {(analysis.recomendaciones ?? []).map((r, i) => (
@@ -324,13 +356,15 @@ ${resumen}`;
             <div className="flex flex-col items-center justify-center py-10 gap-3 text-center px-6">
               <Brain className="w-10 h-10 text-purple-200" />
               <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Tu coach analizará los últimos 7 días de datos para darte recomendaciones personalizadas.
+                {lang === 'en'
+                  ? 'Your coach will analyze the last 7 days of data to give you personalized recommendations.'
+                  : 'Tu coach analizará los últimos 7 días de datos para darte recomendaciones personalizadas.'}
               </p>
               <button
                 onClick={() => fetchAnalysis(true)}
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition"
               >
-                Generar análisis
+                {lang === 'en' ? 'Generate analysis' : 'Generar análisis'}
               </button>
             </div>
           )}
