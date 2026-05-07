@@ -4,7 +4,7 @@
 // Usa React Portal → renderiza en #a11y-portal fuera de #root
 // =========================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccessibility } from './useAccessibility';
 import { createPortal } from 'react-dom';
 import { X, Accessibility, Eye, Volume2, MousePointer, Globe, Palette, Sparkles } from 'lucide-react';
@@ -31,6 +31,13 @@ const AccessibilityMenu = () => {
   const { t } = useLanguage();
   const [showWizard, setShowWizard] = useState(false);
 
+  // Escuchar evento desde la sidebar para abrir el panel
+  useEffect(() => {
+    const handler = () => setIsOpen(v => !v);
+    window.addEventListener('therapheye-open-accessibility', handler);
+    return () => window.removeEventListener('therapheye-open-accessibility', handler);
+  }, [setIsOpen]);
+
   const portalTarget = document.getElementById('a11y-portal') || document.body;
 
   const menu = createPortal(
@@ -38,23 +45,12 @@ const AccessibilityMenu = () => {
       className="accessibility-menu fixed bottom-5 right-5 z-[9999]"
       style={settings.invertColors ? { filter: 'invert(1) hue-rotate(180deg)' } : undefined}
     >
-      {/* Botón flotante principal */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-[60px] h-[60px] rounded-full bg-gradient-to-br from-[#1B396B] to-[#003875]
-                   text-white flex items-center justify-center shadow-lg
-                   hover:scale-110 active:scale-95 transition-all duration-300"
-        aria-label={t('accessibility', 'openMenu')}
-      >
-        <Accessibility className="w-7 h-7" />
-      </button>
-
-      {/* Panel desplegable */}
+      {/* Panel desplegable — se activa desde la sidebar */}
       <div
-        className={`absolute bottom-[75px] right-0 w-[350px] bg-white rounded-2xl shadow-2xl
+        className={`absolute bottom-0 right-0 w-[350px] bg-white rounded-2xl shadow-2xl
                    transition-all duration-300 max-h-[600px] overflow-y-auto
-                   ${isOpen 
-                     ? 'opacity-100 visible translate-y-0 scale-100' 
+                   ${isOpen
+                     ? 'opacity-100 visible translate-y-0 scale-100'
                      : 'opacity-0 invisible translate-y-5 scale-90'}`}
       >
         {/* Header */}

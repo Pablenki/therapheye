@@ -9,7 +9,7 @@ import {
   Sparkles, BookMarked, MoreHorizontal, Crosshair, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
-  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart,
+  Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart, Accessibility,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -555,6 +555,13 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
                         <HelpCircle className="w-3.5 h-3.5 text-indigo-400"/> ¿Cómo usar esto?
                       </button>
                     )}
+                    <button
+                      onClick={() => { window.dispatchEvent(new CustomEvent('therapheye-open-accessibility')); setShowProfileMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-gray-300 hover:bg-white/10 hover:text-white transition text-left"
+                      title="Accesibilidad"
+                    >
+                      <Accessibility className="w-3.5 h-3.5 text-indigo-400"/> Accesibilidad
+                    </button>
                     <div className="border-t border-white/10 mx-2"/>
                     <button
                       onClick={() => { setShowLogout(true); setShowProfileMenu(false); }}

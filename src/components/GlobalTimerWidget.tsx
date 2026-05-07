@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Play, Pause, Monitor, AlarmClock, X } from 'lucide-react';
+import { Play, Pause, Monitor, AlarmClock, X, GripHorizontal } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
@@ -140,7 +140,7 @@ const syncPrefsFromDB = async (userId: string): Promise<TimerPrefs> => {
 };
 
 // Páginas donde el widget NO se muestra visualmente
-const HIDDEN_PAGES: Page[] = ['login', 'register', 'verify-email', 'visual-health'];
+const HIDDEN_PAGES: Page[] = ['login', 'register', 'verify-email'];
 // Páginas de auth donde el timer SÍ se pausa/resetea (no incluye visual-health)
 const AUTH_ONLY_PAGES: Page[] = ['login', 'register', 'verify-email'];
 
@@ -241,6 +241,28 @@ const SLEEP_THRESHOLD_MS   = 30_000;         // 30s gap → sleep/restart
 const INACTIVITY_WARN_MS   = 5 * 60_000;     // 5 min sin actividad → push warning
 const INACTIVITY_STOP_MS   = 7 * 60_000;     // 7 min sin actividad → pausar + push "detenido"
 
+// ─── Posición del widget flotante ────────────────────────────────────────────
+const WIDGET_POS_KEY = 'therapeye_timer_widget_pos';
+type WidgetPos = { x: number; y: number };
+const DEFAULT_WIDGET_POS = (): WidgetPos => ({
+  x: window.innerWidth  - 280,
+  y: window.innerHeight - 70,
+});
+const loadWidgetPos = (): WidgetPos => {
+  try {
+    const raw = localStorage.getItem(WIDGET_POS_KEY);
+    if (raw) {
+      const p = JSON.parse(raw) as WidgetPos;
+      // Clamp to viewport
+      return {
+        x: Math.max(0, Math.min(p.x, window.innerWidth  - 200)),
+        y: Math.max(0, Math.min(p.y, window.innerHeight - 50)),
+      };
+    }
+  } catch { /* noop */ }
+  return DEFAULT_WIDGET_POS();
+};
+
 // ─── Web source ID (identifica esta instancia del navegador web) ──────────────
 // Distinto al browserId de la extensión, que es 'ext:xxxxx'.
 // Formato: 'web-xxxxxxxx'
@@ -330,6 +352,10 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   /** Banner "cambiaste de cuenta" */
   const [showAccountChanged, setShowAccountChanged] = useState(false);
   const [isMobile, setIsMobile]                     = useState(isMobileDevice);
+  // ── Drag ────────────────────────────────────────────────────────────────────
+  const [pos, setPos]         = useState<WidgetPos>(loadWidgetPos);
+  const dragRef               = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+  const widgetRef             = useRef<HTMLDivElement>(null);
   /** Banner "timer activo en otra ventana/extensión" */
   const [foreignSessionMs, setForeignSessionMs]     = useState<number | null>(null);
   // Persiste entre re-renders y navegación para no re-disparar la alerta de descanso
@@ -343,6 +369,36 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
+
+  // ── Drag handlers ───────────────────────────────────────────────────────────
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: pos.x, startPosY: pos.y };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const dy = ev.clientY - dragRef.current.startY;
+      const newX = Math.max(0, Math.min(dragRef.current.startPosX + dx, window.innerWidth  - (widgetRef.current?.offsetWidth  ?? 200)));
+      const newY = Math.max(0, Math.min(dragRef.current.startPosY + dy, window.innerHeight - (widgetRef.current?.offsetHeight ?? 50)));
+      setPos({ x: newX, y: newY });
+    };
+    const onUp = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const dy = ev.clientY - dragRef.current.startY;
+      const newX = Math.max(0, Math.min(dragRef.current.startPosX + dx, window.innerWidth  - (widgetRef.current?.offsetWidth  ?? 200)));
+      const newY = Math.max(0, Math.min(dragRef.current.startPosY + dy, window.innerHeight - (widgetRef.current?.offsetHeight ?? 50)));
+      const finalPos = { x: newX, y: newY };
+      setPos(finalPos);
+      try { localStorage.setItem(WIDGET_POS_KEY, JSON.stringify(finalPos)); } catch { /* noop */ }
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup',   onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+  }, [pos]);
 
   // ── Rastrear actividad del usuario en el navegador ────────────────────────
   useEffect(() => {
@@ -1077,12 +1133,21 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
         </div>
       )}
 
-      {/* ── Widget flotante ── */}
+      {/* ── Widget flotante (arrastrable) ── */}
       <div
-        className={`fixed bottom-5 right-[76px] z-[9000] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl cursor-pointer transition-all duration-200 ${pillBg} text-white select-none group`}
-        onClick={() => onNavigate('visual-health')}
-        title={t('visualHealth', 'openVisualHealth')}
+        ref={widgetRef}
+        style={{ left: pos.x, top: pos.y, position: 'fixed' }}
+        className={`z-[9000] flex items-center gap-2 px-3 py-2 rounded-2xl shadow-2xl transition-colors duration-200 ${pillBg} text-white select-none`}
       >
+        {/* Handle de arrastre */}
+        <span
+          onMouseDown={handleDragStart}
+          className="cursor-grab active:cursor-grabbing p-1 -ml-1 opacity-50 hover:opacity-90 flex-shrink-0"
+          title="Arrastrar"
+        >
+          <GripHorizontal className="w-3.5 h-3.5" />
+        </span>
+
         {/* Dot de estado */}
         <span
           className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -1090,20 +1155,27 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
           }`}
         />
 
-        {/* Ícono */}
-        <Monitor className="w-4 h-4 opacity-80 flex-shrink-0" />
+        {/* Área clickeable → ir a visual-health */}
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => onNavigate('visual-health')}
+          title={t('visualHealth', 'openVisualHealth')}
+        >
+          {/* Ícono */}
+          <Monitor className="w-4 h-4 opacity-80 flex-shrink-0" />
 
-        {/* Tiempo */}
-        <span className="font-mono font-bold text-sm tracking-widest">
-          {formatDuration(elapsedSeconds)}
-        </span>
-
-        {/* Próximo descanso */}
-        {isRunning && nextBreakInMinutes !== null && (
-          <span className="text-xs opacity-70 hidden sm:inline whitespace-nowrap">
-            | {nextBreakInMinutes <= 1 ? t('visualHealth', 'lessThan1Min') : `${nextBreakInMinutes} ${t('common', 'min')}`}
+          {/* Tiempo */}
+          <span className="font-mono font-bold text-sm tracking-widest">
+            {formatDuration(elapsedSeconds)}
           </span>
-        )}
+
+          {/* Próximo descanso */}
+          {isRunning && nextBreakInMinutes !== null && (
+            <span className="text-xs opacity-70 hidden sm:inline whitespace-nowrap">
+              | {nextBreakInMinutes <= 1 ? t('visualHealth', 'lessThan1Min') : `${nextBreakInMinutes} ${t('common', 'min')}`}
+            </span>
+          )}
+        </div>
 
         {/* Separador */}
         <span className="w-px h-4 bg-white/30 flex-shrink-0" />
