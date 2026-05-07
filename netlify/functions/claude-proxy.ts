@@ -1,8 +1,9 @@
 // =========================================
 // Netlify Function: claude-proxy
-// Cascada: Gemini flash-latest → Gemini 2.5-flash → Groq → xAI
+// Cascada: Groq (llama-3.1-8b-instant) → Groq (gemma2-9b-it) → Gemini flash-latest → Gemini 2.5-flash → xAI
+// Groq llama-3.1-8b-instant: 30 RPM / 14.4K RPD / 6K TPM  / 500K TPD
+// Groq gemma2-9b-it        : 30 RPM / 14.4K RPD / 15K TPM / 500K TPD  ← absorbe picos TPM
 // Gemini free: 5 RPM / 20 RPD por modelo
-// Groq free: 30 RPM / 14,400 RPD (llama-3.1-8b-instant)
 // xAI: último recurso (requiere créditos)
 // =========================================
 
@@ -94,9 +95,13 @@ async function callGemini(
 }
 
 // ── Groq (OpenAI-compatible) ──────────────────────────────────────────────────
+// Modelos disponibles (free tier):
+//   llama-3.1-8b-instant : 30 RPM / 14.4K RPD / 6K TPM  / 500K TPD  (muy rápido)
+//   gemma2-9b-it          : 30 RPM / 14.4K RPD / 15K TPM / 500K TPD  (fallback TPM)
 
 async function callGroq(
   apiKey: string,
+  model: string,
   body: any,
 ): Promise<{ ok: boolean; text?: string; error?: string; status?: number }> {
   const messages: any[] = [];
@@ -124,9 +129,9 @@ async function callGroq(
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model,
         messages,
-        max_tokens: Math.min(body.max_tokens || 512, 8192),
+        max_tokens: Math.min(body.max_tokens || 512, 4096),
         temperature: 0.7,
       }),
     },
@@ -138,8 +143,8 @@ async function callGroq(
   const data = await res.json();
 
   if (!res.ok) {
-    const errMsg = data.error?.message || data.error?.type || `Groq HTTP ${res.status}`;
-    console.warn('[claude-proxy] Groq falló:', res.status, errMsg);
+    const errMsg = data.error?.message || data.error?.type || `Groq/${model} HTTP ${res.status}`;
+    console.warn(`[claude-proxy] Groq/${model} falló:`, res.status, errMsg);
     return { ok: false, error: errMsg, status: res.status };
   }
 
@@ -227,7 +232,9 @@ const handler: Handler = async (event) => {
     return { statusCode: 503, body: JSON.stringify({ error: 'AI_UNAVAILABLE' }) };
   }
 
-  // ── Cascada: Gemini flash-latest → Gemini 2.5-flash → Groq → xAI ───────────
+  // ── Cascada: Groq (llama-instant) → Groq (gemma2) → Gemini flash → Gemini 2.5 → xAI ──
+  // Groq llama-3.1-8b-instant: 6K TPM → satura rápido con usuarios concurrentes
+  // Groq gemma2-9b-it: 15K TPM → segundo intento dentro de Groq antes de saltar a Gemini
   const errors: string[] = [];
 
   const ok = (text: string, provider: string) => ({
@@ -236,11 +243,18 @@ const handler: Handler = async (event) => {
     body: JSON.stringify({ content: [{ type: 'text', text }], provider }),
   });
 
-  // Groq primero — más rápido y 14,400 RPD gratis
   if (groqKey) {
-    const r = await callGroq(groqKey, body);
-    if (r.ok) return ok(r.text!, 'Groq · LLaMA 3.1');
-    errors.push(`Groq: ${r.error}`);
+    // Primer intento: llama-3.1-8b-instant (más rápido, 6K TPM)
+    const r1 = await callGroq(groqKey, 'llama-3.1-8b-instant', body);
+    if (r1.ok) return ok(r1.text!, 'Groq · LLaMA 3.1');
+    errors.push(`Groq/llama: ${r1.error}`);
+
+    // Segundo intento Groq: gemma2-9b-it (15K TPM — absorbe picos de usuarios concurrentes)
+    if (r1.status === 429 || r1.status === 503) {
+      const r2 = await callGroq(groqKey, 'gemma2-9b-it', body);
+      if (r2.ok) return ok(r2.text!, 'Groq · Gemma 2');
+      errors.push(`Groq/gemma2: ${r2.error}`);
+    }
   }
 
   if (geminiKey) {

@@ -5,13 +5,16 @@
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
 import { enviarSoporteTecnico } from '../utils/emailService';
 
-interface Props { onBack: () => void }
+interface Props {
+  onBack: () => void;
+  onStartExercise?: (exerciseId: string) => void;
+}
 
 interface Message {
   role: 'assistant' | 'user';
@@ -40,7 +43,7 @@ Reglas:
 - Usa emojis con moderación para hacer la respuesta amigable
 - NUNCA diagnostiques enfermedades — solo orienta sobre síntomas comunes y probables causas
 - Para síntomas graves (pérdida súbita de visión, dolor intenso, trauma, moscas flotantes súbitas, cortina oscura en la visión): recomienda URGENTEMENTE al oftalmólogo con énfasis
-- Cuando sea relevante, sugiere usar alguna función de Therapheye: cuestionario de fatiga, ejercicios oculares, detector de parpadeo, o captura de imagen
+- Cuando sea relevante, menciona ejercicios de Therapheye por su nombre exacto: "Palming", "Regla 20-20-20", "movimientos circulares de ojos", "enfoque cercano-lejano". El sistema detectará esos nombres y mostrará botones para iniciarlos directamente
 - Añade siempre brevemente que no reemplazas un diagnóstico médico profesional cuando des orientación sobre síntomas
 - Si el usuario escribe en inglés, responde en inglés pero mantén el mismo estilo`;
 
@@ -79,6 +82,60 @@ function clearChatMessages(userId: string) {
   try { localStorage.removeItem(`${CHAT_STORAGE_KEY}_${userId}`); } catch { /* noop */ }
 }
 
+// ── Detección de ejercicios mencionados en respuesta IA ──────────────────────
+type ExerciseMatch = { id: string; labelEs: string; labelEn: string };
+
+const EXERCISE_PATTERNS: Array<{ id: string; labelEs: string; labelEn: string; patternsEs: RegExp[]; patternsEn: RegExp[] }> = [
+  {
+    id: 'palming',
+    labelEs: 'Palming',
+    labelEn: 'Palming',
+    patternsEs: [/palming/i, /palmas? (sobre|cubriendo) (los )?ojos/i],
+    patternsEn: [/palming/i, /cover.*eyes.*palm/i],
+  },
+  {
+    id: '20-20-20',
+    labelEs: 'Regla 20-20-20',
+    labelEn: '20-20-20 Rule',
+    patternsEs: [/20[-–]20[-–]20/i, /regla.*20/i, /descanso.*20/i],
+    patternsEn: [/20[-–]20[-–]20/i, /rule.*20/i],
+  },
+  {
+    id: 'circles',
+    labelEs: 'Movimientos circulares',
+    labelEn: 'Eye circles',
+    patternsEs: [/c[íi]rculos? (oculares?|de ojos)/i, /rotar (los )?ojos/i, /movimientos? circular/i],
+    patternsEn: [/eye circles?/i, /circular.*eye/i, /rotate.*eye/i],
+  },
+  {
+    id: 'near-far',
+    labelEs: 'Enfoque cercano-lejano',
+    labelEn: 'Near-far focus',
+    patternsEs: [/enfoque (cercano|lejano|near|far)/i, /cerca.*lejos/i, /alternando.*distancia/i],
+    patternsEn: [/near.?far focus/i, /focus.*near.*far/i, /near and far/i],
+  },
+  {
+    id: 'focus',
+    labelEs: 'Ejercicio de enfoque',
+    labelEn: 'Focus exercise',
+    patternsEs: [/ejercicio de enfoque/i, /enfocar.*objeto/i],
+    patternsEn: [/focus exercise/i, /focusing exercise/i],
+  },
+];
+
+function detectExercises(text: string, lang: string): ExerciseMatch[] {
+  const found: ExerciseMatch[] = [];
+  const seen = new Set<string>();
+  for (const ex of EXERCISE_PATTERNS) {
+    const patterns = lang === 'en' ? ex.patternsEn : ex.patternsEs;
+    if (patterns.some(p => p.test(text)) && !seen.has(ex.id)) {
+      seen.add(ex.id);
+      found.push({ id: ex.id, labelEs: ex.labelEs, labelEn: ex.labelEn });
+    }
+  }
+  return found;
+}
+
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-4 py-3">
@@ -93,7 +150,17 @@ function TypingDots() {
   );
 }
 
-function ChatBubble({ msg }: { msg: Message }) {
+function ChatBubble({
+  msg,
+  lang,
+  exercises,
+  onStartExercise,
+}: {
+  msg: Message;
+  lang: string;
+  exercises?: ExerciseMatch[];
+  onStartExercise?: (id: string) => void;
+}) {
   const isBot = msg.role === 'assistant';
   const formattedTime = msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -112,6 +179,21 @@ function ChatBubble({ msg }: { msg: Message }) {
         }`}>
           {msg.content}
         </div>
+        {/* Exercise action buttons — only for bot messages with detected exercises */}
+        {isBot && exercises && exercises.length > 0 && onStartExercise && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {exercises.map(ex => (
+              <button
+                key={ex.id}
+                onClick={() => onStartExercise(ex.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-full transition shadow-sm active:scale-95"
+              >
+                <Play className="w-3 h-3" />
+                {lang === 'en' ? ex.labelEn : ex.labelEs}
+              </button>
+            ))}
+          </div>
+        )}
         <div className={`flex items-center gap-2 mt-1 ${isBot ? 'justify-start' : 'justify-end'}`}>
           <p className="text-[10px] text-gray-400">{formattedTime}</p>
           {isBot && msg.provider && (
@@ -130,7 +212,7 @@ function ChatBubble({ msg }: { msg: Message }) {
   );
 }
 
-export default function ChatSintomas({ onBack }: Props) {
+export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const { lang } = useLanguage();
   const { user } = useUser();
   const quickSymptoms = lang === 'en' ? QUICK_SYMPTOMS_EN : QUICK_SYMPTOMS_ES;
@@ -276,7 +358,13 @@ export default function ChatSintomas({ onBack }: Props) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.map((msg, i) => (
-          <ChatBubble key={i} msg={msg} />
+          <ChatBubble
+            key={i}
+            msg={msg}
+            lang={lang}
+            exercises={msg.role === 'assistant' && i > 0 ? detectExercises(msg.content, lang) : undefined}
+            onStartExercise={onStartExercise}
+          />
         ))}
         {isTyping && (
           <div className="flex gap-2.5 mb-4">

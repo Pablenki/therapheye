@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ArrowLeft, HeartPulse, Play, Pause, RotateCcw, Clock,
   AlarmClock, StopCircle, Calendar, TrendingUp, X, Settings, Trash2,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Timer,
 } from 'lucide-react';
 import { Eye } from 'lucide-react';
 import { sql, localISOString } from '../neonCliente';
@@ -1140,6 +1140,26 @@ const VisualHealth = ({ onBack }: Props) => {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* ── Timer flotante ── */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-700 flex items-center gap-1.5 mb-1">
+                    <Timer className="w-3.5 h-3.5 text-indigo-400" />
+                    {lang === 'es' ? 'Timer flotante' : 'Floating timer'}
+                  </p>
+                  <p className="text-xs text-gray-400 mb-2 leading-relaxed">
+                    {lang === 'es' ? 'Si cerraste el widget con ✕, vuelve a mostrarlo aquí.' : 'If you dismissed the widget with ✕, show it again here.'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      try { localStorage.removeItem('therapeye_timer_widget_dismissed'); } catch { /* noop */ }
+                      window.dispatchEvent(new Event('therapheye-timer-show'));
+                    }}
+                    className="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-xl text-xs hover:bg-indigo-700 active:scale-95 transition-all"
+                  >
+                    {lang === 'es' ? '🖥️ Mostrar timer de pantalla' : '🖥️ Show screen timer'}
+                  </button>
                 </div>
               </div>
             </div>

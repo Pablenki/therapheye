@@ -307,7 +307,7 @@ function AppContent() {
       case 'reading-test':
         return <LecturaVisual onBack={() => handleNavigate('dashboard')} />
       case 'chat-sintomas':
-        return <ChatSintomas onBack={() => handleNavigate('dashboard')} />
+        return <ChatSintomas onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       case 'mapa-oftalmologos':
         return <MapaOftalmologos onBack={() => handleNavigate('dashboard')} />
       case 'juegos-visuales':
