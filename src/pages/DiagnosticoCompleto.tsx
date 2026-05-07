@@ -120,21 +120,68 @@ const generarRecomendaciones = (d: Omit<DiagnosticoGuardado, 'insights_json' | '
   return recs.slice(0, 4)
 }
 
+// ─── Texto explicativo por factor ────────────────────────────────────────────
+const explicacionFactor = (label: string, valor: number): string => {
+  switch (label) {
+    case 'Captura de imagen':
+      if (valor === 0) return 'Tu imagen mostró ojos saludables, sin signos de irritación ni enrojecimiento.';
+      if (valor <= 25) return 'Se detectó leve enrojecimiento ocular. Puede ser cansancio normal al final del día.';
+      if (valor <= 35) return 'Irritación leve en párpado o piel alrededor del ojo. Podría ser alergia o frotamiento.';
+      if (valor <= 50) return 'Enrojecimiento moderado detectado. Indicador claro de fatiga visual acumulada.';
+      if (valor <= 70) return 'Párpado caído visible en la imagen. Señal de fatiga muscular ocular importante.';
+      return 'Enrojecimiento grave en el ojo. Requiere atención, evita seguir frente a pantallas.';
+    case 'Cuestionario':
+      if (valor <= 20) return 'Reportaste muy pocos síntomas. Tus ojos se sienten bien según tu propia evaluación.';
+      if (valor <= 40) return 'Síntomas leves: ligero cansancio o visión borrosa puntual. Nivel manejable.';
+      if (valor <= 60) return 'Síntomas moderados: molestias que afectan tu comodidad visual de manera regular.';
+      if (valor <= 80) return 'Síntomas significativos: dolor, visión doble o fatiga constante reportados.';
+      return 'Síntomas severos en el cuestionario. Muy alta carga de fatiga visual subjetiva.';
+    case 'Tiempo en pantalla':
+      if (valor <= 10) return 'Menos de 2 horas frente a pantallas hoy. Exposición muy controlada y saludable.';
+      if (valor <= 30) return 'Entre 2 y 4 horas en pantalla. Moderado y dentro de un rango razonable.';
+      if (valor <= 60) return 'Entre 4 y 6 horas en pantalla. Ya genera acumulación de fatiga visual.';
+      if (valor <= 80) return 'Entre 6 y 8 horas. Nivel elevado que requiere pausas activas y la regla 20-20-20.';
+      return 'Más de 8 horas frente a pantallas. El principal factor de riesgo en tu diagnóstico.';
+    case 'Ejercicios visuales':
+      if (valor <= 0) return '5 o más ejercicios completados. ¡Excelente rutina! Los ejercicios compensan la fatiga.';
+      if (valor <= 20) return '4 ejercicios realizados. Buena práctica; uno más daría mayor protección.';
+      if (valor <= 40) return '3 ejercicios completados. Ayuda, pero aumentar la frecuencia reduciría la fatiga.';
+      if (valor <= 60) return 'Solo 2 ejercicios hoy. La regularidad en la rutina visual es clave para mejorar.';
+      if (valor <= 80) return 'Un único ejercicio. La baja frecuencia incrementa directamente el riesgo de fatiga.';
+      return 'Sin ejercicios oculares hoy. La ausencia de práctica contribuye al puntaje de fatiga.';
+    case 'Pruebas de visión':
+      if (valor <= 0) return 'Pasaste todos los niveles del test. Agudeza visual excelente, sin errores.';
+      if (valor <= 20) return 'Alcanzaste un nivel alto de agudeza. Visión por encima del promedio general.';
+      if (valor <= 40) return 'Buena agudeza visual con algunos errores en los niveles más exigentes.';
+      if (valor <= 60) return 'Agudeza visual media. Considera revisión si los errores persisten con frecuencia.';
+      if (valor <= 80) return 'Dificultad en varios niveles del test. Podría indicar necesidad de corrección óptica.';
+      return 'Errores frecuentes en el test de visión. Se recomienda evaluación oftalmológica.';
+    default: return '';
+  }
+};
+
 // ─── Barra horizontal de impacto ─────────────────────────────────────────────
-const FactorBar = ({ label, aporte, maxAporte, color }: { label: string; aporte: number; maxAporte: number; color: string }) => {
+const FactorBar = ({ label, aporte, maxAporte, color, valor, peso }: {
+  label: string; aporte: number; maxAporte: number; color: string; valor: number; peso: number;
+}) => {
   const pct = maxAporte > 0 ? Math.round((aporte / maxAporte) * 100) : 0
+  const explicacion = explicacionFactor(label, valor)
   return (
-    <div className="mb-3">
+    <div className="mb-5">
       <div className="flex items-center justify-between mb-1">
         <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-sm font-bold text-gray-800">{aporte.toFixed(1)} pts</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{valor}/100 · {peso}%</span>
+          <span className="text-sm font-bold text-gray-800">{aporte.toFixed(1)} pts</span>
+        </div>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
+      <div className="w-full bg-gray-100 rounded-full h-3.5 overflow-hidden mb-1.5">
         <div
-          className={`h-4 rounded-full transition-all duration-700 ${color}`}
+          className={`h-3.5 rounded-full transition-all duration-700 ${color}`}
           style={{ width: `${pct}%` }}
         />
       </div>
+      <p className="text-xs text-gray-500 leading-snug">{explicacion}</p>
     </div>
   )
 }
@@ -364,11 +411,11 @@ const DiagnosticoCompleto = ({ onBack, onNavigate }: Props) => {
   }
 
   const FACTORES_BAR = diagnostico ? [
-    { label: 'Captura de imagen',   aporte: diagnostico.aporte_imagen,       color: 'bg-red-500'    },
-    { label: 'Cuestionario',        aporte: diagnostico.aporte_cuestionario,  color: 'bg-blue-500'   },
-    { label: 'Tiempo en pantalla',  aporte: diagnostico.aporte_tiempo,        color: 'bg-orange-500' },
-    { label: 'Ejercicios visuales', aporte: diagnostico.aporte_ejercicios,    color: 'bg-green-500'  },
-    { label: 'Pruebas de visión',   aporte: diagnostico.aporte_pruebas,       color: 'bg-teal-500'   },
+    { label: 'Captura de imagen',   aporte: diagnostico.aporte_imagen,       color: 'bg-red-500',    valor: diagnostico.valor_imagen,       peso: 30 },
+    { label: 'Cuestionario',        aporte: diagnostico.aporte_cuestionario,  color: 'bg-blue-500',   valor: diagnostico.valor_cuestionario,  peso: 25 },
+    { label: 'Tiempo en pantalla',  aporte: diagnostico.aporte_tiempo,        color: 'bg-orange-500', valor: diagnostico.valor_tiempo,        peso: 20 },
+    { label: 'Ejercicios visuales', aporte: diagnostico.aporte_ejercicios,    color: 'bg-green-500',  valor: diagnostico.valor_ejercicios,    peso: 15 },
+    { label: 'Pruebas de visión',   aporte: diagnostico.aporte_pruebas,       color: 'bg-teal-500',   valor: diagnostico.valor_pruebas,       peso: 10 },
   ] : []
   const maxAporte = FACTORES_BAR.length ? Math.max(...FACTORES_BAR.map(f => f.aporte), 1) : 1
 
@@ -566,7 +613,7 @@ const DiagnosticoCompleto = ({ onBack, onNavigate }: Props) => {
                 <h3 className="text-xl font-bold text-gray-800">Impacto real por factor</h3>
               </div>
               {FACTORES_BAR.map(f => (
-                <FactorBar key={f.label} label={f.label} aporte={f.aporte} maxAporte={maxAporte} color={f.color} />
+                <FactorBar key={f.label} label={f.label} aporte={f.aporte} maxAporte={maxAporte} color={f.color} valor={f.valor} peso={f.peso} />
               ))}
               <p className="text-xs text-gray-400 mt-4">Las barras muestran el aporte ponderado de cada factor al score total (máx. 100 pts).</p>
             </div>

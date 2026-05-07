@@ -1,24 +1,10 @@
 // =========================================
 // Mapa de Oftalmólogos Cercanos
-// Usa Leaflet (OSM) + Overpass API — 100% gratuito
+// Google Maps (iframe embed, sin API key) + Overpass API para lista
 // =========================================
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, MapPin, Phone, Clock, AlertCircle, Loader2, Navigation, CalendarPlus } from 'lucide-react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// Fix default marker icons (Vite no copia los assets de leaflet automáticamente)
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: markerIconUrl,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-});
+import { ArrowLeft, MapPin, Phone, Clock, AlertCircle, Loader2, Navigation, CalendarPlus, ExternalLink } from 'lucide-react';
 
 interface Props { onBack: () => void }
 
@@ -34,20 +20,6 @@ interface Place {
 }
 
 type Status = 'idle' | 'locating' | 'loading' | 'done' | 'error';
-
-const USER_ICON = L.divIcon({
-  className: '',
-  html: `<div style="width:16px;height:16px;background:#4f46e5;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(79,70,229,.6)"></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-});
-
-const PLACE_ICON = L.divIcon({
-  className: '',
-  html: `<div style="width:28px;height:28px;background:#0e7490;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.3);font-size:14px">👁</div>`,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
-});
 
 function buildOverpassQuery(lat: number, lon: number, radius: number) {
   return `
@@ -88,41 +60,23 @@ function parsePlaces(elements: any[]): Place[] {
     });
 }
 
+/** Construye la URL del iframe de Google Maps */
+function buildMapUrl(lat: number, lon: number, selected?: Place | null, zoom = 14): string {
+  if (selected) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(selected.name)}&ll=${selected.lat},${selected.lon}&z=16&output=embed&hl=es`;
+  }
+  return `https://maps.google.com/maps?q=oftalmologos+opticas+oculistas&ll=${lat},${lon}&z=${zoom}&output=embed&hl=es`;
+}
+
 export default function MapaOftalmologos({ onBack }: Props) {
-  const mapRef    = useRef<HTMLDivElement>(null);
-  const leafletRef = useRef<L.Map | null>(null);
-  const [status, setStatus]   = useState<Status>('idle');
-  const [places, setPlaces]   = useState<Place[]>([]);
+  const [status, setStatus]     = useState<Status>('idle');
+  const [places, setPlaces]     = useState<Place[]>([]);
   const [selected, setSelected] = useState<Place | null>(null);
-  const [radius, setRadius]   = useState(10000); // 10 km
-  const [coords, setCoords]   = useState<{ lat: number; lon: number } | null>(null);
-  const [errMsg, setErrMsg]   = useState('');
-
-  const initMap = (lat: number, lon: number) => {
-    if (leafletRef.current) return;
-    const map = L.map(mapRef.current!, { zoomControl: true }).setView([lat, lon], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map);
-    L.marker([lat, lon], { icon: USER_ICON })
-      .addTo(map)
-      .bindTooltip('Tu ubicación', { permanent: false });
-    leafletRef.current = map;
-  };
-
-  const addMarkers = (ps: Place[]) => {
-    const map = leafletRef.current;
-    if (!map) return;
-    // Clear old markers (keep user marker)
-    map.eachLayer(l => { if ((l as any)._isPlace) map.removeLayer(l); });
-    ps.forEach(p => {
-      const m = L.marker([p.lat, p.lon], { icon: PLACE_ICON }).addTo(map);
-      (m as any)._isPlace = true;
-      m.on('click', () => setSelected(p));
-      m.bindTooltip(p.name, { direction: 'top', offset: [0, -10] });
-    });
-  };
+  const [radius, setRadius]     = useState(10000);
+  const [coords, setCoords]     = useState<{ lat: number; lon: number } | null>(null);
+  const [errMsg, setErrMsg]     = useState('');
+  const [mapUrl, setMapUrl]     = useState('');
+  const iframeRef               = useRef<HTMLIFrameElement>(null);
 
   const search = async (lat: number, lon: number, r: number) => {
     setStatus('loading');
@@ -135,11 +89,7 @@ export default function MapaOftalmologos({ onBack }: Props) {
       const json = await res.json();
       const ps = parsePlaces(json.elements ?? []);
       setPlaces(ps);
-      addMarkers(ps);
-      if (ps.length > 0 && leafletRef.current) {
-        const group = L.featureGroup(ps.map(p => L.marker([p.lat, p.lon])));
-        leafletRef.current.fitBounds(group.getBounds().pad(0.15));
-      }
+      setMapUrl(buildMapUrl(lat, lon));
       setStatus('done');
     } catch {
       setErrMsg('No se pudo consultar el directorio. Intenta de nuevo.');
@@ -154,7 +104,7 @@ export default function MapaOftalmologos({ onBack }: Props) {
       pos => {
         const { latitude: lat, longitude: lon } = pos.coords;
         setCoords({ lat, lon });
-        initMap(lat, lon);
+        setMapUrl(buildMapUrl(lat, lon));
         search(lat, lon, radius);
       },
       err => {
@@ -177,8 +127,10 @@ export default function MapaOftalmologos({ onBack }: Props) {
     if (coords && status === 'done') search(coords.lat, coords.lon, radius);
   }, [radius]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cleanup map on unmount
-  useEffect(() => () => { leafletRef.current?.remove(); leafletRef.current = null; }, []);
+  const handleSelectPlace = (p: Place) => {
+    setSelected(p);
+    if (coords) setMapUrl(buildMapUrl(coords.lat, coords.lon, p));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -189,7 +141,7 @@ export default function MapaOftalmologos({ onBack }: Props) {
         </button>
         <div>
           <h1 className="font-bold text-gray-800 text-base leading-tight">Oftalmólogos Cercanos</h1>
-          <p className="text-xs text-gray-500">Directorio gratuito vía OpenStreetMap</p>
+          <p className="text-xs text-gray-500">Google Maps · Lista vía OpenStreetMap</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <select
@@ -205,11 +157,23 @@ export default function MapaOftalmologos({ onBack }: Props) {
           <button
             onClick={() => coords && search(coords.lat, coords.lon, radius)}
             disabled={status === 'loading' || status === 'locating' || !coords}
-            className="flex items-center gap-1.5 bg-cyan-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-cyan-800 transition disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
           >
             <Navigation className="w-3.5 h-3.5"/>
             Buscar
           </button>
+          {coords && (
+            <a
+              href={`https://www.google.com/maps/search/oftalmologos/@${coords.lat},${coords.lon},14z`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-50 transition"
+              title="Abrir en Google Maps"
+            >
+              <ExternalLink className="w-3.5 h-3.5"/>
+              Abrir en Maps
+            </a>
+          )}
         </div>
       </div>
 
@@ -225,13 +189,13 @@ export default function MapaOftalmologos({ onBack }: Props) {
               </div>
             )}
             {status === 'loading' && (
-              <div className="flex items-center gap-2 text-cyan-700 text-sm">
+              <div className="flex items-center gap-2 text-indigo-600 text-sm">
                 <Loader2 className="w-4 h-4 animate-spin"/> Buscando especialistas…
               </div>
             )}
             {status === 'done' && (
               <p className="text-sm text-gray-600">
-                <span className="font-bold text-cyan-700">{places.length}</span> resultado{places.length !== 1 ? 's' : ''} en {radius / 1000} km
+                <span className="font-bold text-indigo-600">{places.length}</span> resultado{places.length !== 1 ? 's' : ''} en {radius / 1000} km
               </p>
             )}
             {status === 'error' && (
@@ -257,14 +221,11 @@ export default function MapaOftalmologos({ onBack }: Props) {
             {places.map(p => (
               <button
                 key={p.id}
-                onClick={() => {
-                  setSelected(p);
-                  leafletRef.current?.setView([p.lat, p.lon], 16);
-                }}
-                className={`w-full text-left px-4 py-3 border-b hover:bg-cyan-50 transition ${selected?.id === p.id ? 'bg-cyan-50 border-l-4 border-l-cyan-600' : ''}`}
+                onClick={() => handleSelectPlace(p)}
+                className={`w-full text-left px-4 py-3 border-b hover:bg-indigo-50 transition ${selected?.id === p.id ? 'bg-indigo-50 border-l-4 border-l-indigo-600' : ''}`}
               >
                 <p className="font-semibold text-gray-800 text-sm truncate">{p.name}</p>
-                <p className="text-xs text-cyan-700 mt-0.5">{p.type}</p>
+                <p className="text-xs text-indigo-600 mt-0.5">{p.type}</p>
                 {p.address && (
                   <p className="text-xs text-gray-500 mt-0.5 truncate flex items-center gap-1">
                     <MapPin className="w-3 h-3 flex-shrink-0"/> {p.address}
@@ -273,48 +234,42 @@ export default function MapaOftalmologos({ onBack }: Props) {
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Map container */}
-        <div className="flex-1 relative">
-          <div ref={mapRef} className="w-full h-full"/>
-
-          {/* Selected place card */}
+          {/* Selected place detail */}
           {selected && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-white rounded-2xl shadow-2xl border border-cyan-100 p-4 max-w-sm w-full mx-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-800 text-sm">{selected.name}</p>
-                  <span className="inline-block text-xs bg-cyan-100 text-cyan-800 rounded-full px-2 py-0.5 mt-1">{selected.type}</span>
-                </div>
-                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none mt-0.5">×</button>
+            <div className="border-t bg-white p-4 flex-shrink-0">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="font-bold text-gray-800 text-sm leading-tight">{selected.name}</p>
+                <button onClick={() => { setSelected(null); if (coords) setMapUrl(buildMapUrl(coords.lat, coords.lon)); }}
+                  className="text-gray-400 hover:text-gray-600 text-lg leading-none flex-shrink-0">×</button>
               </div>
-              <div className="mt-2 space-y-1.5">
+              <span className="inline-block text-xs bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5 mb-2">{selected.type}</span>
+              <div className="space-y-1.5 mb-3">
                 {selected.address && (
                   <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-cyan-600 flex-shrink-0"/>
+                    <MapPin className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0"/>
                     {selected.address}
                   </p>
                 )}
                 {selected.phone && (
-                  <a href={`tel:${selected.phone}`} className="text-xs text-cyan-700 flex items-center gap-1.5 hover:underline">
+                  <a href={`tel:${selected.phone}`} className="text-xs text-indigo-600 flex items-center gap-1.5 hover:underline">
                     <Phone className="w-3.5 h-3.5 flex-shrink-0"/>
                     {selected.phone}
                   </a>
                 )}
                 {selected.hours && (
                   <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-cyan-600 flex-shrink-0"/>
+                    <Clock className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0"/>
                     {selected.hours}
                   </p>
                 )}
               </div>
-              <div className="mt-3 flex gap-2">
+              <div className="flex gap-2">
                 <a
-                  href={`https://www.openstreetmap.org/directions?from=&to=${selected.lat},${selected.lon}`}
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lon}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 text-center bg-cyan-700 text-white text-xs font-semibold rounded-xl py-2 hover:bg-cyan-800 transition"
+                  className="flex-1 text-center bg-indigo-600 text-white text-xs font-semibold rounded-xl py-2 hover:bg-indigo-700 transition"
                 >
                   Cómo llegar →
                 </a>
@@ -336,19 +291,41 @@ export default function MapaOftalmologos({ onBack }: Props) {
                   })()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl px-3 py-2 hover:bg-indigo-700 transition flex-shrink-0"
+                  className="flex items-center gap-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-xl px-3 py-2 hover:bg-gray-200 transition flex-shrink-0"
                 >
-                  <CalendarPlus className="w-3.5 h-3.5" /> Agendar
+                  <CalendarPlus className="w-3.5 h-3.5"/> Agendar
                 </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Google Maps iframe */}
+        <div className="flex-1 relative bg-gray-100">
+          {mapUrl ? (
+            <iframe
+              ref={iframeRef}
+              src={mapUrl}
+              className="w-full h-full border-0"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Mapa de oftalmólogos"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center text-gray-400">
+                <MapPin className="w-12 h-12 mx-auto mb-3 opacity-30"/>
+                <p className="text-sm">Activa la ubicación para ver el mapa</p>
               </div>
             </div>
           )}
 
           {/* Loading overlay */}
           {(status === 'locating' || status === 'loading') && (
-            <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-[999]">
+            <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
               <div className="bg-white rounded-2xl shadow-xl px-6 py-5 flex flex-col items-center gap-3">
-                <Loader2 className="w-8 h-8 text-cyan-700 animate-spin"/>
+                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin"/>
                 <p className="text-sm font-medium text-gray-700">
                   {status === 'locating' ? 'Detectando tu ubicación…' : 'Buscando especialistas…'}
                 </p>
@@ -356,12 +333,6 @@ export default function MapaOftalmologos({ onBack }: Props) {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Footer note */}
-      <div className="bg-white border-t px-4 py-2 text-center text-xs text-gray-400 flex-shrink-0">
-        Datos de <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">OpenStreetMap</a>.
-        La disponibilidad depende de los datos colaborativos del mapa. Verifica antes de asistir.
       </div>
     </div>
   );
