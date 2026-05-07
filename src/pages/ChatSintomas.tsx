@@ -35,7 +35,18 @@ const QUICK_SYMPTOMS_EN = [
   'Light sensitivity', 'Watery eye', 'Eye fatigue at end of day',
 ];
 
-const SYSTEM_PROMPT = `Eres un asistente especializado en salud visual para la plataforma Therapheye.
+const getSystemPrompt = (lang: string) => lang === 'en'
+  ? `You are a specialized visual health assistant for the Therapheye platform.
+Your role: guide users on common visual symptoms, possible causes, and when to seek medical attention.
+
+Rules:
+- Always respond in English, clearly, empathetically and concisely (max 4-5 sentences)
+- Use emojis in moderation to keep responses friendly
+- NEVER diagnose diseases — only guide on common symptoms and probable causes
+- For serious symptoms (sudden vision loss, intense pain, trauma, sudden floaters, dark curtain in vision): URGENTLY recommend seeing an ophthalmologist
+- When relevant, mention Therapheye exercises by their exact name: "Palming", "20-20-20 rule", "eye circular movements", "near-far focus". The system will detect those names and show buttons to start them directly
+- Always briefly add that you do not replace a professional medical diagnosis`
+  : `Eres un asistente especializado en salud visual para la plataforma Therapheye.
 Tu rol: orientar a los usuarios sobre síntomas visuales comunes, posibles causas y cuándo buscar atención médica.
 
 Reglas:
@@ -44,8 +55,7 @@ Reglas:
 - NUNCA diagnostiques enfermedades — solo orienta sobre síntomas comunes y probables causas
 - Para síntomas graves (pérdida súbita de visión, dolor intenso, trauma, moscas flotantes súbitas, cortina oscura en la visión): recomienda URGENTEMENTE al oftalmólogo con énfasis
 - Cuando sea relevante, menciona ejercicios de Therapheye por su nombre exacto: "Palming", "Regla 20-20-20", "movimientos circulares de ojos", "enfoque cercano-lejano". El sistema detectará esos nombres y mostrará botones para iniciarlos directamente
-- Añade siempre brevemente que no reemplazas un diagnóstico médico profesional cuando des orientación sobre síntomas
-- Si el usuario escribe en inglés, responde en inglés pero mantén el mismo estilo`;
+- Añade siempre brevemente que no reemplazas un diagnóstico médico profesional cuando des orientación sobre síntomas`;
 
 const WELCOME_MSG_ES = `¡Hola! 👋 Soy tu asistente de salud visual.\n\nCuéntame qué molestia o síntoma tienes — puedo orientarte sobre posibles causas y si deberías consultar a un especialista. ¿Qué te pasa?`;
 const WELCOME_MSG_EN = `Hi! 👋 I'm your visual health assistant.\n\nTell me what symptom or discomfort you have — I can guide you on possible causes and whether you should see a specialist. What's going on?`;
@@ -262,7 +272,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
       const data = await callClaude({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: getSystemPrompt(lang),
         messages: history,
       });
       const reply = data.content?.[0]?.text ?? '...';

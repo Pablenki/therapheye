@@ -142,19 +142,21 @@ const calcularRacha = (fechas: string[]): number => {
 };
 
 // ─── Nivel de fatiga ──────────────────────────────────────────────────────────
-const getFatigaInfo = (score: number | null) => {
-  if (score === null) return { label: 'Sin datos', color: '#6366f1', bg: 'from-indigo-400 to-violet-500', textClass: 'text-gray-400' };
-  if (score < 25)  return { label: 'Leve',        color: '#16a34a', bg: 'from-emerald-400 to-teal-500',   textClass: 'text-emerald-600' };
-  if (score < 50)  return { label: 'Moderada',    color: '#ca8a04', bg: 'from-amber-400 to-orange-500',   textClass: 'text-amber-600'   };
-  if (score < 75)  return { label: 'Considerable',color: '#ea580c', bg: 'from-orange-500 to-red-500',     textClass: 'text-orange-600'  };
-  return             { label: 'Severa',           color: '#dc2626', bg: 'from-red-500 to-rose-600',       textClass: 'text-red-600'     };
+const getFatigaInfo = (score: number | null, lang: string) => {
+  const en = lang === 'en';
+  if (score === null) return { label: en ? 'No data'      : 'Sin datos',    color: '#6366f1', bg: 'from-indigo-400 to-violet-500', textClass: 'text-gray-400' };
+  if (score < 25)  return { label: en ? 'Mild'           : 'Leve',          color: '#16a34a', bg: 'from-emerald-400 to-teal-500',   textClass: 'text-emerald-600' };
+  if (score < 50)  return { label: en ? 'Moderate'       : 'Moderada',      color: '#ca8a04', bg: 'from-amber-400 to-orange-500',   textClass: 'text-amber-600'   };
+  if (score < 75)  return { label: en ? 'Considerable'   : 'Considerable',  color: '#ea580c', bg: 'from-orange-500 to-red-500',     textClass: 'text-orange-600'  };
+  return             { label: en ? 'Severe'             : 'Severa',         color: '#dc2626', bg: 'from-red-500 to-rose-600',       textClass: 'text-red-600'     };
 };
 
-const getDiagColor = (score: number) => {
-  if (score < 25)  return { dot: 'bg-emerald-400', text: 'text-emerald-600', label: 'Fatiga leve' };
-  if (score < 50)  return { dot: 'bg-amber-400',   text: 'text-amber-600',   label: 'Fatiga moderada' };
-  if (score < 75)  return { dot: 'bg-orange-500',  text: 'text-orange-600',  label: 'Fatiga alta' };
-  return             { dot: 'bg-red-500',    text: 'text-red-600',     label: 'Fatiga severa' };
+const getDiagColor = (score: number, lang: string) => {
+  const en = lang === 'en';
+  if (score < 25)  return { dot: 'bg-emerald-400', text: 'text-emerald-600', label: en ? 'Mild fatigue'         : 'Fatiga leve'       };
+  if (score < 50)  return { dot: 'bg-amber-400',   text: 'text-amber-600',   label: en ? 'Moderate fatigue'    : 'Fatiga moderada'   };
+  if (score < 75)  return { dot: 'bg-orange-500',  text: 'text-orange-600',  label: en ? 'High fatigue'        : 'Fatiga alta'       };
+  return             { dot: 'bg-red-500',    text: 'text-red-600',     label: en ? 'Severe fatigue'      : 'Fatiga severa'    };
 };
 
 // ─── Mini gráfica semanal SVG (estilo mercado con tooltip) ───────────────────
@@ -490,7 +492,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
         const diags: DiagEntry[] = (diagRows as any[]).map((r:any) => {
           const d = new Date(r.created_at);
           const score = Math.round(Number(r.score_final));
-          const info  = getDiagColor(score);
+          const info  = getDiagColor(score, lang);
           return {
             fecha: d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}),
             nivel: info.label, score, color: info.text,
@@ -501,7 +503,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           const fb = await sql`SELECT puntaje_fatiga, created_at FROM respuestas_cuestionario WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 3`;
           fb.forEach((r:any) => {
             const d = new Date(r.created_at), score = Math.round(Number(r.puntaje_fatiga));
-            const info = getDiagColor(score);
+            const info = getDiagColor(score, lang);
             diags.push({ fecha: d.toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}), nivel: info.label, score, color: info.text });
           });
         }
@@ -513,7 +515,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   }, [user?.id]);
 
 
-  const fatiga      = getFatigaInfo(stats.ultimoPuntaje);
+  const fatiga      = getFatigaInfo(stats.ultimoPuntaje, lang);
   const screenHH    = String(Math.floor(screenTimeMs/3600000)).padStart(2,'0');
   const screenMM    = String(Math.floor((screenTimeMs%3600000)/60000)).padStart(2,'0');
   const screenSS    = String(Math.floor((screenTimeMs%60000)/1000)).padStart(2,'0');
@@ -842,7 +844,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                           <p className={`text-xs font-semibold ${tc.cardText}`}>{d.fecha}</p>
                           <div className="flex items-center gap-2">
                             <span className={`text-xs font-bold ${isFlat ? d.color : 'text-white/80'}`}>{d.nivel}</span>
-                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getDiagColor(d.score).dot}`}/>
+                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getDiagColor(d.score, lang).dot}`}/>
                           </div>
                         </div>
                       ))}

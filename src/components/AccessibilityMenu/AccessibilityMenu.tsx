@@ -45,7 +45,19 @@ const AccessibilityMenu = () => {
       className="accessibility-menu fixed bottom-5 right-5 z-[9999]"
       style={settings.invertColors ? { filter: 'invert(1) hue-rotate(180deg)' } : undefined}
     >
-      {/* Panel desplegable — se activa desde la sidebar */}
+      {/* Botón flotante — solo si el usuario lo activó en settings */}
+      {settings.showFloatingButton && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-[#1B396B] to-[#003875] text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all duration-300 mb-2"
+          aria-label={settings.appLanguage === 'es' ? 'Abrir accesibilidad' : 'Open accessibility'}
+          title={settings.appLanguage === 'es' ? 'Accesibilidad' : 'Accessibility'}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="16" cy="4" r="1"/><path d="m18 19 1-7-6 1"/><path d="m5 8 3-3 5.5 3-2.36 3.5"/><path d="M4.24 14.5a5 5 0 0 0 6.88 6"/><path d="M13.76 17.5a5 5 0 0 0-6.88-6"/></svg>
+        </button>
+      )}
+
+      {/* Panel desplegable — se activa desde el header o botón flotante */}
       <div
         className={`absolute bottom-0 right-0 w-[350px] bg-white rounded-2xl shadow-2xl
                    transition-all duration-300 max-h-[600px] overflow-y-auto
@@ -332,23 +344,6 @@ const AccessibilityMenu = () => {
               </label>
             </div>
 
-            {/* Indicadores Visuales */}
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700">{t('accessibility', 'visualIndicators')}</span>
-              <label className="relative inline-block w-[50px] h-[26px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={settings.visualIndicators}
-                  onChange={() => toggleSetting('visualIndicators')}
-                  className="sr-only peer"
-                />
-                <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] 
-                               transition-colors duration-300">
-                  <div className="absolute top-[3px] left-[3px] w-5 h-5 bg-white rounded-full 
-                                transition-transform duration-300 peer-checked:translate-x-6" />
-                </div>
-              </label>
-            </div>
           </div>
 
           {/* ========== 4. MOTORAS Y FÍSICAS ========== */}
@@ -454,30 +449,22 @@ const AccessibilityMenu = () => {
             )}
           </div>
 
-          {/* ========== MONITOR DE DISTANCIA ========== */}
+          {/* ========== BOTÓN FLOTANTE ========== */}
           <div className="mb-5 pb-5 border-b-2 border-gray-200">
-            <h4 className="text-base font-bold text-[#1B396B] mb-3 flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              {settings.appLanguage === 'es' ? 'Monitor de Distancia' : 'Distance Monitor'}
-            </h4>
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-sm font-medium text-gray-700">
-                  {settings.appLanguage === 'es' ? 'Activar monitor de distancia' : 'Enable distance monitor'}
+                  {settings.appLanguage === 'es' ? 'Mostrar botón flotante' : 'Show floating button'}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {settings.appLanguage === 'es' ? 'Alerta si estás muy cerca de la pantalla' : 'Alerts if you\'re too close to the screen'}
+                  {settings.appLanguage === 'es' ? 'Ícono de accesibilidad visible en pantalla' : 'Accessibility icon always visible on screen'}
                 </p>
               </div>
               <label className="relative inline-block w-[50px] h-[26px] cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={(() => { try { return localStorage.getItem('therapheye_distance_monitor') === '1'; } catch { return false; } })()}
-                  onChange={(e) => {
-                    const val = e.target.checked ? '1' : '0';
-                    localStorage.setItem('therapheye_distance_monitor', val);
-                    window.dispatchEvent(new CustomEvent('therapheye-distance-monitor-changed', { detail: { active: e.target.checked } }));
-                  }}
+                  checked={settings.showFloatingButton}
+                  onChange={() => toggleSetting('showFloatingButton')}
                   className="sr-only peer"
                 />
                 <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-[#1B396B] transition-colors duration-300">

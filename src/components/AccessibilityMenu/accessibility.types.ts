@@ -39,6 +39,9 @@ export interface AccessibilitySettings {
   darkScheduleEnabled: boolean;
   darkScheduleFrom: string;  // "HH:MM"
   darkScheduleTo: string;    // "HH:MM"
+
+  // Botón flotante de accesibilidad
+  showFloatingButton: boolean;
 }
 
 export const defaultSettings: AccessibilitySettings = {
@@ -62,4 +65,5 @@ export const defaultSettings: AccessibilitySettings = {
   darkScheduleEnabled: false,
   darkScheduleFrom: '21:00',
   darkScheduleTo: '07:00',
+  showFloatingButton: false,
 };

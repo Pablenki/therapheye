@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLanguage } from '../i18n'
 import { ArrowLeft, Eye, ScanEye, Loader2, RefreshCw, BarChart2, AlertCircle, CheckCircle2, Navigation } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { sql } from '../neonCliente'
@@ -30,11 +31,12 @@ const getValorEjercicios = (n: number): number => {
   return 0
 }
 
-const getNivel = (score: number): string => {
-  if (score <= 30) return 'Bajo'
-  if (score <= 60) return 'Moderado'
-  if (score <= 80) return 'Alto'
-  return 'Muy alto'
+const getNivel = (score: number, lang = 'es'): string => {
+  const en = lang === 'en';
+  if (score <= 30) return en ? 'Low'       : 'Bajo'
+  if (score <= 60) return en ? 'Moderate'  : 'Moderado'
+  if (score <= 80) return en ? 'High'      : 'Alto'
+  return                       en ? 'Very High' : 'Muy alto'
 }
 
 const getNivelColor = (score: number) => {
@@ -64,8 +66,8 @@ interface DiagnosticoGuardado {
 }
 
 // ─── Generar texto inteligente ────────────────────────────────────────────────
-const generarTextoInteligente = (d: DiagnosticoGuardado): string => {
-  const nivel = getNivel(d.score_final)
+const generarTextoInteligente = (d: DiagnosticoGuardado, lang = 'es'): string => {
+  const nivel = getNivel(d.score_final, lang)
   const factores = [
     { nombre: 'la captura de imagen', aporte: d.aporte_imagen },
     { nombre: 'el cuestionario de síntomas', aporte: d.aporte_cuestionario },
@@ -188,8 +190,9 @@ const FactorBar = ({ label, aporte, maxAporte, color, valor, peso }: {
 
 // ─── Score circular ───────────────────────────────────────────────────────────
 const ScoreCircle = ({ score }: { score: number }) => {
+  const { lang } = useLanguage()
   const colors = getNivelColor(score)
-  const nivel  = getNivel(score)
+  const nivel  = getNivel(score, lang)
   const radius = 54
   const circ   = 2 * Math.PI * radius
   const dash   = (score / 100) * circ
@@ -239,6 +242,7 @@ const FALTANTE_ICON: Record<string, string> = {
 
 const DiagnosticoCompleto = ({ onBack, onNavigate }: Props) => {
   const { user } = useUser()
+  const { lang } = useLanguage()
   const [loading, setLoading]         = useState(true)
   const [generando, setGenerando]     = useState(false)
   const [diagnostico, setDiagnostico] = useState<DiagnosticoGuardado | null>(null)
@@ -352,7 +356,7 @@ const DiagnosticoCompleto = ({ onBack, onNavigate }: Props) => {
       const aportePruebas      = (valorPruebas      / 100) * 10
 
       const scoreFinal = aporteImagen + aporteCuestionario + aporteTiempo + aporteEjercicios + aportePruebas
-      const nivel      = getNivel(scoreFinal)
+      const nivel      = getNivel(scoreFinal, lang)
 
       const datos = { score_final: scoreFinal, nivel, valor_imagen: valorImagen, valor_cuestionario: valorCuestionario, valor_tiempo: valorTiempo, valor_ejercicios: valorEjercicios, valor_pruebas: valorPruebas, aporte_imagen: aporteImagen, aporte_cuestionario: aporteCuestionario, aporte_tiempo: aporteTiempo, aporte_ejercicios: aporteEjercicios, aporte_pruebas: aportePruebas }
       const insights      = generarInsights(datos)
@@ -621,7 +625,7 @@ const DiagnosticoCompleto = ({ onBack, onNavigate }: Props) => {
             {/* Texto inteligente */}
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4">Interpretación</h3>
-              <p className="text-gray-700 leading-relaxed">{generarTextoInteligente(diagnostico)}</p>
+              <p className="text-gray-700 leading-relaxed">{generarTextoInteligente(diagnostico, lang)}</p>
             </div>
 
             {/* Insights + Recomendaciones */}
