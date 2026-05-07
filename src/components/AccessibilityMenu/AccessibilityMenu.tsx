@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useAccessibility } from './useAccessibility';
 import { createPortal } from 'react-dom';
-import { X, Accessibility, Eye, Volume2, MousePointer, Globe, Palette, Sparkles } from 'lucide-react';
+import { X, Eye, Volume2, MousePointer, Globe, Palette, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../i18n';
 import type { FontFamily, ColorBlindMode, AppLanguage } from './accessibility.types';
 import { THEMES } from '../../themes';
