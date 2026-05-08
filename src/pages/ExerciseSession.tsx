@@ -556,6 +556,70 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   mutedRef.current   = muted;
   timeLeftRef.current = timeLeft;
 
+  // ── Feedback de voz para palming (basado en cámara) ──────────────────────
+  // Solo avisa cuando el usuario NO está haciendo el ejercicio, con cooldown
+  const palmingVoiceLastRef = useRef<number>(0);
+  const PALMING_COOLDOWN_MS = 14_000; // mínimo 14 s entre recordatorios
+
+  useEffect(() => {
+    if (exerciseId !== 'palming') return;
+    if (!validatorOn) return;
+    if (!isRunning) return;
+
+    const { faceDetected, eyesCovered, active } = validator.state;
+    if (!active) return;
+
+    // Correcto = ojos cubiertos O cara no detectada (palmas tapando todo)
+    const palmingOk = eyesCovered || !faceDetected;
+
+    const now = Date.now();
+    const timeSinceLast = now - palmingVoiceLastRef.current;
+
+    // Solo habla si NO lo está haciendo y ha pasado el cooldown
+    if (!palmingOk && timeSinceLast >= PALMING_COOLDOWN_MS) {
+      palmingVoiceLastRef.current = now;
+      speakIfUnmuted(
+        lang === 'en'
+          ? 'Cover your eyes with your palms to start the exercise.'
+          : 'Cubre los ojos con las palmas de tus manos para realizar el ejercicio.'
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validator.state.eyesCovered, validator.state.faceDetected, validator.state.active, isRunning, validatorOn, lang]);
+
+  // ── Feedback de voz para circles (círculos oculares) ─────────────────────
+  const circlesVoiceLastRef = useRef<number>(0);
+  const CIRCLES_COOLDOWN_MS = 14_000;
+
+  useEffect(() => {
+    if (exerciseId !== 'circles') return;
+    if (!validatorOn) return;
+    if (!isRunning) return;
+
+    const { active, faceDetected, irisMoving, headStable } = validator.state;
+    if (!active || !faceDetected) return;
+
+    const now = Date.now();
+    if (now - circlesVoiceLastRef.current < CIRCLES_COOLDOWN_MS) return;
+
+    if (!irisMoving) {
+      circlesVoiceLastRef.current = now;
+      speakIfUnmuted(
+        lang === 'en'
+          ? 'Move your eyes in slow circles, keeping your head still.'
+          : 'Mueve los ojos en círculos lentos, manteniendo la cabeza quieta.'
+      );
+    } else if (!headStable) {
+      circlesVoiceLastRef.current = now;
+      speakIfUnmuted(
+        lang === 'en'
+          ? 'Keep your head still. Only move your eyes.'
+          : 'Mantén la cabeza quieta. Solo mueve los ojos.'
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validator.state.irisMoving, validator.state.headStable, validator.state.faceDetected, validator.state.active, isRunning, validatorOn, lang]);
+
   const speakIfUnmuted = useCallback((text: string, spkLang: 'es' | 'en' = 'es', onEnd?: () => void) => {
     if (!mutedRef.current) {
       ambientMusic.duckForSpeech();
@@ -1012,14 +1076,16 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
             <ArrowLeft className="w-5 h-5" /> {t('common', 'back')}
           </button>
           <div className="flex items-center gap-2">
-            {/* Botón validación con cámara */}
-            <button
-              onClick={handleToggleValidator}
-              title={validatorOn ? 'Apagar validación' : 'Activar validación con cámara'}
-              className={`p-2 rounded-lg transition ${validatorOn ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-            >
-              {validatorOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
-            </button>
+            {/* Botón validación con cámara — solo en ejercicios validables */}
+            {(exerciseId === 'palming' || exerciseId === 'circles') && (
+              <button
+                onClick={handleToggleValidator}
+                title={validatorOn ? 'Apagar validación' : 'Activar validación con cámara'}
+                className={`p-2 rounded-lg transition ${validatorOn ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                {validatorOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
+              </button>
+            )}
             {/* Botón selector de música */}
             {!muted && (
               <button

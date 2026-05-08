@@ -124,7 +124,8 @@ export function useExerciseValidator() {
           const shapes   = results?.faceBlendshapes?.[0]?.categories ?? [];
 
           if (!landmarks || landmarks.length === 0) {
-            setState(s => ({ ...s, active: true, faceDetected: false }));
+            // Sin cara detectada: para palming se trata como cubierto
+            setState(s => ({ ...s, active: true, faceDetected: false, eyesCovered: true, eyesCoveredPct: 100 }));
           } else {
             // ── Blink blendshapes ──────────────────────────────────────────
             const blinkL = shapes.find((c: any) => c.categoryName === 'eyeBlinkLeft')?.score  ?? 0;
