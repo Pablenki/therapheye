@@ -130,7 +130,7 @@ const ADVANCED_NAV_ITEMS: NavItem[] = [
   { icon: Gamepad2,           label: 'Juegos Visuales',     labelEn: 'Visual Games',        page: 'juegos-visuales'       },
   { icon: Sparkles,           label: 'Rutinas con IA',      labelEn: 'AI Routines',         page: 'rutinas-ia'            },
   { icon: BookMarked,         label: 'Diario Visual',       labelEn: 'Visual Journal',      page: 'diario-visual'         },
-  { icon: Crosshair,          label: 'Campo Visual',        labelEn: 'Visual Field',        page: 'campo-visual'          },
+  // { icon: Crosshair,          label: 'Campo Visual',        labelEn: 'Visual Field',        page: 'campo-visual'          }, // HIDDEN - access disabled
   { icon: EarOff,             label: 'Modo Zen',            labelEn: 'Zen Mode',            page: 'modo-zen'              },
   { icon: Contrast,           label: 'Test Contraste',      labelEn: 'Contrast Test',       page: 'contrast-test'         },
   { icon: Timer,              label: 'Reacción Visual',     labelEn: 'Visual Reaction',     page: 'reaccion-visual'       },
@@ -140,7 +140,7 @@ const ADVANCED_NAV_ITEMS: NavItem[] = [
   { icon: Palette,            label: 'Simulador Visual',    labelEn: 'Visual Simulator',    page: 'simulador'             },
   { icon: FlaskConical,       label: 'Test Cromático',      labelEn: 'Chromatic Test',      page: 'test-cromatico'        },
   { icon: Focus,              label: 'Test Acomodación',    labelEn: 'Accommodation Test',  page: 'test-acomodacion'      },
-  { icon: Microscope,         label: 'Ejerc. Avanzados',    labelEn: 'Adv. Exercises',      page: 'ejercicios-avanzados'  },
+  // { icon: Microscope,         label: 'Ejerc. Avanzados',    labelEn: 'Adv. Exercises',      page: 'ejercicios-avanzados'  }, // HIDDEN - access disabled
   { icon: ScrollText,         label: 'Historial Ocular',    labelEn: 'Ocular History',      page: 'historial-ocular'      },
   { icon: TriangleAlert,      label: 'Analizador Síntomas', labelEn: 'Symptom Analyzer',    page: 'analizador-sintomas'   },
   { icon: ImageIcon,          label: 'Galería Capturas',    labelEn: 'Capture Gallery',     page: 'galeria-captures'      },
