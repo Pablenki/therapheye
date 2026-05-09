@@ -438,7 +438,7 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
       const now = new Date();
       const from30 = new Date(now.getTime() - 30 * 86_400_000);
 
-      const [evals, exs, visions, parpadeos, contrastRows, campoRows, cromaticoRows, acomodacionRows, amslerRows] = await Promise.all([
+      const [evals, exs, visions, parpadeos, contrastRows, campoRows, cromaticoRows, acomodacionRows] = await Promise.all([
         sql`SELECT created_at, puntaje_fatiga, sintoma_dominante FROM respuestas_cuestionario WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC`,
         sql`SELECT status FROM historial_ejercicios WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
         sql`SELECT id FROM historial_vision_test WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
@@ -447,7 +447,6 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
         sql`SELECT created_at, puntos_detectados, puntos_totales FROM campo_visual_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
         sql`SELECT created_at, correctas, total, tipo FROM test_cromatico_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
         sql`SELECT created_at, score, nivel FROM test_acomodacion_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
-        sql`SELECT created_at, distorsion_detectada, cuadrantes_afectados FROM amsler_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
       ]);
 
       const evalList = evals as any[];
@@ -494,10 +493,6 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
       (acomodacionRows as any[]).forEach((r: any) => testsEspecializados.push({
         nombre: 'Acomodación', fecha: fmtDate(new Date(r.created_at)),
         resultado: `Score ${r.score} — ${r.nivel}`,
-      }));
-      (amslerRows as any[]).forEach((r: any) => testsEspecializados.push({
-        nombre: 'Amsler', fecha: fmtDate(new Date(r.created_at)),
-        resultado: r.distorsion_detectada ? `Distorsión en ${r.cuadrantes_afectados ?? '?'} cuadrantes` : 'Sin distorsión detectada',
       }));
 
       // Análisis clínico con IA

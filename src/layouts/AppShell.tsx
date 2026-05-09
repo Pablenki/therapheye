@@ -9,7 +9,7 @@ import {
   Sparkles, BookMarked, MoreHorizontal, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
-  QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart,
+  QrCode, MessageCircle, Crown, HelpCircle, Wind, Dot, Settings, Moon, LineChart,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -95,7 +95,7 @@ type Page =
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
   | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
-  | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
+  | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 
 interface Props {
   currentPage: Page;
@@ -149,7 +149,6 @@ const ADVANCED_NAV_ITEMS: NavItem[] = [
   { icon: QrCode,             label: 'QR Informe',          labelEn: 'QR Report',           page: 'qr-informe'            },
   { icon: MessageCircle,      label: 'Recordatorios WA',    labelEn: 'WA Reminders',        page: 'recordatorios-wa'      },
   ...(PREMIUM_ENABLED ? [{ icon: Crown, label: 'Premium', labelEn: 'Premium', page: 'plan-premium' as Page }] : []),
-  { icon: Grid3x3,            label: 'Rejilla Amsler',      labelEn: 'Amsler Grid',         page: 'amsler-grid'           },
   { icon: Dot,                label: 'Dom. Ocular',         labelEn: 'Eye Dominance',       page: 'dominancia-ocular'     },
   { icon: Wind,               label: 'Respiración 4-7-8',   labelEn: '4-7-8 Breathing',     page: 'respiracion-478'       },
   { icon: LineChart,          label: 'Evolución Tests',     labelEn: 'Test Evolution',      page: 'evolucion-tests'       },

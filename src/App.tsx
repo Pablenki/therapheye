@@ -58,7 +58,6 @@ const EstadisticasAvanzadas= lazy(() => import('./pages/EstadisticasAvanzadas'))
 const QRInforme           = lazy(() => import('./pages/QRInforme'))
 const RecordatoriosWA     = lazy(() => import('./pages/RecordatoriosWA'))
 const PlanPremium         = lazy(() => import('./pages/PlanPremium'))
-const AmslerGrid          = lazy(() => import('./pages/AmslerGrid'))
 const DominanciaOcular    = lazy(() => import('./pages/DominanciaOcular'))
 const Respiracion478      = lazy(() => import('./pages/Respiracion478'))
 const EvolucionTests      = lazy(() => import('./pages/EvolucionTests'))
@@ -116,7 +115,6 @@ type Page =
   | 'qr-informe'
   | 'recordatorios-wa'
   | 'plan-premium'
-  | 'amsler-grid'
   | 'dominancia-ocular'
   | 'respiracion-478'
   | 'evolucion-tests';
@@ -352,8 +350,6 @@ function AppContent() {
         return <RecordatoriosWA onBack={() => handleNavigate('dashboard')} />
       case 'plan-premium':
         return <PlanPremium onBack={() => handleNavigate('dashboard')} />
-      case 'amsler-grid':
-        return <AmslerGrid onBack={() => handleNavigate('dashboard')} />
       case 'dominancia-ocular':
         return <DominanciaOcular onBack={() => handleNavigate('dashboard')} />
       case 'respiracion-478':

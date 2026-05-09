@@ -96,19 +96,6 @@ const POOL: Reto[] = [
     },
   },
   {
-    id: 'amsler',
-    emoji: '🔲',
-    titulo: 'Test de Amsler',
-    desc: 'Haz la rejilla de Amsler dos veces esta semana',
-    meta: 2, unidad: 'tests',
-    getProgress: async () => {
-      try {
-        const key = `therapheye_amsler_week_${getWeekKey()}`;
-        return Number(localStorage.getItem(key) ?? 0);
-      } catch { return 0; }
-    },
-  },
-  {
     id: 'chat',
     emoji: '💬',
     titulo: 'Consulta a la IA',
@@ -253,7 +240,7 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
                     ejercicios: 'exercises', cuestionario: 'questionnaire',
                     vision: 'vision-test', diagnostico: 'diagnostico-completo',
                     respiracion: 'respiracion-478', racha: 'exercises',
-                    amsler: 'amsler-grid', chat: 'chat-sintomas',
+                    chat: 'chat-sintomas',
                   };
                   onNavigate(pageMap[reto.id] ?? 'dashboard');
                 }}

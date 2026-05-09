@@ -48,7 +48,6 @@ type Page =
   | 'qr-informe'
   | 'recordatorios-wa'
   | 'plan-premium'
-  | 'amsler-grid'
   | 'dominancia-ocular'
   | 'respiracion-478'
   | 'evolucion-tests';

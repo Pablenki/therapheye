@@ -89,7 +89,7 @@ type Page =
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
   | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
-  | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
+  | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 
 interface Stats {
   evaluaciones: number;
@@ -1033,7 +1033,6 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
               { page: 'simulador',           label: 'Simulador Visual', emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experimenta cómo ven personas con miopía, astigmatismo u otras condiciones' },
               { page: 'carga-visual',        label: 'Carga Visual',     emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: 'Calcula la carga visual acumulada del día y recibe alertas de fatiga' },
               { page: 'notas-medicas',       label: 'Notas Médicas',    emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Guarda apuntes de consultas, recetas y evolución para tu oftalmólogo' },
-              { page: 'amsler-grid',         label: 'Rejilla Amsler',   emoji: '🔲', color: 'from-slate-600 to-gray-700',     desc: 'Detecta distorsión o áreas borrosas en tu visión central (mácula)' },
               { page: 'dominancia-ocular',   label: 'Dominancia Ocular',emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Descubre cuál es tu ojo dominante con una prueba rápida y confiable' },
               { page: 'respiracion-478',     label: 'Respiración 4-7-8',emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica de respiración que reduce la tensión ocular y el estrés digital' },
               { page: 'evolucion-tests',     label: 'Evolución Tests',  emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Gráficas y tendencias de todos tus tests a lo largo del tiempo' },
@@ -1041,7 +1040,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             const focusPriority: Record<string, string[]> = {
               'fatiga':     ['modo-zen', 'respiracion-478', 'carga-visual', 'entrenamiento-mental'],
               'ojo-seco':   ['modo-zen', 'respiracion-478', 'analizador-sintomas', 'notas-medicas'],
-              'clinica':    ['campo-visual', 'contrast-test', 'test-cromatico', 'amsler-grid', 'evolucion-tests', 'notas-medicas'],
+              'clinica':    ['campo-visual', 'contrast-test', 'test-cromatico', 'evolucion-tests', 'notas-medicas'],
               'curiosidad': [],
             };
             const priority = userFocus ? focusPriority[userFocus] ?? [] : [];
