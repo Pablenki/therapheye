@@ -60,7 +60,11 @@
       "Bash(node -e ':*)",
       "Bash(wc -l /c/Users/OWNER/Desktop/therapheye/src/pages/*.tsx)",
       "Bash(curl:*)",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(echo \".env.netlify-import\")",
+      "Bash(echo \".netlify/functions/*.zip\")",
+      "Bash(echo \".netlify/functions/manifest.json\")",
+      "Bash(npm info:*)"
     ]
   }
 }

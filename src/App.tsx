@@ -55,7 +55,6 @@ const AnalizadorSintomas = lazy(() => import('./pages/AnalizadorSintomas'))
 const GaleriaCaptures    = lazy(() => import('./pages/GaleriaCaptures'))
 const EntrenamientoMental= lazy(() => import('./pages/EntrenamientoMental'))
 const EstadisticasAvanzadas= lazy(() => import('./pages/EstadisticasAvanzadas'))
-const OCRReceta           = lazy(() => import('./pages/OCRReceta'))
 const QRInforme           = lazy(() => import('./pages/QRInforme'))
 const RecordatoriosWA     = lazy(() => import('./pages/RecordatoriosWA'))
 const PlanPremium         = lazy(() => import('./pages/PlanPremium'))
@@ -114,7 +113,6 @@ type Page =
   | 'galeria-captures'
   | 'entrenamiento-mental'
   | 'estadisticas-avanzadas'
-  | 'ocr-receta'
   | 'qr-informe'
   | 'recordatorios-wa'
   | 'plan-premium'
@@ -329,7 +327,7 @@ function AppContent() {
       case 'carga-visual':
         return <CargaVisual onBack={() => handleNavigate('dashboard')} />
       case 'notas-medicas':
-        return <NotasMedicas onBack={() => handleNavigate('dashboard')} onNavigate={(p) => handleNavigate(p as Page)} />
+        return <NotasMedicas onBack={() => handleNavigate('dashboard')} />
       case 'simulador':
         return <SimuladorCondiciones onBack={() => handleNavigate('dashboard')} />
       case 'test-cromatico':
@@ -348,8 +346,6 @@ function AppContent() {
         return <EntrenamientoMental onBack={() => handleNavigate('dashboard')} />
       case 'estadisticas-avanzadas':
         return <EstadisticasAvanzadas onBack={() => handleNavigate('dashboard')} />
-      case 'ocr-receta':
-        return <OCRReceta onBack={() => handleNavigate('dashboard')} />
       case 'qr-informe':
         return <QRInforme onBack={() => handleNavigate('dashboard')} />
       case 'recordatorios-wa':

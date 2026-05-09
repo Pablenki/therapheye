@@ -88,7 +88,7 @@ type Page =
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
   | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
-  | 'ocr-receta' | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
+  | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
   | 'amsler-grid' | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 
 interface Stats {

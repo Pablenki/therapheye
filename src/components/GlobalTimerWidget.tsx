@@ -45,7 +45,6 @@ type Page =
   | 'galeria-captures'
   | 'entrenamiento-mental'
   | 'estadisticas-avanzadas'
-  | 'ocr-receta'
   | 'qr-informe'
   | 'recordatorios-wa'
   | 'plan-premium'

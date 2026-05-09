@@ -6,11 +6,11 @@
 // =========================================
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Pill, Calendar, FileText, Stethoscope, Scan, CalendarPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Pill, Calendar, FileText, Stethoscope, CalendarPlus } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
 
-interface Props { onBack: () => void; onNavigate?: (page: string) => void; }
+interface Props { onBack: () => void; }
 
 interface Nota {
   id: number;
@@ -41,7 +41,7 @@ const BADGE_MAP: Record<string, string> = {
   amber:  'bg-amber-100 text-amber-700',
 };
 
-export default function NotasMedicas({ onBack, onNavigate }: Props) {
+export default function NotasMedicas({ onBack }: Props) {
   const { user } = useUser();
   const [notas, setNotas] = useState<Nota[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,15 +109,6 @@ export default function NotasMedicas({ onBack, onNavigate }: Props) {
             <p className="text-indigo-200 text-sm mt-0.5">Diagnósticos, medicamentos y citas</p>
           </div>
           <div className="flex items-center gap-2">
-            {onNavigate && (
-              <button
-                onClick={() => onNavigate('ocr-receta')}
-                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold px-3 py-2 rounded-xl transition"
-                title="OCR de receta médica"
-              >
-                <Scan className="w-3.5 h-3.5" /> OCR
-              </button>
-            )}
             <button
               onClick={() => setShowForm(v => !v)}
               className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition"

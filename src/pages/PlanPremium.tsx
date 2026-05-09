@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import {
   ArrowLeft, Crown, Sparkles, Check, X, Zap, Brain,
-  BarChart2, QrCode, Pill, MessageCircle, Calendar,
+  BarChart2, QrCode, MessageCircle, Calendar,
   Download, Infinity, Star, ChevronRight, Lock,
 } from 'lucide-react';
 
@@ -29,7 +29,6 @@ const FEATURES: Feature[] = [
   { icon: BarChart2,     label: 'Estadísticas y tendencias',   free: '7 días',    premium: '1 año'      },
   { icon: Download,      label: 'Exportar PDF SOAP',           free: false,       premium: true,        highlight: true },
   { icon: QrCode,        label: 'QR informe médico',           free: false,       premium: true         },
-  { icon: Pill,          label: 'OCR receta médica',           free: '2/mes',     premium: 'Ilimitado', highlight: true },
   { icon: Calendar,      label: 'Agendar citas Google Cal',    free: true,        premium: true         },
   { icon: MessageCircle, label: 'Recordatorios WhatsApp',      free: true,        premium: true         },
   { icon: Infinity,      label: 'Historial completo',          free: '30 días',   premium: 'Para siempre' },
@@ -98,7 +97,7 @@ export default function PlanPremium({ onBack }: Props) {
             <span className="bg-gradient-to-r from-amber-300 to-yellow-400 bg-clip-text text-transparent">máximo nivel</span>
           </h2>
           <p className="text-white/60 text-base leading-relaxed max-w-xs mx-auto">
-            IA ilimitada, exportación de informes, OCR de recetas y mucho más en un solo plan.
+            IA ilimitada, exportación de informes y mucho más en un solo plan.
           </p>
         </div>
 

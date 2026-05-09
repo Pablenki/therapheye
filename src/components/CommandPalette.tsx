@@ -11,7 +11,7 @@ import {
   MessageCircleHeart, MapPin, Gamepad2, Sparkles, BookMarked,
   Crosshair, EarOff, Contrast, Timer, Orbit, BarChart2, ClipboardCheck,
   Palette, FlaskConical, Focus, Microscope, ScrollText, TriangleAlert,
-  ImageIcon, BrainCircuit, AreaChart, Scan, QrCode, MessageCircle, Crown,
+  ImageIcon, BrainCircuit, AreaChart, QrCode, MessageCircle, Crown,
   Grid3x3, Wind, Dot, LineChart,
 } from 'lucide-react';
 
@@ -57,7 +57,6 @@ const ALL_ITEMS: NavItem[] = [
   { icon: ImageIcon,         label: 'Galería Capturas',   page: 'galeria-captures',     desc: 'Historial de fotos analizadas por IA' },
   { icon: BrainCircuit,      label: 'Entrena. Mental',    page: 'entrenamiento-mental', desc: 'Coordinación ojo-mente y memoria visual' },
   { icon: AreaChart,         label: 'Stats Avanzadas',    page: 'estadisticas-avanzadas',desc:'Gráficas, correlaciones y tendencias de tu salud' },
-  { icon: Scan,              label: 'OCR Receta',         page: 'ocr-receta',           desc: 'Digitaliza tu receta óptica con la cámara' },
   { icon: QrCode,            label: 'QR Informe',         page: 'qr-informe',           desc: 'Comparte reportes con un código QR' },
   { icon: MessageCircle,     label: 'Recordatorios WA',   page: 'recordatorios-wa',     desc: 'Alertas de ejercicios por WhatsApp' },
   { icon: Crown,             label: 'Premium',            page: 'plan-premium',         desc: 'Desbloquea todas las funciones avanzadas' },
