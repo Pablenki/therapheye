@@ -426,7 +426,6 @@ export default function BlinkDetector({ onBack }: Props) {
                   <p className="text-sm text-gray-500 mt-1">Resuelve sumas mentales mientras la cámara detecta tus parpadeos en segundo plano.</p>
                   <p className="text-xs text-violet-500 mt-2 font-medium">Más entretenido</p>
                 </button>
-              </div>
 
                 {/* Cámara */}
                 <button
@@ -453,7 +452,7 @@ export default function BlinkDetector({ onBack }: Props) {
                 className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition shadow-lg"
               >
                 <Camera className="w-6 h-6" />
-                Iniciar · Modo {selectedMode === 'lectura' ? 'Lectura' : 'Juego'}
+                Iniciar · Modo {selectedMode === 'lectura' ? 'Lectura' : selectedMode === 'juego' ? 'Juego' : 'Cámara'}
               </button>
             ) : (
               <p className="text-center text-sm text-gray-400">Selecciona un modo para continuar</p>
