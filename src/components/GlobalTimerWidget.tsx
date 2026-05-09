@@ -42,7 +42,6 @@ type Page =
   | 'ejercicios-avanzados'
   | 'historial-ocular'
   | 'analizador-sintomas'
-  | 'galeria-captures'
   | 'entrenamiento-mental'
   | 'estadisticas-avanzadas'
   | 'plan-premium'

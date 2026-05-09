@@ -93,7 +93,7 @@ type Page =
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
-  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
+  | 'analizador-sintomas' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'plan-premium'
   | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 
@@ -143,7 +143,6 @@ const ADVANCED_NAV_ITEMS: NavItem[] = [
   // { icon: Microscope,         label: 'Ejerc. Avanzados',    labelEn: 'Adv. Exercises',      page: 'ejercicios-avanzados'  }, // HIDDEN - access disabled
   { icon: ScrollText,         label: 'Historial Ocular',    labelEn: 'Ocular History',      page: 'historial-ocular'      },
   { icon: TriangleAlert,      label: 'Analizador Síntomas', labelEn: 'Symptom Analyzer',    page: 'analizador-sintomas'   },
-  { icon: ImageIcon,          label: 'Galería Capturas',    labelEn: 'Capture Gallery',     page: 'galeria-captures'      },
   { icon: BrainCircuit,       label: 'Entrena. Mental',     labelEn: 'Mental Training',     page: 'entrenamiento-mental'  },
   { icon: AreaChart,          label: 'Stats Avanzadas',     labelEn: 'Advanced Stats',      page: 'estadisticas-avanzadas'},
   ...(PREMIUM_ENABLED ? [{ icon: Crown, label: 'Premium', labelEn: 'Premium', page: 'plan-premium' as Page }] : []),

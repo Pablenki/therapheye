@@ -40,7 +40,7 @@ export default function MapaOftalmologos({ onBack }: Props) {
   useEffect(() => { locate(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b px-4 py-3 flex items-center gap-3 shadow-sm flex-shrink-0">
         <button onClick={onBack} className="text-gray-600 hover:text-gray-900 transition">

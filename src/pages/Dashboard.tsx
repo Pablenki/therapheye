@@ -87,7 +87,7 @@ type Page =
   | 'reaccion-visual' | 'vergencia' | 'carga-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
-  | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
+  | 'analizador-sintomas' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'plan-premium'
   | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 

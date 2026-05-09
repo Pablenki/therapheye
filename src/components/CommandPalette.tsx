@@ -54,7 +54,6 @@ const ALL_ITEMS: NavItem[] = [
   { icon: Microscope,        label: 'Ejerc. Avanzados',   page: 'ejercicios-avanzados', desc: 'Entrenamiento ocular intensivo y progresivo' },
   { icon: ScrollText,        label: 'Historial Ocular',   page: 'historial-ocular',     desc: 'Historial médico ocular completo' },
   { icon: TriangleAlert,     label: 'Analizador Síntomas',page: 'analizador-sintomas',  desc: 'Evaluación inteligente de molestias oculares' },
-  { icon: ImageIcon,         label: 'Galería Capturas',   page: 'galeria-captures',     desc: 'Historial de fotos analizadas por IA' },
   { icon: BrainCircuit,      label: 'Entrena. Mental',    page: 'entrenamiento-mental', desc: 'Coordinación ojo-mente y memoria visual' },
   { icon: AreaChart,         label: 'Stats Avanzadas',    page: 'estadisticas-avanzadas',desc:'Gráficas, correlaciones y tendencias de tu salud' },
   { icon: Crown,             label: 'Premium',            page: 'plan-premium',         desc: 'Desbloquea todas las funciones avanzadas' },

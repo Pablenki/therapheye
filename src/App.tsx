@@ -52,7 +52,6 @@ const TestAcomodacion    = lazy(() => import('./pages/TestAcomodacion'))
 const EjerciciosAvanzados= lazy(() => import('./pages/EjerciciosAvanzados'))
 const HistorialOcular    = lazy(() => import('./pages/HistorialOcular'))
 const AnalizadorSintomas = lazy(() => import('./pages/AnalizadorSintomas'))
-const GaleriaCaptures    = lazy(() => import('./pages/GaleriaCaptures'))
 const EntrenamientoMental= lazy(() => import('./pages/EntrenamientoMental'))
 const EstadisticasAvanzadas= lazy(() => import('./pages/EstadisticasAvanzadas'))
 const PlanPremium         = lazy(() => import('./pages/PlanPremium'))
@@ -107,7 +106,6 @@ type Page =
   | 'ejercicios-avanzados'
   | 'historial-ocular'
   | 'analizador-sintomas'
-  | 'galeria-captures'
   | 'entrenamiento-mental'
   | 'estadisticas-avanzadas'
   | 'plan-premium'
@@ -334,8 +332,6 @@ function AppContent() {
         return <HistorialOcular onBack={() => handleNavigate('dashboard')} />
       case 'analizador-sintomas':
         return <AnalizadorSintomas onBack={() => handleNavigate('dashboard')} />
-      case 'galeria-captures':
-        return <GaleriaCaptures onBack={() => handleNavigate('dashboard')} onNavigate={(p) => handleNavigate(p as Page)} />
       case 'entrenamiento-mental':
         return <EntrenamientoMental onBack={() => handleNavigate('dashboard')} />
       case 'estadisticas-avanzadas':
