@@ -11,7 +11,7 @@ import {
   MessageCircleHeart, MapPin, Gamepad2, Sparkles, BookMarked,
   Crosshair, EarOff, Contrast, Timer, Orbit, BarChart2, ClipboardCheck,
   Palette, FlaskConical, Focus, Microscope, ScrollText, TriangleAlert,
-  ImageIcon, BrainCircuit, AreaChart, Crown,
+  BrainCircuit, AreaChart, Crown,
   Wind, Dot, LineChart,
 } from 'lucide-react';
 

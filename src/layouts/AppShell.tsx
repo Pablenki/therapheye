@@ -8,7 +8,7 @@ import {
   KeyRound, Menu, X, ChevronLeft, ChevronDown, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, MoreHorizontal, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
-  Focus, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
+  Focus, ScrollText, TriangleAlert, BrainCircuit, AreaChart,
   Crown, HelpCircle, Wind, Dot, Settings, Moon, LineChart,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
