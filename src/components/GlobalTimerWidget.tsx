@@ -45,8 +45,6 @@ type Page =
   | 'galeria-captures'
   | 'entrenamiento-mental'
   | 'estadisticas-avanzadas'
-  | 'qr-informe'
-  | 'recordatorios-wa'
   | 'plan-premium'
   | 'dominancia-ocular'
   | 'respiracion-478'

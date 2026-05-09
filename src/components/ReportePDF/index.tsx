@@ -4,8 +4,9 @@
 // =========================================
 
 import { useState } from 'react';
-import { pdf, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { pdf, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { FileText, Loader2 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { sql } from '../../neonCliente';
 import { callClaude } from '../../utils/claudeApi';
 
@@ -225,6 +226,13 @@ function TherapeyeReport({ data }: { data: ReportData }) {
 
 // ─── INFORME MÉDICO SOAP ────────────────────────────────────────────────────
 
+interface NotaMedica {
+  tipo: string;
+  titulo: string;
+  contenido: string;
+  fecha: string;
+}
+
 interface SpecializedTest {
   nombre: string;
   fecha: string;
@@ -251,6 +259,10 @@ interface MedicalReportData {
   // P — Plan
   recomendaciones: string;
   adherencia: string;
+  // Notas médicas del paciente
+  notasMedicas: NotaMedica[];
+  // QR con resumen condensado
+  qrDataUrl: string;
 }
 
 const SM = StyleSheet.create({
@@ -282,6 +294,18 @@ const SM = StyleSheet.create({
   chipsRow:    { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
   aiBox:       { backgroundColor: '#f5f3ff', borderRadius: 6, padding: 10, borderLeft: '3px solid #7c3aed' },
   aiText:      { fontSize: 8.5, color: '#4c1d95', lineHeight: 1.7 },
+  // Notas médicas
+  notaRow:     { flexDirection: 'row', gap: 8, marginBottom: 7, paddingBottom: 7, borderBottom: '0.5px solid #f1f5f9' },
+  notaBadge:   { backgroundColor: '#eff6ff', borderRadius: 4, padding: '2 6', alignSelf: 'flex-start' },
+  notaBadgeTx: { fontSize: 7, color: '#1e40af', fontFamily: 'Helvetica-Bold' },
+  notaTitulo:  { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#1e3a8a', marginBottom: 2 },
+  notaConten:  { fontSize: 7.5, color: '#4b5563', lineHeight: 1.5 },
+  notaFecha:   { fontSize: 7, color: '#9ca3af', marginTop: 2 },
+  // QR
+  qrWrap:      { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 8, padding: '10 14' },
+  qrImg:       { width: 72, height: 72 },
+  qrLabel:     { fontSize: 8, color: '#bfdbfe', marginBottom: 3 },
+  qrCaption:   { fontSize: 7, color: '#93c5fd', lineHeight: 1.5 },
 });
 
 function MedicalReport({ data }: { data: MedicalReportData }) {
@@ -300,6 +324,18 @@ function MedicalReport({ data }: { data: MedicalReportData }) {
             Generado por Therapheye IA — No reemplaza diagnóstico médico profesional.
             Este documento es un resumen de datos autorreportados y mediciones automatizadas para facilitar la consulta clínica.
           </Text>
+          {/* QR resumen */}
+          <View style={SM.qrWrap}>
+            <Image src={data.qrDataUrl} style={SM.qrImg} />
+            <View>
+              <Text style={SM.qrLabel}>Resumen rápido · Escanea este QR</Text>
+              <Text style={SM.qrCaption}>
+                Fatiga: {data.avgFatiga}% · Ejercicios: {data.ejerciciosCompletados}/{data.ejerciciosTotal}{'\n'}
+                Parpadeo: {data.tasaParpadeo !== null ? `${data.tasaParpadeo} ppm` : 'no evaluado'} · Tests: {data.testsVision}{'\n'}
+                Síntoma principal: {data.sintomaDesc}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* ── S: Subjetivo ── */}
@@ -410,6 +446,38 @@ function MedicalReport({ data }: { data: MedicalReportData }) {
           <Text style={SM.bodyText}>{data.recomendaciones}</Text>
         </View>
 
+        {/* ── Notas Médicas del Paciente ── */}
+        {data.notasMedicas.length > 0 && (
+          <View style={SM.soapSection}>
+            <View style={SM.soapHeader}>
+              <Text style={SM.soapLetter}>N</Text>
+              <View>
+                <Text style={SM.soapTitle}>Notas Médicas del Paciente</Text>
+                <Text style={SM.soapSub}>Diagnósticos, medicamentos, citas y observaciones registradas por el paciente</Text>
+              </View>
+            </View>
+            <View style={SM.divider}/>
+            {data.notasMedicas.map((nota, i) => {
+              const tipoLabel: Record<string, string> = {
+                diagnostico: 'Diagnóstico', medicamento: 'Medicamento',
+                cita: 'Cita', observacion: 'Observación',
+              };
+              return (
+                <View key={i} style={SM.notaRow}>
+                  <View style={SM.notaBadge}>
+                    <Text style={SM.notaBadgeTx}>{tipoLabel[nota.tipo] ?? nota.tipo}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={SM.notaTitulo}>{nota.titulo}</Text>
+                    {nota.contenido ? <Text style={SM.notaConten}>{nota.contenido}</Text> : null}
+                    <Text style={SM.notaFecha}>{nota.fecha}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         {/* Footer */}
         <View style={SM.footer} fixed>
           <Text style={SM.footerText}>Therapheye © {new Date().getFullYear()}</Text>
@@ -438,7 +506,7 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
       const now = new Date();
       const from30 = new Date(now.getTime() - 30 * 86_400_000);
 
-      const [evals, exs, visions, parpadeos, contrastRows, campoRows, cromaticoRows, acomodacionRows] = await Promise.all([
+      const [evals, exs, visions, parpadeos, contrastRows, campoRows, cromaticoRows, acomodacionRows, notasRows] = await Promise.all([
         sql`SELECT created_at, puntaje_fatiga, sintoma_dominante FROM respuestas_cuestionario WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC`,
         sql`SELECT status FROM historial_ejercicios WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
         sql`SELECT id FROM historial_vision_test WHERE user_id=${userId} AND created_at >= ${from30.toISOString()}`,
@@ -447,6 +515,7 @@ export function MedicalPDFDownloadButton({ userId, userName }: { userId: string 
         sql`SELECT created_at, puntos_detectados, puntos_totales FROM campo_visual_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
         sql`SELECT created_at, correctas, total, tipo FROM test_cromatico_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
         sql`SELECT created_at, score, nivel FROM test_acomodacion_results WHERE user_id=${userId} AND created_at >= ${from30.toISOString()} ORDER BY created_at DESC LIMIT 3`.catch(() => []),
+        sql`SELECT tipo, titulo, contenido, fecha FROM notas_medicas WHERE user_id=${userId} ORDER BY fecha DESC, id DESC LIMIT 15`.catch(() => []),
       ]);
 
       const evalList = evals as any[];
@@ -516,6 +585,25 @@ Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisi
         } catch { /* usar fallback */ }
       }
 
+      // Generar QR con resumen condensado
+      const qrText = [
+        `THERAPHEYE — Informe Visual`,
+        `Paciente: ${userName}`,
+        `Fecha: ${now.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        `Fatiga prom: ${avgFatiga}%`,
+        `Sintoma principal: ${sintomaDesc}`,
+        `Ejercicios: ${completed}/${exList.length}`,
+        `Tests vision: ${(visions as any[]).length}`,
+        tasaParpadeo !== null ? `Parpadeo: ${tasaParpadeo} ppm` : null,
+        testsEspecializados.length > 0 ? `Tests especializados: ${testsEspecializados.length}` : null,
+        (notasRows as any[]).length > 0 ? `Notas medicas: ${(notasRows as any[]).length}` : null,
+      ].filter(Boolean).join('\n');
+      const qrDataUrl = await QRCode.toDataURL(qrText, {
+        width: 180, margin: 1,
+        color: { dark: '#1B396B', light: '#ffffff' },
+        errorCorrectionLevel: 'M',
+      });
+
       const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
       const medData: MedicalReportData = {
         userName,
@@ -533,6 +621,13 @@ Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisi
         analisisClinico,
         recomendaciones: '• ' + recomendaciones,
         adherencia,
+        notasMedicas: (notasRows as any[]).map((r: any) => ({
+          tipo: r.tipo ?? 'observacion',
+          titulo: r.titulo ?? '',
+          contenido: r.contenido ?? '',
+          fecha: r.fecha ?? '',
+        })),
+        qrDataUrl,
       };
 
       const blob = await pdf(<MedicalReport data={medData} />).toBlob();

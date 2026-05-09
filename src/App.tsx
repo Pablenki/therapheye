@@ -55,8 +55,6 @@ const AnalizadorSintomas = lazy(() => import('./pages/AnalizadorSintomas'))
 const GaleriaCaptures    = lazy(() => import('./pages/GaleriaCaptures'))
 const EntrenamientoMental= lazy(() => import('./pages/EntrenamientoMental'))
 const EstadisticasAvanzadas= lazy(() => import('./pages/EstadisticasAvanzadas'))
-const QRInforme           = lazy(() => import('./pages/QRInforme'))
-const RecordatoriosWA     = lazy(() => import('./pages/RecordatoriosWA'))
 const PlanPremium         = lazy(() => import('./pages/PlanPremium'))
 const DominanciaOcular    = lazy(() => import('./pages/DominanciaOcular'))
 const Respiracion478      = lazy(() => import('./pages/Respiracion478'))
@@ -112,8 +110,6 @@ type Page =
   | 'galeria-captures'
   | 'entrenamiento-mental'
   | 'estadisticas-avanzadas'
-  | 'qr-informe'
-  | 'recordatorios-wa'
   | 'plan-premium'
   | 'dominancia-ocular'
   | 'respiracion-478'
@@ -344,10 +340,6 @@ function AppContent() {
         return <EntrenamientoMental onBack={() => handleNavigate('dashboard')} />
       case 'estadisticas-avanzadas':
         return <EstadisticasAvanzadas onBack={() => handleNavigate('dashboard')} />
-      case 'qr-informe':
-        return <QRInforme onBack={() => handleNavigate('dashboard')} />
-      case 'recordatorios-wa':
-        return <RecordatoriosWA onBack={() => handleNavigate('dashboard')} />
       case 'plan-premium':
         return <PlanPremium onBack={() => handleNavigate('dashboard')} />
       case 'dominancia-ocular':

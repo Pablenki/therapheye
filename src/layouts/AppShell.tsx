@@ -9,7 +9,7 @@ import {
   Sparkles, BookMarked, MoreHorizontal, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
   Focus, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
-  QrCode, MessageCircle, Crown, HelpCircle, Wind, Dot, Settings, Moon, LineChart,
+  Crown, HelpCircle, Wind, Dot, Settings, Moon, LineChart,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -94,7 +94,7 @@ type Page =
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
   | 'analizador-sintomas' | 'galeria-captures' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
-  | 'qr-informe' | 'recordatorios-wa' | 'plan-premium'
+  | 'plan-premium'
   | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
 
 interface Props {
@@ -146,8 +146,6 @@ const ADVANCED_NAV_ITEMS: NavItem[] = [
   { icon: ImageIcon,          label: 'Galería Capturas',    labelEn: 'Capture Gallery',     page: 'galeria-captures'      },
   { icon: BrainCircuit,       label: 'Entrena. Mental',     labelEn: 'Mental Training',     page: 'entrenamiento-mental'  },
   { icon: AreaChart,          label: 'Stats Avanzadas',     labelEn: 'Advanced Stats',      page: 'estadisticas-avanzadas'},
-  { icon: QrCode,             label: 'QR Informe',          labelEn: 'QR Report',           page: 'qr-informe'            },
-  { icon: MessageCircle,      label: 'Recordatorios WA',    labelEn: 'WA Reminders',        page: 'recordatorios-wa'      },
   ...(PREMIUM_ENABLED ? [{ icon: Crown, label: 'Premium', labelEn: 'Premium', page: 'plan-premium' as Page }] : []),
   { icon: Dot,                label: 'Dom. Ocular',         labelEn: 'Eye Dominance',       page: 'dominancia-ocular'     },
   { icon: Wind,               label: 'Respiración 4-7-8',   labelEn: '4-7-8 Breathing',     page: 'respiracion-478'       },

@@ -11,7 +11,7 @@ import {
   MessageCircleHeart, MapPin, Gamepad2, Sparkles, BookMarked,
   Crosshair, EarOff, Contrast, Timer, Orbit, BarChart2, ClipboardCheck,
   Palette, FlaskConical, Focus, Microscope, ScrollText, TriangleAlert,
-  ImageIcon, BrainCircuit, AreaChart, QrCode, MessageCircle, Crown,
+  ImageIcon, BrainCircuit, AreaChart, Crown,
   Wind, Dot, LineChart,
 } from 'lucide-react';
 
@@ -57,8 +57,6 @@ const ALL_ITEMS: NavItem[] = [
   { icon: ImageIcon,         label: 'Galería Capturas',   page: 'galeria-captures',     desc: 'Historial de fotos analizadas por IA' },
   { icon: BrainCircuit,      label: 'Entrena. Mental',    page: 'entrenamiento-mental', desc: 'Coordinación ojo-mente y memoria visual' },
   { icon: AreaChart,         label: 'Stats Avanzadas',    page: 'estadisticas-avanzadas',desc:'Gráficas, correlaciones y tendencias de tu salud' },
-  { icon: QrCode,            label: 'QR Informe',         page: 'qr-informe',           desc: 'Comparte reportes con un código QR' },
-  { icon: MessageCircle,     label: 'Recordatorios WA',   page: 'recordatorios-wa',     desc: 'Alertas de ejercicios por WhatsApp' },
   { icon: Crown,             label: 'Premium',            page: 'plan-premium',         desc: 'Desbloquea todas las funciones avanzadas' },
   { icon: Dot,               label: 'Dominancia Ocular',  page: 'dominancia-ocular',    desc: 'Determina cuál es tu ojo dominante' },
   { icon: Wind,              label: 'Respiración 4-7-8',  page: 'respiracion-478',      desc: 'Técnica de relajación ocular animada' },
