@@ -37,7 +37,7 @@ function DistanceBadge({ distanceCm, distanceStatus }: Pick<ValidatorState, 'dis
 }
 
 function ExerciseFeedback({ exerciseId, state }: { exerciseId: string; state: ValidatorState }) {
-  const { faceDetected, eyesCovered, eyesCoveredPct, irisMoving, headStable } = state;
+  const { faceDetected, eyesCovered, irisMoving, headStable } = state;
 
   // ── Palming: solo avisar cuando NO está cubriendo ─────────────────────────
   if (exerciseId === 'palming') {

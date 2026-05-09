@@ -6,9 +6,9 @@ import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ChevronDown, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
-  Sparkles, BookMarked, MoreHorizontal, Crosshair, EarOff, Contrast,
+  Sparkles, BookMarked, MoreHorizontal, EarOff, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
-  Focus, Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
+  Focus, ScrollText, TriangleAlert, ImageIcon, BrainCircuit, AreaChart,
   Scan, QrCode, MessageCircle, Crown, HelpCircle, Grid3x3, Wind, Dot, Settings, Moon, LineChart,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
