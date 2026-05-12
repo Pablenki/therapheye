@@ -1,8 +1,10 @@
 // =========================================
 // Netlify Function: claude-proxy
-// Cascada: Groq (llama-3.1-8b-instant) → Groq (gemma2-9b-it) → Gemini flash-latest → Gemini 2.5-flash → xAI
-// Groq llama-3.1-8b-instant: 30 RPM / 14.4K RPD / 6K TPM  / 500K TPD
-// Groq gemma2-9b-it        : 30 RPM / 14.4K RPD / 15K TPM / 500K TPD  ← absorbe picos TPM
+// Cascada: Groq (llama-3.3-70b) → Groq (llama-3.1-8b) → Groq (gemma2-9b) → Gemini → xAI
+// Groq llama-3.3-70b-versatile : 30 RPM /  1K RPD / 12K TPM / 100K TPD  ← primario (mejor calidad)
+// Groq llama-3.1-8b-instant    : 30 RPM / 14.4K RPD /  6K TPM / 500K TPD  ← fallback 1
+// Groq gemma2-9b-it            : 30 RPM / 14.4K RPD / 15K TPM / 500K TPD  ← fallback 2
+// Total Groq TPD: ~1.1M tokens/día antes de tocar Gemini
 // Gemini free: 5 RPM / 20 RPD por modelo
 // xAI: último recurso (requiere créditos)
 // =========================================
@@ -244,16 +246,23 @@ const handler: Handler = async (event) => {
   });
 
   if (groqKey) {
-    // Primer intento: llama-3.1-8b-instant (más rápido, 6K TPM)
-    const r1 = await callGroq(groqKey, 'llama-3.1-8b-instant', body);
-    if (r1.ok) return ok(r1.text!, 'Groq · LLaMA 3.1');
-    errors.push(`Groq/llama: ${r1.error}`);
+    // Primer intento: llama-3.3-70b-versatile (mejor calidad, 100K TPD)
+    const r1 = await callGroq(groqKey, 'llama-3.3-70b-versatile', body);
+    if (r1.ok) return ok(r1.text!, 'Groq · LLaMA 3.3');
+    errors.push(`Groq/llama-3.3: ${r1.error}`);
 
-    // Segundo intento Groq: gemma2-9b-it (15K TPM — absorbe picos de usuarios concurrentes)
     if (r1.status === 429 || r1.status === 503) {
-      const r2 = await callGroq(groqKey, 'gemma2-9b-it', body);
-      if (r2.ok) return ok(r2.text!, 'Groq · Gemma 2');
-      errors.push(`Groq/gemma2: ${r2.error}`);
+      // Segundo intento: llama-3.1-8b-instant (500K TPD)
+      const r2 = await callGroq(groqKey, 'llama-3.1-8b-instant', body);
+      if (r2.ok) return ok(r2.text!, 'Groq · LLaMA 3.1');
+      errors.push(`Groq/llama-3.1: ${r2.error}`);
+
+      if (r2.status === 429 || r2.status === 503) {
+        // Tercer intento: gemma2-9b-it (500K TPD)
+        const r3 = await callGroq(groqKey, 'gemma2-9b-it', body);
+        if (r3.ok) return ok(r3.text!, 'Groq · Gemma 2');
+        errors.push(`Groq/gemma2: ${r3.error}`);
+      }
     }
   }
 
