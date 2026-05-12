@@ -1,11 +1,12 @@
 // =========================================
 // CHAT DE SÍNTOMAS VISUALES — Therapheye
 // Asistente de IA especializado en salud visual
-// Usa Claude Haiku para respuestas rápidas
+// Sistema de cola: 1 usuario activo a la vez
+// Inactividad: 2 min sin actividad → cede turno
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play, Clock } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
@@ -22,6 +23,8 @@ interface Message {
   timestamp: Date;
   provider?: string;
 }
+
+type QueueStatus = 'checking' | 'active' | 'waiting' | 'inactive_kicked';
 
 const QUICK_SYMPTOMS_ES = [
   'Me pica el ojo', 'Tengo el ojo rojo', 'Visión borrosa',
@@ -146,6 +149,20 @@ function detectExercises(text: string, lang: string): ExerciseMatch[] {
   return found;
 }
 
+// ── API de cola ───────────────────────────────────────────────────────────────
+async function callQueue(action: string, userId: string): Promise<{ status?: string; position?: number; ok?: boolean } | null> {
+  try {
+    const res = await fetch('/.netlify/functions/ai-queue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, userId }),
+    });
+    return res.ok ? res.json() : null;
+  } catch { return null; }
+}
+
+// ── Sub-componentes ───────────────────────────────────────────────────────────
+
 function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-4 py-3">
@@ -222,6 +239,8 @@ function ChatBubble({
   );
 }
 
+// ── Componente principal ──────────────────────────────────────────────────────
+
 export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const { lang } = useLanguage();
   const { user } = useUser();
@@ -235,9 +254,16 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
   const [currentProvider, setCurrentProvider] = useState('');
-
   const [supportSent, setSupportSent] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
+
+  // ── Cola de espera ─────────────────────────────────────────────────────────
+  const [queueStatus, setQueueStatus] = useState<QueueStatus>('checking');
+  const [queuePosition, setQueuePosition] = useState(0);
+  const lastActivityRef = useRef<number>(Date.now());
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -245,16 +271,151 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Persistir mensajes cada vez que cambien (solo si hay más de 1 mensaje)
+  // Persistir mensajes
   useEffect(() => {
     if (user?.id && messages.length > 1) {
       saveChatMessages(messages, user.id);
     }
   }, [messages, user?.id]);
 
+  // ── Efecto 1: Unirse a la cola al montar ──────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) {
+      // Sin autenticación: acceso directo (fallback)
+      setQueueStatus('active');
+      return;
+    }
+
+    let mounted = true;
+    const userId = user.id;
+
+    callQueue('join', userId).then(data => {
+      if (!mounted) return;
+      if (!data) {
+        // Error de red: permitir acceso directo como fallback
+        setQueueStatus('active');
+        return;
+      }
+      lastActivityRef.current = Date.now();
+      setQueueStatus(data.status === 'active' ? 'active' : 'waiting');
+      setQueuePosition(data.position ?? 0);
+    });
+
+    return () => {
+      mounted = false;
+      // Liberar turno al desmontar (navegar hacia atrás)
+      callQueue('leave', userId);
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, [user?.id]);
+
+  // ── Efecto 2: Heartbeat cuando está activo ────────────────────────────────
+  useEffect(() => {
+    if (queueStatus !== 'active' || !user?.id) {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const userId = user.id;
+    const INACTIVITY_MS = 2 * 60 * 1000;
+
+    heartbeatIntervalRef.current = setInterval(async () => {
+      // Comprobar inactividad: 2 min sin actividad → ceder turno
+      if (Date.now() - lastActivityRef.current > INACTIVITY_MS) {
+        await callQueue('leave', userId);
+        setQueueStatus('inactive_kicked');
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = null;
+        }
+        return;
+      }
+      // Heartbeat normal
+      const data = await callQueue('heartbeat', userId);
+      if (data?.status === 'expired') {
+        // El servidor limpió la sesión (no debería pasar si hay heartbeat activo)
+        setQueueStatus('waiting');
+        setQueuePosition(99);
+      }
+    }, 30_000);
+
+    return () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+    };
+  }, [queueStatus, user?.id]);
+
+  // ── Efecto 3: Poll cuando está en espera ──────────────────────────────────
+  useEffect(() => {
+    if (queueStatus !== 'waiting' || !user?.id) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const userId = user.id;
+
+    pollIntervalRef.current = setInterval(async () => {
+      const data = await callQueue('heartbeat', userId);
+      if (!data) return;
+
+      if (data.status === 'active') {
+        lastActivityRef.current = Date.now();
+        setQueueStatus('active');
+      } else if (data.status === 'expired') {
+        // Sesión expiró en el servidor, reintentamos unirse
+        const joinData = await callQueue('join', userId);
+        if (joinData?.status === 'active') {
+          lastActivityRef.current = Date.now();
+          setQueueStatus('active');
+        } else {
+          setQueuePosition(joinData?.position ?? 0);
+        }
+      } else {
+        setQueuePosition(data.position ?? 0);
+      }
+    }, 8_000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [queueStatus, user?.id]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleBack = useCallback(() => {
+    if (user?.id) callQueue('leave', user.id);
+    if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    onBack();
+  }, [user?.id, onBack]);
+
+  const handleRejoin = useCallback(async () => {
+    if (!user?.id) return;
+    setQueueStatus('checking');
+    const data = await callQueue('join', user.id);
+    if (!data) { setQueueStatus('active'); return; }
+    lastActivityRef.current = Date.now();
+    setQueueStatus(data.status === 'active' ? 'active' : 'waiting');
+    setQueuePosition(data.position ?? 0);
+  }, [user?.id]);
+
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
+
+    lastActivityRef.current = Date.now(); // Registrar actividad
 
     const userMsg: Message = { role: 'user', content: trimmed, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
@@ -327,12 +488,36 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     setSupportSending(false);
   };
 
+  // ── Indicador de estado para el header ────────────────────────────────────
+  const statusColor =
+    queueStatus === 'waiting' ? 'text-amber-500' :
+    queueStatus === 'inactive_kicked' ? 'text-orange-500' :
+    queueStatus === 'checking' ? 'text-gray-400' : 'text-green-500';
+
+  const statusDotColor =
+    queueStatus === 'waiting' ? 'bg-amber-500' :
+    queueStatus === 'inactive_kicked' ? 'bg-orange-500' :
+    queueStatus === 'checking' ? 'bg-gray-300' : 'bg-green-500';
+
+  const statusText =
+    queueStatus === 'checking'
+      ? (lang === 'es' ? 'Conectando...' : 'Connecting...')
+      : queueStatus === 'waiting'
+      ? (lang === 'es' ? `En fila · Posición #${queuePosition + 1}` : `In queue · Position #${queuePosition + 1}`)
+      : queueStatus === 'inactive_kicked'
+      ? (lang === 'es' ? 'Sesión cerrada por inactividad' : 'Session closed: inactive')
+      : messages.length > 1
+        ? (lang === 'es' ? `Conversación activa · ${messages.length - 1} mensajes` : `Active chat · ${messages.length - 1} messages`)
+        : (lang === 'es' ? 'En línea · Therapheye IA' : 'Online · Therapheye AI');
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-gray-500 hover:text-gray-800 transition mr-1">
+          <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition mr-1">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -342,11 +527,9 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
             <p className="font-bold text-gray-800 text-sm leading-tight">
               {lang === 'es' ? 'Asistente Visual' : 'Visual Assistant'}
             </p>
-            <p className="text-xs text-green-500 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block" />
-              {messages.length > 1
-                ? (lang === 'es' ? `Conversación activa · ${messages.length - 1} mensajes` : `Active chat · ${messages.length - 1} messages`)
-                : (lang === 'es' ? 'En línea · Therapheye IA' : 'Online · Therapheye AI')}
+            <p className={`text-xs flex items-center gap-1 ${statusColor}`}>
+              <span className={`w-1.5 h-1.5 rounded-full inline-block ${statusDotColor}`} />
+              {statusText}
             </p>
           </div>
         </div>
@@ -365,128 +548,203 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {messages.map((msg, i) => (
-          <ChatBubble
-            key={i}
-            msg={msg}
-            lang={lang}
-            exercises={msg.role === 'assistant' && i > 0 ? detectExercises(msg.content, lang) : undefined}
-            onStartExercise={onStartExercise}
-          />
-        ))}
-        {isTyping && (
-          <div className="flex gap-2.5 mb-4">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1">
-              <Bot className="w-4 h-4 text-indigo-600" />
-            </div>
-            <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm shadow-sm">
-              <TypingDots />
-            </div>
-          </div>
-        )}
-        {error && (
-          <div className="mx-4 mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
-            <span className="text-lg leading-none mt-0.5">
-              {error === 'AI_BUSY' ? '⏳' : '🔧'}
-            </span>
-            <div>
-              <p className="text-sm font-medium text-amber-800">
-                {error === 'AI_BUSY'
-                  ? (lang === 'es' ? 'El asistente está muy ocupado' : 'Assistant is busy right now')
-                  : (lang === 'es' ? 'El asistente no está disponible' : 'Assistant unavailable')}
-              </p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                {error === 'AI_BUSY'
-                  ? (lang === 'es' ? 'Demasiadas consultas al mismo tiempo. Intenta de nuevo en unos segundos.' : 'Too many requests. Try again in a few seconds.')
-                  : (lang === 'es' ? 'Estamos teniendo problemas técnicos. Inténtalo de nuevo en un momento.' : 'We\'re having technical issues. Please try again shortly.')}
-              </p>
-            </div>
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
+      {/* ── Pantallas de cola (checking / waiting / inactive_kicked) ── */}
+      {queueStatus !== 'active' && (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6">
 
-      {/* Quick symptoms — show only on first message */}
-      {messages.length === 1 && (
-        <div className="px-4 pb-2 flex-shrink-0">
-          <p className="text-xs text-gray-400 mb-2 font-medium">
-            {lang === 'es' ? 'Síntomas frecuentes:' : 'Common symptoms:'}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {quickSymptoms.map(s => (
+          {queueStatus === 'checking' && (
+            <>
+              <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+              <p className="text-sm text-gray-500">
+                {lang === 'es' ? 'Conectando al asistente...' : 'Connecting to assistant...'}
+              </p>
+            </>
+          )}
+
+          {queueStatus === 'waiting' && (
+            <>
+              <div className="w-18 h-18 w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                <Clock className="w-8 h-8 text-amber-500" />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-gray-800 text-base">
+                  {lang === 'es' ? 'En fila de espera' : 'Waiting in queue'}
+                </p>
+                <p className="text-4xl font-bold text-amber-500 mt-2">
+                  #{queuePosition + 1}
+                </p>
+                <p className="text-sm text-gray-500 mt-3 max-w-xs leading-relaxed">
+                  {lang === 'es'
+                    ? 'El asistente está atendiendo a otro usuario. Serás atendido automáticamente cuando sea tu turno.'
+                    : 'The assistant is busy with another user. You will be served automatically when it\'s your turn.'}
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {lang === 'es' ? 'Verificando cada 8 segundos...' : 'Checking every 8 seconds...'}
+                </p>
+              </div>
               <button
-                key={s}
-                onClick={() => sendMessage(s)}
-                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium transition border border-indigo-100"
+                onClick={handleBack}
+                className="px-5 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition"
               >
-                {s}
+                {lang === 'es' ? 'Salir de la fila' : 'Leave queue'}
               </button>
-            ))}
-          </div>
-        </div>
-      )}
+            </>
+          )}
 
-      {/* Support escalation — shown after at least 3 messages */}
-      {messages.length >= 3 && (
-        <div className="px-4 pb-2 flex-shrink-0">
-          {supportSent ? (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-              <p className="text-xs text-green-700 font-medium">
-                {lang === 'es'
-                  ? 'Transcript enviado a soporte. Te responderemos pronto.'
-                  : 'Transcript sent to support. We\'ll get back to you soon.'}
-              </p>
-            </div>
-          ) : (
-            <button
-              onClick={handleSendSupport}
-              disabled={supportSending}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-xs text-amber-700 font-medium transition disabled:opacity-60"
-            >
-              <Headphones className="w-3.5 h-3.5" />
-              {supportSending
-                ? (lang === 'es' ? 'Enviando...' : 'Sending...')
-                : (lang === 'es' ? '¿No resolviste tu problema? Contactar soporte' : 'Didn\'t solve your issue? Contact support')}
-            </button>
+          {queueStatus === 'inactive_kicked' && (
+            <>
+              <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
+                <Clock className="w-8 h-8 text-orange-500" />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-gray-800 text-base">
+                  {lang === 'es' ? 'Turno cedido por inactividad' : 'Turn passed: inactive'}
+                </p>
+                <p className="text-sm text-gray-500 mt-3 max-w-xs leading-relaxed">
+                  {lang === 'es'
+                    ? 'Llevas 2 minutos sin actividad, así que cedimos tu turno al siguiente usuario en la fila.'
+                    : 'You were inactive for 2 minutes, so your turn was passed to the next user in queue.'}
+                </p>
+              </div>
+              <button
+                onClick={handleRejoin}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition"
+              >
+                {lang === 'es' ? 'Volver a la fila' : 'Rejoin queue'}
+              </button>
+            </>
           )}
         </div>
       )}
 
-      {/* Input */}
-      <div className="px-4 pb-4 pt-2 bg-white border-t border-gray-100 flex-shrink-0">
-        <div className="flex gap-2 items-end">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={lang === 'es' ? 'Describe tu síntoma... (Enter para enviar)' : 'Describe your symptom... (Enter to send)'}
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition max-h-28 overflow-y-auto"
-            style={{ minHeight: '44px' }}
-            onInput={e => {
-              const t = e.currentTarget;
-              t.style.height = 'auto';
-              t.style.height = Math.min(t.scrollHeight, 112) + 'px';
-            }}
-          />
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={!input.trim() || isTyping}
-            className="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 text-white flex items-center justify-center transition flex-shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-[10px] text-gray-400 mt-1.5 text-center">
-          {lang === 'es'
-            ? '⚠ Orientación informativa — no reemplaza el diagnóstico médico'
-            : '⚠ Informational guidance — does not replace medical diagnosis'}
-        </p>
-      </div>
+      {/* ── Chat (solo cuando está activo) ── */}
+      {queueStatus === 'active' && (
+        <>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {messages.map((msg, i) => (
+              <ChatBubble
+                key={i}
+                msg={msg}
+                lang={lang}
+                exercises={msg.role === 'assistant' && i > 0 ? detectExercises(msg.content, lang) : undefined}
+                onStartExercise={onStartExercise}
+              />
+            ))}
+            {isTyping && (
+              <div className="flex gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1">
+                  <Bot className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm shadow-sm">
+                  <TypingDots />
+                </div>
+              </div>
+            )}
+            {error && (
+              <div className="mx-4 mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
+                <span className="text-lg leading-none mt-0.5">
+                  {error === 'AI_BUSY' ? '⏳' : '🔧'}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-amber-800">
+                    {error === 'AI_BUSY'
+                      ? (lang === 'es' ? 'El asistente está muy ocupado' : 'Assistant is busy right now')
+                      : (lang === 'es' ? 'El asistente no está disponible' : 'Assistant unavailable')}
+                  </p>
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    {error === 'AI_BUSY'
+                      ? (lang === 'es' ? 'Demasiadas consultas al mismo tiempo. Intenta de nuevo en unos segundos.' : 'Too many requests. Try again in a few seconds.')
+                      : (lang === 'es' ? 'Estamos teniendo problemas técnicos. Inténtalo de nuevo en un momento.' : 'We\'re having technical issues. Please try again shortly.')}
+                  </p>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Quick symptoms — show only on first message */}
+          {messages.length === 1 && (
+            <div className="px-4 pb-2 flex-shrink-0">
+              <p className="text-xs text-gray-400 mb-2 font-medium">
+                {lang === 'es' ? 'Síntomas frecuentes:' : 'Common symptoms:'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {quickSymptoms.map(s => (
+                  <button
+                    key={s}
+                    onClick={() => sendMessage(s)}
+                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium transition border border-indigo-100"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Support escalation — shown after at least 3 messages */}
+          {messages.length >= 3 && (
+            <div className="px-4 pb-2 flex-shrink-0">
+              {supportSent ? (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <p className="text-xs text-green-700 font-medium">
+                    {lang === 'es'
+                      ? 'Transcript enviado a soporte. Te responderemos pronto.'
+                      : 'Transcript sent to support. We\'ll get back to you soon.'}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={handleSendSupport}
+                  disabled={supportSending}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-xs text-amber-700 font-medium transition disabled:opacity-60"
+                >
+                  <Headphones className="w-3.5 h-3.5" />
+                  {supportSending
+                    ? (lang === 'es' ? 'Enviando...' : 'Sending...')
+                    : (lang === 'es' ? '¿No resolviste tu problema? Contactar soporte' : 'Didn\'t solve your issue? Contact support')}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="px-4 pb-4 pt-2 bg-white border-t border-gray-100 flex-shrink-0">
+            <div className="flex gap-2 items-end">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={lang === 'es' ? 'Describe tu síntoma... (Enter para enviar)' : 'Describe your symptom... (Enter to send)'}
+                rows={1}
+                className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition max-h-28 overflow-y-auto"
+                style={{ minHeight: '44px' }}
+                onInput={e => {
+                  lastActivityRef.current = Date.now(); // Registrar actividad al escribir
+                  const t = e.currentTarget;
+                  t.style.height = 'auto';
+                  t.style.height = Math.min(t.scrollHeight, 112) + 'px';
+                }}
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || isTyping}
+                className="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 text-white flex items-center justify-center transition flex-shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1.5 text-center">
+              {lang === 'es'
+                ? '⚠ Orientación informativa — no reemplaza el diagnóstico médico'
+                : '⚠ Informational guidance — does not replace medical diagnosis'}
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
