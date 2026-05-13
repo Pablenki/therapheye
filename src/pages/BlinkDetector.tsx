@@ -1,13 +1,15 @@
 // =========================================
-// DETECTOR DE PARPADEO — Therapheye v2
-// Modos distracción: Lectura / Juego mental
+// DETECTOR DE PARPADEO — Therapheye v3
+// Modos distracción: Lectura (scroll) / Juego mental
 // La cámara corre en segundo plano, oculta.
+// BPM: indicador pequeño en modos distracción
+// Prompt de finalización a los 60 s
 // =========================================
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ArrowLeft, Eye, EyeOff, AlertTriangle, CheckCircle2,
-  Camera, CameraOff, Save, Clock, BookOpen, Zap, ChevronRight,
+  Camera, CameraOff, Save, Clock, BookOpen, Zap,
 } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
@@ -56,8 +58,8 @@ const READING_FACTS = [
 
 // ── Generador de preguntas ───────────────────────────────────────────────────
 function generateQuestion(): GameQuestion {
-  const a  = Math.floor(Math.random() * 40) + 11; // 11–50
-  const b  = Math.floor(Math.random() * 30) + 5;  // 5–34
+  const a  = Math.floor(Math.random() * 40) + 11;
+  const b  = Math.floor(Math.random() * 30) + 5;
   const op = (Math.random() > 0.4 ? '+' : '-') as '+' | '-';
   const correct = op === '+' ? a + b : a - b;
   const opts = new Set([correct]);
@@ -95,7 +97,10 @@ function fmtTime(sec: number) {
 export default function BlinkDetector({ onBack }: Props) {
   const { user } = useUser();
 
+  // Processing video (always hidden — used by MediaPipe)
   const videoRef          = useRef<HTMLVideoElement>(null);
+  // Display video (only for camera mode — visible)
+  const cameraDisplayRef  = useRef<HTMLVideoElement>(null);
   const canvasRef         = useRef<HTMLCanvasElement>(null);
   const animRef           = useRef<number>(0);
   const landmarkerRef     = useRef<any>(null);
@@ -118,12 +123,12 @@ export default function BlinkDetector({ onBack }: Props) {
 
   // Distraction state
   const [selectedMode,   setSelectedMode]   = useState<Mode | null>(null);
-  const [factIndex,      setFactIndex]      = useState(0);
   const [gameQ,          setGameQ]          = useState<GameQuestion>(generateQuestion);
   const [gameScore,      setGameScore]      = useState(0);
   const [gameAnswered,   setGameAnswered]   = useState(false);
   const [gameWasCorrect, setGameWasCorrect] = useState(false);
   const [hasEnoughData,  setHasEnoughData]  = useState(false);
+  const [finishPromptDismissed, setFinishPromptDismissed] = useState(false);
 
   // ── Load history ────────────────────────────────────────────────────────────
   const loadTodaySessions = useCallback(async () => {
@@ -157,11 +162,12 @@ export default function BlinkDetector({ onBack }: Props) {
     if (status === 'running' && elapsed >= 60 && !hasEnoughData) setHasEnoughData(true);
   }, [elapsed, status, hasEnoughData]);
 
-  // ── Rotate reading facts every 9 s ──────────────────────────────────────────
+  // ── Sync stream to camera display video when running in camera mode ──────────
   useEffect(() => {
-    if (status !== 'running' || selectedMode !== 'lectura') return;
-    const id = setInterval(() => setFactIndex(i => (i + 1) % READING_FACTS.length), 9000);
-    return () => clearInterval(id);
+    if (status === 'running' && selectedMode === 'camara' && cameraDisplayRef.current && streamRef.current) {
+      cameraDisplayRef.current.srcObject = streamRef.current;
+      cameraDisplayRef.current.play().catch(() => {});
+    }
   }, [status, selectedMode]);
 
   // ── Game answer ──────────────────────────────────────────────────────────────
@@ -215,7 +221,7 @@ export default function BlinkDetector({ onBack }: Props) {
     setBlinksPerMin(0);
     setTotalBlinks(0);
     setHasEnoughData(false);
-    setFactIndex(0);
+    setFinishPromptDismissed(false);
     setGameQ(generateQuestion());
     setGameScore(0);
     setGameAnswered(false);
@@ -229,6 +235,7 @@ export default function BlinkDetector({ onBack }: Props) {
       });
       streamRef.current = stream;
 
+      // Attach to processing video (always hidden, always mounted)
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await new Promise<void>(res => { videoRef.current!.onloadeddata = () => res(); });
@@ -316,20 +323,17 @@ export default function BlinkDetector({ onBack }: Props) {
     };
   }, []);
 
-  const color       = rateColor(blinksPerMin);
-  const label       = rateLabel(blinksPerMin);
-  const progressPct = Math.min((elapsed / 60) * 100, 100);
+  const color = rateColor(blinksPerMin);
+  const label = rateLabel(blinksPerMin);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pb-24">
 
-      {/* Video: oculto en modos lectura/juego, visible en modo cámara */}
-      {selectedMode !== 'camara' && (
-        <div style={{ position: 'fixed', bottom: 0, right: 0, width: 0, height: 0, overflow: 'hidden' }}>
-          <video ref={videoRef} muted playsInline style={{ width: 160, height: 120 }} />
-        </div>
-      )}
+      {/* Processing video — ALWAYS hidden, always mounted so ref is available */}
+      <div style={{ position: 'fixed', bottom: 0, right: 0, width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <video ref={videoRef} muted playsInline style={{ width: 160, height: 120 }} />
+      </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-8">
 
@@ -494,7 +498,7 @@ export default function BlinkDetector({ onBack }: Props) {
             <div className="lg:col-span-3">
               <div className="bg-black rounded-2xl overflow-hidden shadow-xl relative aspect-video flex items-center justify-center">
                 <video
-                  ref={videoRef}
+                  ref={cameraDisplayRef}
                   muted playsInline
                   className="w-full h-full object-cover"
                   style={{ transform: 'scaleX(-1)' }}
@@ -576,90 +580,22 @@ export default function BlinkDetector({ onBack }: Props) {
         {status === 'running' && selectedMode !== 'camara' && (
           <div className="space-y-4">
 
-            {/* ── BPM Hero Card ── */}
-            <div className="bg-white rounded-2xl shadow-md px-6 py-5">
-              {/* Status bar */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
-                  <span className="text-xs text-gray-500 font-medium">Cámara activa · {fmtTime(elapsed)}</span>
-                </div>
-                <span className="text-xs text-gray-400">
-                  <span className="font-semibold text-gray-600">{totalBlinks}</span> parpadeos totales
-                </span>
-              </div>
-
-              {/* Big number */}
-              <div className="flex items-end justify-between">
-                <div>
-                  <div
-                    className="text-[5.5rem] leading-none font-black transition-all duration-500 tabular-nums"
-                    style={{ color }}
-                  >
-                    {blinksPerMin}
-                  </div>
-                  <p className="text-sm text-gray-400 font-medium -mt-1">parpadeos / minuto</p>
-                </div>
-                <div className="text-right pb-2 shrink-0">
-                  <p className="text-3xl">{label.emoji}</p>
-                  <p className="text-xs text-gray-500 mt-1 max-w-[130px] text-right leading-snug">{label.text}</p>
-                </div>
-              </div>
-
-              {/* 60 s progress bar */}
-              <div className="mt-4">
-                <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                  <span>Ventana de medición (60 s)</span>
-                  <span>{Math.min(elapsed, 60)} s / 60 s</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${progressPct}%`, backgroundColor: color }}
-                  />
-                </div>
-                {hasEnoughData && (
-                  <p className="text-xs text-green-600 mt-1.5 font-medium">✓ Datos suficientes · puedes guardar cuando quieras</p>
-                )}
-              </div>
-            </div>
-
-            {/* ── BPM scale ── */}
-            <div className="bg-white rounded-xl shadow-sm px-4 py-3">
-              <div className="flex justify-between text-[10px] mb-1.5">
-                <span className="text-red-400 font-medium">⚠ Muy bajo (&lt;8)</span>
-                <span className="text-amber-400 font-medium">Bajo (8–12)</span>
-                <span className="text-green-500 font-medium">Normal (12+)</span>
-              </div>
-              <div className="relative h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="absolute left-0     top-0 h-full w-[40%] bg-red-200    rounded-l-full" />
-                <div className="absolute left-[40%] top-0 h-full w-[20%] bg-amber-200" />
-                <div className="absolute left-[60%] top-0 h-full w-[40%] bg-green-200  rounded-r-full" />
-                <div
-                  className="absolute top-0 h-full w-3 rounded-full border-2 border-white shadow transition-all duration-700"
-                  style={{ left: `calc(${Math.min((blinksPerMin / 20) * 100, 96)}% - 6px)`, backgroundColor: color }}
-                />
-              </div>
-            </div>
-
-            {/* ── Distraction panel ── */}
+            {/* ── Panel de distracción (contenido principal) ── */}
             {selectedMode === 'lectura' ? (
-              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-indigo-500 uppercase tracking-wide flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5" /> {READING_FACTS[factIndex].tag}
-                  </span>
-                  <span className="text-xs text-indigo-300">{factIndex + 1} / {READING_FACTS.length}</span>
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl overflow-hidden">
+                <div className="px-5 pt-4 pb-2 flex items-center gap-2 border-b border-indigo-100">
+                  <BookOpen className="w-4 h-4 text-indigo-500" />
+                  <span className="text-xs font-bold text-indigo-500 uppercase tracking-wide">Salud visual · Datos curiosos</span>
                 </div>
-                <p className="text-gray-800 text-base leading-relaxed font-medium">
-                  {READING_FACTS[factIndex].text}
-                </p>
-                <button
-                  onClick={() => setFactIndex(i => (i + 1) % READING_FACTS.length)}
-                  className="mt-4 text-xs text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1 transition"
-                >
-                  Siguiente dato <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                {/* Scrollable list of all facts */}
+                <div className="overflow-y-auto max-h-96 px-5 py-3 space-y-4">
+                  {READING_FACTS.map((fact, i) => (
+                    <div key={i} className="pb-4 border-b border-indigo-100 last:border-0 last:pb-0">
+                      <p className="text-xs font-bold text-indigo-600 mb-1">{fact.tag}</p>
+                      <p className="text-gray-800 text-sm leading-relaxed">{fact.text}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 rounded-2xl p-6">
@@ -700,7 +636,31 @@ export default function BlinkDetector({ onBack }: Props) {
               </div>
             )}
 
-            {/* Low blink alert */}
+            {/* ── Prompt de finalización a los 60 s ── */}
+            {hasEnoughData && !finishPromptDismissed && (
+              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-sm text-green-700 font-medium">
+                  ✓ Ya tienes suficientes datos · ¿Deseas finalizar?
+                </p>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => setFinishPromptDismissed(true)}
+                    className="text-xs text-green-600 hover:text-green-800 font-semibold px-3 py-1.5 rounded-lg hover:bg-green-100 transition border border-green-200"
+                  >
+                    Continuar midiendo
+                  </button>
+                  <button
+                    onClick={() => stopSession(true)}
+                    disabled={saving}
+                    className="text-xs bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold px-3 py-1.5 rounded-lg transition"
+                  >
+                    {saving ? 'Guardando...' : 'Guardar y terminar'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Alerta tasa baja ── */}
             {blinksPerMin > 0 && blinksPerMin < LOW_BLINK_ALERT && (
               <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -711,23 +671,37 @@ export default function BlinkDetector({ onBack }: Props) {
               </div>
             )}
 
-            {/* Controls */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => stopSession(true)}
-                disabled={saving}
-                className="flex-1 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow"
-              >
-                <Save className="w-5 h-5" />
-                {saving ? 'Guardando...' : 'Guardar y Terminar'}
-              </button>
-              <button
-                onClick={() => stopSession(false)}
-                className="py-3 px-5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition"
-                title="Detener sin guardar"
-              >
-                <CameraOff className="w-5 h-5" />
-              </button>
+            {/* ── Indicador BPM pequeño + controles ── */}
+            <div className="flex items-center justify-between gap-3">
+              {/* Mini BPM badge */}
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-xs text-gray-400">{fmtTime(elapsed)}</span>
+                <span
+                  className="text-xs font-bold px-2.5 py-1 rounded-full text-white shadow-sm ml-1"
+                  style={{ backgroundColor: color }}
+                >
+                  {blinksPerMin} parp/min {label.emoji}
+                </span>
+              </div>
+              {/* Controls */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => stopSession(true)}
+                  disabled={saving}
+                  className="py-2.5 px-4 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl font-semibold flex items-center gap-2 text-sm transition shadow"
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
+                <button
+                  onClick={() => stopSession(false)}
+                  className="py-2.5 px-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold flex items-center justify-center transition"
+                  title="Detener sin guardar"
+                >
+                  <CameraOff className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}

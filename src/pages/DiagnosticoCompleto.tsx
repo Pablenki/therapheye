@@ -701,13 +701,31 @@ const DiagnosticoCompleto = ({ onBack, onNavigate }: Props) => {
 
             {/* Faltantes al actualizar */}
             {faltantes.length > 0 && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-amber-800 mb-1">Faltan datos en:</p>
-                  <ul className="text-sm text-amber-700 space-y-0.5">
-                    {faltantes.map(f => <li key={f}>• {f}</li>)}
-                  </ul>
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                  <p className="text-sm font-semibold text-amber-800">
+                    Falta completar {faltantes.length} módulo{faltantes.length > 1 ? 's' : ''} de hoy:
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {faltantes.map(f => (
+                    <div key={f} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-100">
+                      <span className="text-sm text-amber-800 flex items-center gap-2">
+                        <span>{FALTANTE_ICON[f] ?? '📌'}</span>
+                        <span>{f.replace(' (hoy)', '')}</span>
+                      </span>
+                      {onNavigate && FALTANTE_PAGE[f] && (
+                        <button
+                          onClick={() => onNavigate(FALTANTE_PAGE[f])}
+                          className="flex items-center gap-1 text-xs bg-amber-600 text-white px-2.5 py-1 rounded-lg hover:bg-amber-700 transition font-medium"
+                        >
+                          <Navigation className="w-3 h-3" />
+                          Ir ahora
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

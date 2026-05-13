@@ -1,7 +1,7 @@
 // =========================================
 // Netlify Function: ai-queue
 // Gestiona la cola de acceso al asistente de IA
-// Solo un usuario activo a la vez (limita consumo TPM/día en Groq)
+// Máximo 2 usuarios activos simultáneos (posiciones 0 y 1)
 // Inactividad: sesión expira automáticamente a los 2 minutos sin heartbeat
 // =========================================
 
@@ -85,7 +85,7 @@ export const handler: Handler = async (event) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          status: position === 0 ? 'active' : 'waiting',
+          status: position <= 1 ? 'active' : 'waiting',
           position,
         }),
       };
@@ -112,7 +112,7 @@ export const handler: Handler = async (event) => {
         statusCode: 200,
         headers,
         body: JSON.stringify({
-          status: position === 0 ? 'active' : 'waiting',
+          status: position <= 1 ? 'active' : 'waiting',
           position,
         }),
       };

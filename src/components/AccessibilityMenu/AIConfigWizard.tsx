@@ -83,6 +83,7 @@ Temas disponibles:
 
 Modos daltonismo: none, protanopia, deuteranopia, tritanopia, achromatopsia
 Fuentes: "default", "Arial, sans-serif", "Georgia, serif", "Courier New, monospace", "OpenDyslexic, sans-serif"
+IMPORTANTE sobre fuentes: NUNCA uses "OpenDyslexic, sans-serif" a menos que el campo "condiciones visuales" incluya explícitamente "dislexia". Para cualquier otro perfil usa fuentes estándar.
 fontSize: 80-180 (100 = normal, 120 = grande)
 zoom: 80-150 (100 = normal)
 

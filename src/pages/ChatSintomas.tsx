@@ -47,7 +47,9 @@ Rules:
 - Use emojis in moderation to keep responses friendly
 - NEVER diagnose diseases — only guide on common symptoms and probable causes
 - For serious symptoms (sudden vision loss, intense pain, trauma, sudden floaters, dark curtain in vision): URGENTLY recommend seeing an ophthalmologist
-- When relevant, mention Therapheye exercises by their exact name: "Palming", "20-20-20 rule", "eye circular movements", "near-far focus". The system will detect those names and show buttons to start them directly
+- DO NOT proactively recommend exercises in every response — only mention them if the user explicitly asks for exercises or if the symptom makes it very clearly appropriate
+- If exercises might help, ask at the end: "Would you like me to suggest a visual exercise for this?" — do not just launch into recommending them
+- When exercises are explicitly requested or confirmed, mention by exact name: "Palming", "20-20-20 rule", "eye circular movements", "near-far focus" (the system detects these names and shows action buttons)
 - Always briefly add that you do not replace a professional medical diagnosis`
   : `Eres un asistente especializado en salud visual para la plataforma Therapheye.
 Tu rol: orientar a los usuarios sobre síntomas visuales comunes, posibles causas y cuándo buscar atención médica.
@@ -57,8 +59,10 @@ Reglas:
 - Usa emojis con moderación para hacer la respuesta amigable
 - NUNCA diagnostiques enfermedades — solo orienta sobre síntomas comunes y probables causas
 - Para síntomas graves (pérdida súbita de visión, dolor intenso, trauma, moscas flotantes súbitas, cortina oscura en la visión): recomienda URGENTEMENTE al oftalmólogo con énfasis
-- Cuando sea relevante, menciona ejercicios de Therapheye por su nombre exacto: "Palming", "Regla 20-20-20", "movimientos circulares de ojos", "enfoque cercano-lejano". El sistema detectará esos nombres y mostrará botones para iniciarlos directamente
-- Añade siempre brevemente que no reemplazas un diagnóstico médico profesional cuando des orientación sobre síntomas`;
+- NO recomiendes ejercicios proactivamente en cada respuesta — solo mencionarlos si el usuario los pide explícitamente o si el síntoma lo hace muy evidente
+- Si crees que ejercicios podrían ayudar, pregunta al final: "¿Quieres que te sugiera algún ejercicio visual para esto?" — no los incluyas sin que el usuario lo confirme
+- Cuando el usuario pida ejercicios o lo confirme, menciónalos por su nombre exacto: "Palming", "Regla 20-20-20", "movimientos circulares de ojos", "enfoque cercano-lejano" (el sistema los detecta y muestra botones de acción)
+- Añade siempre brevemente que no reemplazas un diagnóstico médico profesional`;
 
 const WELCOME_MSG_ES = `¡Hola! 👋 Soy tu asistente de salud visual.\n\nCuéntame qué molestia o síntoma tienes — puedo orientarte sobre posibles causas y si deberías consultar a un especialista. ¿Qué te pasa?`;
 const WELCOME_MSG_EN = `Hi! 👋 I'm your visual health assistant.\n\nTell me what symptom or discomfort you have — I can guide you on possible causes and whether you should see a specialist. What's going on?`;
@@ -575,8 +579,8 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
                 </p>
                 <p className="text-sm text-gray-500 mt-3 max-w-xs leading-relaxed">
                   {lang === 'es'
-                    ? 'El asistente está atendiendo a otro usuario. Serás atendido automáticamente cuando sea tu turno.'
-                    : 'The assistant is busy with another user. You will be served automatically when it\'s your turn.'}
+                    ? 'Los 2 turnos activos están ocupados. Serás atendido automáticamente en cuanto quede un lugar libre.'
+                    : 'Both active slots are taken. You\'ll be served automatically as soon as one becomes available.'}
                 </p>
                 <p className="text-xs text-gray-400 mt-2">
                   {lang === 'es' ? 'Verificando cada 8 segundos...' : 'Checking every 8 seconds...'}
