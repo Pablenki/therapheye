@@ -228,6 +228,55 @@ const playBeep = () => {
   } catch { /* noop */ }
 };
 
+// ─── Detección de apertura de navegador (primary tab) ────────────────────────
+
+/** Obtiene un ID único para esta pestaña (vive en sessionStorage → se limpia al cerrar). */
+const getTabId = (): string => {
+  let id = sessionStorage.getItem('therapheye_tab_id');
+  if (!id) {
+    id = 'tab-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    sessionStorage.setItem('therapheye_tab_id', id);
+  }
+  return id;
+};
+
+const PRIMARY_TAB_KEY    = 'therapeye_primary_tab';
+const PRIMARY_TAB_TTL_MS = 35_000; // Si no hay heartbeat en 35s → la pestaña se considera cerrada
+
+type PrimaryTabData = { tabId: string; claimedAt: number };
+
+/** Intenta tomar el rol de "pestaña principal".
+ *  Retorna true si lo logra (o si ya lo tenía), false si otra pestaña está activa. */
+const tryClaimPrimaryTab = (): boolean => {
+  try {
+    const tabId = getTabId();
+    const raw = localStorage.getItem(PRIMARY_TAB_KEY);
+    if (raw) {
+      const existing: PrimaryTabData = JSON.parse(raw);
+      const age = Date.now() - existing.claimedAt;
+      if (age < PRIMARY_TAB_TTL_MS && existing.tabId !== tabId) return false; // otra pestaña sigue viva
+    }
+    localStorage.setItem(PRIMARY_TAB_KEY, JSON.stringify({ tabId, claimedAt: Date.now() }));
+    return true;
+  } catch { return true; }
+};
+
+/** Renueva la marca de "soy la pestaña principal" en localStorage. */
+const heartbeatPrimaryTab = (): boolean => {
+  try {
+    const tabId = getTabId();
+    const raw = localStorage.getItem(PRIMARY_TAB_KEY);
+    if (raw) {
+      const existing: PrimaryTabData = JSON.parse(raw);
+      if (existing.tabId === tabId) {
+        localStorage.setItem(PRIMARY_TAB_KEY, JSON.stringify({ tabId, claimedAt: Date.now() }));
+        return true;
+      }
+    }
+    return false;
+  } catch { return false; }
+};
+
 // ─── DB sync helpers ─────────────────────────────────────────────────────────
 const DB_SYNC_INTERVAL_MS = 30_000;
 const DB_POLL_INTERVAL_MS = 5_000; // Poll BD cada 5s para detectar cambios de la extensión
@@ -361,6 +410,8 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const foreignSessionDismissedRef                  = useRef(false);
   /** Modal: la extensión estaba corriendo al iniciar sesión */
   const [showExtActivePrompt, setShowExtActivePrompt] = useState<{ accMs: number } | null>(null);
+  /** Modal: ¿Iniciar timer? — se muestra una vez al abrir el navegador (pestaña principal) */
+  const [showBrowserOpenPrompt, setShowBrowserOpenPrompt] = useState(false);
 
   useEffect(() => {
     const handler = () => setIsMobile(isMobileDevice());
@@ -420,6 +471,8 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
   const lastDbPollRef   = useRef<number>(0);
   const dbLoadedRef     = useRef<boolean>(false);
   const loginHandledRef = useRef<boolean>(false);
+  const isPrimaryTabRef          = useRef<boolean>(false);
+  const browserOpenHandledRef    = useRef<boolean>(false);
 
   // ── Refs de inactividad ────────────────────────────────────────────────────
   const lastActivityRef         = useRef<number>(Date.now());
@@ -440,6 +493,58 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     saveTimerToDB(user.id, state, getWebSourceId());
   }, [user?.id]);
 
+
+  // ── Detección de apertura de navegador: claim primary tab (solo una vez al montar) ──
+  useEffect(() => {
+    // sessionStorage se borra cuando se cierra la pestaña — si no hay flag, es una sesión fresca
+    const alreadyHandled = sessionStorage.getItem('therapheye_browser_session');
+    if (alreadyHandled) {
+      // La pestaña ya fue procesada (recarga de página en misma sesión): solo verificar si seguimos siendo primary
+      const raw = localStorage.getItem(PRIMARY_TAB_KEY);
+      if (raw) {
+        try {
+          const data: PrimaryTabData = JSON.parse(raw);
+          if (data.tabId === getTabId()) isPrimaryTabRef.current = true;
+        } catch { /* noop */ }
+      }
+      return;
+    }
+    sessionStorage.setItem('therapheye_browser_session', '1');
+    isPrimaryTabRef.current = tryClaimPrimaryTab();
+    // browserOpenHandledRef empieza en false → el siguiente effect mostrará el prompt cuando el usuario esté listo
+  }, []);
+
+  // ── Heartbeat de pestaña principal (cada 30s) ─────────────────────────────
+  useEffect(() => {
+    if (!isPrimaryTabRef.current) return;
+    const interval = setInterval(() => {
+      const stillPrimary = heartbeatPrimaryTab();
+      isPrimaryTabRef.current = stillPrimary;
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Mostrar prompt de timer al abrir navegador (sesión restaurada automáticamente) ──
+  useEffect(() => {
+    if (browserOpenHandledRef.current) return;
+    if (!isPrimaryTabRef.current) return;
+    if (isAuthPage) return;
+    if (!user?.id) return;
+    if (isMobile) return;
+    if (wasManualLogin) return; // login manual ya tiene su propio flujo
+    if (showStartPrompt || showExtActivePrompt !== null || showBrowserOpenPrompt) return;
+
+    browserOpenHandledRef.current = true;
+    // Esperar un momento para que el estado del timer se cargue de BD
+    const t = setTimeout(() => {
+      const st = loadState();
+      if (st.finalized) return;      // ya finalizó hoy
+      if (st.isRunning) return;      // ya está corriendo
+      setShowBrowserOpenPrompt(true);
+    }, 1800);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthPage, user?.id, isMobile, wasManualLogin, showStartPrompt, showExtActivePrompt]);
 
   // ── Inicializar: cargar desde BD primero, luego localStorage como fallback ──
   useEffect(() => {
@@ -923,6 +1028,36 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
     setShowStartPrompt(false);
   };
 
+  // ── Handlers: prompt de apertura de navegador ─────────────────────────────
+
+  const handleBrowserOpenStart = () => {
+    setShowBrowserOpenPrompt(false);
+    const st = loadState();
+    const now = Date.now();
+    const baseMs = st.accumulatedMs;
+    const started: PersistedTimerState = {
+      ...st,
+      isRunning: true,
+      startTimestamp: now,
+      accumulatedMs: baseMs,
+      sessionStartTimestamp: st.sessionStartTimestamp ?? now,
+      nextBreakAtMs: baseMs + WORK_MINUTES * 60_000,
+      finalized: false,
+      stateDate: todayLocalDate(),
+    };
+    persistState(started);
+    setIsRunning(true);
+    setElapsedSeconds(Math.floor(baseMs / 1000));
+    lastActivityRef.current = Date.now();
+    inactivityWarnSentRef.current = false;
+    inactivityStopSentRef.current = false;
+    if (user?.id) { lastDbSyncRef.current = 0; saveTimerToDB(user.id, started, getWebSourceId()); }
+  };
+
+  const handleBrowserOpenSkip = () => {
+    setShowBrowserOpenPrompt(false);
+  };
+
   // ── Handlers para extensión activa al login ───────────────────────────────
 
   const handleExtActiveAdopt = () => {
@@ -1044,6 +1179,41 @@ const GlobalTimerWidget = ({ currentPage, onNavigate }: Props) => {
                 className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow"
               >
                 {t('visualHealth', 'timerPromptStart')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: ¿Iniciar timer al abrir el navegador? ── */}
+      {showBrowserOpenPrompt && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-7 max-w-sm w-full mx-4 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                <Monitor className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-800">
+                {lang === 'es' ? '¿Iniciar temporizador visual?' : 'Start visual timer?'}
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {lang === 'es'
+                ? 'Detectamos que abriste el navegador. ¿Quieres iniciar el temporizador de pantalla ahora?'
+                : 'We detected a new browser session. Do you want to start the screen timer now?'}
+            </p>
+            <div className="flex gap-3 justify-end mt-1">
+              <button
+                onClick={handleBrowserOpenSkip}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
+              >
+                {lang === 'es' ? 'Ahora no' : 'Not now'}
+              </button>
+              <button
+                onClick={handleBrowserOpenStart}
+                className="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition shadow"
+              >
+                {lang === 'es' ? 'Iniciar' : 'Start'}
               </button>
             </div>
           </div>

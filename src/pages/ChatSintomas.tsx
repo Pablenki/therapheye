@@ -251,9 +251,10 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const quickSymptoms = lang === 'en' ? QUICK_SYMPTOMS_EN : QUICK_SYMPTOMS_ES;
   const welcomeMsg = lang === 'en' ? WELCOME_MSG_EN : WELCOME_MSG_ES;
 
-  const [messages, setMessages] = useState<Message[]>(() =>
-    user?.id ? loadChatMessages(user.id, welcomeMsg) : [{ role: 'assistant', content: welcomeMsg, timestamp: new Date() }]
-  );
+  // Siempre iniciar sesión limpia — no auto-cargar historial anterior
+  const [messages, setMessages] = useState<Message[]>([{ role: 'assistant', content: welcomeMsg, timestamp: new Date() }]);
+  const [hasHistory, setHasHistory] = useState(false);   // hay historial guardado del que el usuario puede retomar
+  const [resumed, setResumed] = useState(false);          // el usuario eligió retomar la sesión anterior
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
@@ -275,7 +276,19 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Persistir mensajes
+  // Detectar si hay historial guardado (para mostrar opción de retomar)
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const raw = localStorage.getItem(`${CHAT_STORAGE_KEY}_${user.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 1) setHasHistory(true);
+      }
+    } catch { /* noop */ }
+  }, [user?.id]);
+
+  // Persistir mensajes (solo cuando hay más de 1 — el mensaje de bienvenida no cuenta)
   useEffect(() => {
     if (user?.id && messages.length > 1) {
       saveChatMessages(messages, user.id);
@@ -465,7 +478,17 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     setError('');
     setInput('');
     setSupportSent(false);
+    setResumed(false);
+    setHasHistory(false);
   };
+
+  const handleResume = useCallback(() => {
+    if (!user?.id) return;
+    const msgs = loadChatMessages(user.id, welcomeMsg);
+    setMessages(msgs);
+    setResumed(true);
+    setHasHistory(false);
+  }, [user?.id, welcomeMsg]);
 
   const handleSendSupport = async () => {
     if (supportSending || supportSent) return;
@@ -635,6 +658,25 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
                 onStartExercise={onStartExercise}
               />
             ))}
+
+            {/* Banner de sesión anterior disponible */}
+            {messages.length === 1 && hasHistory && !resumed && (
+              <div className="mx-1 mb-4 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-base leading-none flex-shrink-0">💬</span>
+                  <p className="text-sm text-indigo-700 font-medium leading-snug truncate">
+                    {lang === 'es' ? 'Tienes una conversación anterior guardada' : 'You have a previous conversation saved'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleResume}
+                  className="flex-shrink-0 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition"
+                >
+                  {lang === 'es' ? 'Retomar' : 'Resume'}
+                </button>
+              </div>
+            )}
+
             {isTyping && (
               <div className="flex gap-2.5 mb-4">
                 <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-1">
