@@ -525,6 +525,7 @@ const VisualHealth = ({ onBack }: Props) => {
   const [sessionPage, setSessionPage]               = useState(0);
   const [selectedDay, setSelectedDay]               = useState<string | null>(null);
   const [countdown, setCountdown]                   = useState<number | null>(null);
+  const [timerSource, setTimerSource]               = useState<'ext' | 'web'>('web');
 
   // ── Preferencias / onboarding ──────────────────────────────────────────────
   const [notifyOnLogin, setNotifyOnLogin]           = useState(() => loadTimerPrefs().notifyOnLogin);
@@ -655,6 +656,32 @@ const VisualHealth = ({ onBack }: Props) => {
     const SLEEP_THRESHOLD_MS = 30_000;
 
     const interval = setInterval(() => {
+      // Priorizar extensión si está instalada y tiene datos de hoy
+      const extInstalled = localStorage.getItem('therapheye_ext_installed') === '1';
+      if (extInstalled) {
+        try {
+          const raw = localStorage.getItem('therapeye_ext_timer');
+          if (raw) {
+            const ext = JSON.parse(raw);
+            const _d = new Date();
+            const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
+            if (ext.stateDate === today) {
+              let ms = Number(ext.accumulatedMs) || 0;
+              if (ext.isRunning && ext.startTimestamp) {
+                const delta = Date.now() - Number(ext.startTimestamp);
+                if (delta > 0 && delta < MAX_SESSION_MS) ms += delta;
+              }
+              setElapsedSeconds(Math.floor(ms / 1000));
+              setIsRunning(ext.isRunning === true);
+              setTimerSource('ext');
+              lastTickTs = Date.now();
+              return;
+            }
+          }
+        } catch {}
+      }
+      setTimerSource('web');
+
       const now = Date.now();
       const gap = now - lastTickTs;
       lastTickTs = now;
@@ -1050,7 +1077,11 @@ const VisualHealth = ({ onBack }: Props) => {
               </div>
 
               <div className="flex items-center gap-3 mb-3 flex-wrap justify-center">
-                {isRunning ? (
+                {timerSource === 'ext' ? (
+                  <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold">
+                    🧩 {lang === 'es' ? 'Controlado desde la extensión' : 'Controlled by extension'}
+                  </div>
+                ) : isRunning ? (
                   <button onClick={handlePause}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 text-white font-semibold hover:bg-red-700 transition shadow">
                     <Pause className="w-5 h-5" /> {t('common', 'pause')}
@@ -1066,14 +1097,16 @@ const VisualHealth = ({ onBack }: Props) => {
                     <Play className="w-5 h-5" /> {t('common', 'start')}
                   </button>
                 )}
-                <button onClick={handleReset} disabled={countdown !== null || elapsedSeconds === 0}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                  <RotateCcw className="w-5 h-5" /> {t('common', 'reset')}
-                </button>
-                <button onClick={handleTerminate} disabled={elapsedSeconds === 0 || countdown !== null}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow disabled:opacity-40 disabled:cursor-not-allowed">
-                  <StopCircle className="w-5 h-5" /> {t('visualHealth', 'terminate')}
-                </button>
+                {timerSource !== 'ext' && <>
+                  <button onClick={handleReset} disabled={countdown !== null || elapsedSeconds === 0}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                    <RotateCcw className="w-5 h-5" /> {t('common', 'reset')}
+                  </button>
+                  <button onClick={handleTerminate} disabled={elapsedSeconds === 0 || countdown !== null}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition shadow disabled:opacity-40 disabled:cursor-not-allowed">
+                    <StopCircle className="w-5 h-5" /> {t('visualHealth', 'terminate')}
+                  </button>
+                </>}
               </div>
 
               {nextBreakInMinutes != null && isRunning && (
