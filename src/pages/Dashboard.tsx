@@ -412,7 +412,8 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           const raw = localStorage.getItem('therapeye_ext_timer');
           if (raw) {
             const ext = JSON.parse(raw);
-            const today = new Date().toISOString().slice(0, 10);
+            const _d = new Date();
+            const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
             if (ext.stateDate === today) {
               let ms = Number(ext.accumulatedMs) || 0;
               if (ext.isRunning && ext.startTimestamp) {
