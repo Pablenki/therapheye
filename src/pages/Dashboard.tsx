@@ -345,15 +345,22 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   // Detectar extensión
   useEffect(() => {
     const EXT_ID = 'lephmmimjeeeknpgdmnhpjkbbnmplcal';
+    // Método 1: localStorage seteado por content.js (más confiable)
+    if (localStorage.getItem('therapheye_ext_installed') === '1') { setExtensionInstalled(true); return; }
+    // Método 2: atributo en el HTML
     if (document.documentElement.hasAttribute('data-therapheye-ext')) { setExtensionInstalled(true); return; }
+    // Método 3: cargar recurso de la extensión
     const img = new Image();
     img.onload = () => setExtensionInstalled(true);
     img.src = `chrome-extension://${EXT_ID}/icons/icon16.png`;
+    // Método 4: escuchar el evento de sync del content script
+    const onSync = () => setExtensionInstalled(true);
+    window.addEventListener('therapheye-ext-sync', onSync);
     const obs = new MutationObserver(() => {
       if (document.documentElement.hasAttribute('data-therapheye-ext')) { setExtensionInstalled(true); obs.disconnect(); }
     });
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-therapheye-ext'] });
-    return () => { obs.disconnect(); img.onload = null; };
+    return () => { obs.disconnect(); img.onload = null; window.removeEventListener('therapheye-ext-sync', onSync); };
   }, []);
 
   // PWA install prompt
