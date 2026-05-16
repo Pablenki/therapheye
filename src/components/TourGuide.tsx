@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronRight, ChevronLeft, X } from 'lucide-react';
+import { useSwipe } from '../hooks/useSwipe';
 
 const TOUR_KEY = 'therapheye_tour_done';
 
@@ -170,6 +171,8 @@ export default function TourGuide({ active, onClose }: Props) {
     if (step > 0) setStep(s => s - 1);
   };
 
+  const swipe = useSwipe(goNext, goPrev);
+
   if (!active) return null;
 
   const s = STEPS[step];
@@ -249,7 +252,8 @@ export default function TourGuide({ active, onClose }: Props) {
       <div
         ref={tooltipRef}
         className="fixed z-[99999] bg-white rounded-2xl shadow-2xl overflow-hidden"
-        style={getTooltipStyle()}
+        style={{ ...getTooltipStyle(), touchAction: 'pan-y' }}
+        {...swipe}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 flex items-center justify-between">

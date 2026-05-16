@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { ChevronRight, CheckCircle2 } from 'lucide-react';
+import { useSwipe } from '../hooks/useSwipe';
 
 const ONBOARDING_KEY = 'therapheye_onboarding_done';
 
@@ -67,6 +68,11 @@ export default function Onboarding({ onDone }: Props) {
     }, 280);
   };
 
+  const swipe = useSwipe(
+    () => { if (slide < SLIDES.length - 1) goTo(slide + 1, 'fwd'); else finish(); },
+    () => { if (slide > 0) goTo(slide - 1, 'back'); },
+  );
+
   const next = () => {
     if (slide < SLIDES.length - 1) goTo(slide + 1, 'fwd');
     else finish();
@@ -89,7 +95,7 @@ export default function Onboarding({ onDone }: Props) {
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden" {...swipe} style={{ touchAction: 'pan-y' }}>
 
         {/* Slide content */}
         <div className={`bg-gradient-to-br ${s.gradient} p-8 flex flex-col items-center text-center transition-all duration-280 ${slideClass}`}>
