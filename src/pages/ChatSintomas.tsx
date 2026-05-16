@@ -6,7 +6,7 @@
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play, Clock } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
@@ -165,6 +165,31 @@ async function callQueue(action: string, userId: string): Promise<{ status?: str
   } catch { return null; }
 }
 
+// ── Voz (Text-to-Speech) ──────────────────────────────────────────────────────
+
+function cleanTextForSpeech(text: string): string {
+  return text
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')  // emojis unicode range
+    .replace(/[^\P{Emoji_Presentation}\s]/gu, '') // remaining emoji
+    .replace(/[*_~`#>|]/g, '')               // markdown symbols
+    .replace(/\n{2,}/g, '. ')                // double newlines → pause
+    .replace(/\n/g, ' ')
+    .trim();
+}
+
+function speak(text: string, lang: string, onEnd?: () => void) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const cleaned = cleanTextForSpeech(text);
+  if (!cleaned) return;
+  const utter = new SpeechSynthesisUtterance(cleaned);
+  utter.lang = lang === 'en' ? 'en-US' : 'es-MX';
+  utter.rate = 0.95;
+  utter.pitch = 1;
+  if (onEnd) utter.onend = onEnd;
+  window.speechSynthesis.speak(utter);
+}
+
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
 function TypingDots() {
@@ -263,6 +288,9 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const [supportSending, setSupportSending] = useState(false);
 
   // ── Cola de espera ─────────────────────────────────────────────────────────
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   const [queueStatus, setQueueStatus] = useState<QueueStatus>('checking');
   const [queuePosition, setQueuePosition] = useState(0);
   const lastActivityRef = useRef<number>(Date.now());
@@ -275,6 +303,27 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // Auto-speak last AI message when voice is enabled
+  useEffect(() => {
+    if (!voiceEnabled || messages.length < 2) return;
+    const last = messages[messages.length - 1];
+    if (last.role !== 'assistant') return;
+    setIsSpeaking(true);
+    speak(last.content, lang, () => setIsSpeaking(false));
+  }, [messages]); // intentionally omit voiceEnabled/lang — only react to new messages
+
+  // Stop speech when voice is toggled off or component unmounts
+  useEffect(() => {
+    if (!voiceEnabled && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, [voiceEnabled]);
+
+  useEffect(() => {
+    return () => { window.speechSynthesis?.cancel(); };
+  }, []);
 
   // Detectar si hay historial guardado (para mostrar opción de retomar)
   useEffect(() => {
@@ -565,6 +614,24 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
             <Sparkles className="w-3 h-3" />
             {currentProvider || 'Therapheye IA'}
           </span>
+          <button
+            onClick={() => setVoiceEnabled(v => !v)}
+            className={`transition p-1.5 rounded-lg ${
+              voiceEnabled
+                ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            }`}
+            title={
+              voiceEnabled
+                ? (lang === 'es' ? 'Desactivar voz' : 'Disable voice')
+                : (lang === 'es' ? 'Activar voz' : 'Enable voice')
+            }
+          >
+            {voiceEnabled
+              ? <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-pulse' : ''}`} />
+              : <VolumeX className="w-4 h-4" />
+            }
+          </button>
           <button
             onClick={handleReset}
             className="text-gray-400 hover:text-gray-600 transition p-1.5 rounded-lg hover:bg-gray-100"
