@@ -177,14 +177,7 @@ function cleanTextForSpeech(text: string): string {
     .trim();
 }
 
-function base64ToBlob(b64: string, mime: string): Blob {
-  const bytes = atob(b64);
-  const arr = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: mime });
-}
-
-function speakFallback(text: string, lang: string, onEnd?: () => void) {
+function speak(text: string, lang: string, onEnd?: () => void) {
   if (!window.speechSynthesis) { onEnd?.(); return; }
   window.speechSynthesis.cancel();
   const cleaned = cleanTextForSpeech(text);
@@ -297,36 +290,6 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   // ── Cola de espera ─────────────────────────────────────────────────────────
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const speakWithTTS = useCallback(async (text: string, onEnd?: () => void) => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    window.speechSynthesis?.cancel();
-
-    const cleaned = cleanTextForSpeech(text);
-    if (!cleaned) { onEnd?.(); return; }
-
-    try {
-      const res = await fetch('/.netlify/functions/tts-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleaned, lang }),
-      });
-      if (!res.ok) throw new Error('TTS unavailable');
-      const data = await res.json() as { audioContent?: string };
-      if (!data.audioContent) throw new Error('No audio');
-
-      const blob = base64ToBlob(data.audioContent, 'audio/mpeg');
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => { URL.revokeObjectURL(url); audioRef.current = null; onEnd?.(); };
-      audio.onerror = () => { URL.revokeObjectURL(url); audioRef.current = null; speakFallback(text, lang, onEnd); };
-      await audio.play();
-    } catch {
-      speakFallback(text, lang, onEnd);
-    }
-  }, [lang]);
 
   const [queueStatus, setQueueStatus] = useState<QueueStatus>('checking');
   const [queuePosition, setQueuePosition] = useState(0);
@@ -347,13 +310,12 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     const last = messages[messages.length - 1];
     if (last.role !== 'assistant') return;
     setIsSpeaking(true);
-    speakWithTTS(last.content, () => setIsSpeaking(false));
+    speak(last.content, lang, () => setIsSpeaking(false));
   }, [messages]); // intentionally only react to new messages
 
-  // Stop all audio when voice is toggled off
+  // Stop speech when voice is toggled off
   useEffect(() => {
     if (!voiceEnabled) {
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
       window.speechSynthesis?.cancel();
       setIsSpeaking(false);
     }
@@ -361,10 +323,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-      window.speechSynthesis?.cancel();
-    };
+    return () => { window.speechSynthesis?.cancel(); };
   }, []);
 
   // Detectar si hay historial guardado (para mostrar opción de retomar)
