@@ -5,6 +5,7 @@
 // =========================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSwipe } from '../hooks/useSwipe';
 import {
   Activity, Camera, Glasses, History, HeartPulse, ScanEye,
   ClipboardList, ScanFace, BookOpenCheck, MessageCircleHeart,
@@ -189,6 +190,8 @@ export default function FeatureShowcase({ active, onClose }: Props) {
     if (step > 0) goTo(step - 1, 'back');
   }, [step, goTo]);
 
+  const swipe = useSwipe(goNext, goPrev);
+
   // Auto-advance + progress bar
   useEffect(() => {
     if (!active) return;
@@ -236,7 +239,7 @@ export default function FeatureShowcase({ active, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[99990] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-6">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]" {...swipe} style={{ touchAction: 'pan-y' }}>
 
         {/* Top progress bar */}
         <div className="h-1 bg-gray-100 flex-shrink-0">

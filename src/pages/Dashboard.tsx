@@ -45,6 +45,7 @@ import FatigaPredictor from '../components/FatigaPredictor';
 import AmbientLightDetector from '../components/AmbientLightDetector';
 import QuickCheck from '../components/QuickCheck';
 import { getUserFocus } from '../components/OnboardingPreference';
+import { useSwipe } from '../hooks/useSwipe';
 
 const OJOS_DEL_DIA = [
   { emoji: '👁️', dato: 'El ojo humano puede distinguir hasta 10 millones de colores diferentes.' },
@@ -444,6 +445,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   };
   const nextArticle = () => goToArticle((articleIdx + 1) % ARTICLES.length);
   const prevArticle = () => goToArticle((articleIdx - 1 + ARTICLES.length) % ARTICLES.length);
+  const articleSwipe = useSwipe(nextArticle, prevArticle);
 
   useEffect(() => {
     articleIntervalRef.current = setInterval(nextArticle, 18_000);
@@ -921,7 +923,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             const title   = es ? article.titleEs   : article.titleEn;
             const summary = es ? article.summaryEs : article.summaryEn;
             return (
-              <div className="rounded-2xl overflow-hidden shadow-md">
+              <div className="rounded-2xl overflow-hidden shadow-md" {...articleSwipe} style={{ touchAction: 'pan-y' }}>
                 {/* Encabezado */}
                 <div className="flex items-center justify-between px-4 py-2.5 bg-white border border-b-0 border-blue-100 rounded-t-2xl">
                   <div className="flex items-center gap-2">
