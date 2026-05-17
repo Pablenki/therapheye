@@ -6,7 +6,7 @@
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX, History, Trash2, X, Plus, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
@@ -99,6 +99,89 @@ function clearChatMessages(userId: string) {
   try { localStorage.removeItem(`${CHAT_STORAGE_KEY}_${userId}`); } catch { /* noop */ }
 }
 
+// ── Historial de conversaciones ───────────────────────────────────────────────
+const CHAT_HISTORY_KEY = 'therapheye_chat_history_v1';
+const MAX_HISTORY_ENTRIES = 30;
+
+interface StoredConversation {
+  id: string;
+  title: string;
+  preview: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  messages: Array<{ role: 'assistant' | 'user'; content: string; timestamp: string; provider?: string }>;
+}
+
+function loadChatHistory(userId: string): StoredConversation[] {
+  try {
+    const raw = localStorage.getItem(`${CHAT_HISTORY_KEY}_${userId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
+function persistHistory(history: StoredConversation[], userId: string) {
+  try { localStorage.setItem(`${CHAT_HISTORY_KEY}_${userId}`, JSON.stringify(history)); } catch { /* noop */ }
+}
+
+function buildConvEntry(msgs: Message[], existingId?: string): StoredConversation {
+  const userMsgs = msgs.filter(m => m.role === 'user');
+  const firstUser = userMsgs[0]?.content ?? '';
+  const title = firstUser.length > 42 ? firstUser.slice(0, 42) + '…' : firstUser;
+  const lastMsg = msgs[msgs.length - 1];
+  const preview = lastMsg.content.length > 65 ? lastMsg.content.slice(0, 65) + '…' : lastMsg.content;
+  return {
+    id: existingId ?? (Date.now().toString(36) + Math.random().toString(36).slice(2)),
+    title,
+    preview,
+    createdAt: msgs[0].timestamp.toISOString(),
+    updatedAt: new Date().toISOString(),
+    messageCount: msgs.length,
+    messages: msgs.map(m => ({
+      role: m.role, content: m.content,
+      timestamp: m.timestamp.toISOString(), provider: m.provider,
+    })),
+  };
+}
+
+/** Saves/updates a conversation in the history array. Returns updated array. */
+function upsertConvInHistory(
+  msgs: Message[],
+  userId: string,
+  history: StoredConversation[],
+  updateId?: string,
+): StoredConversation[] {
+  const userMsgs = msgs.filter(m => m.role === 'user');
+  if (userMsgs.length === 0) return history; // nothing to save
+
+  const entry = buildConvEntry(msgs, updateId);
+  let updated: StoredConversation[];
+  if (updateId && history.some(c => c.id === updateId)) {
+    updated = history.map(c => (c.id === updateId ? entry : c));
+  } else {
+    updated = [entry, ...history].slice(0, MAX_HISTORY_ENTRIES);
+  }
+  persistHistory(updated, userId);
+  return updated;
+}
+
+function deleteConvFromHistory(id: string, userId: string, history: StoredConversation[]): StoredConversation[] {
+  const updated = history.filter(c => c.id !== id);
+  persistHistory(updated, userId);
+  return updated;
+}
+
+function formatConvDate(isoString: string, lang: string): string {
+  const date = new Date(isoString);
+  const diffDays = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (diffDays === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (diffDays === 1) return lang === 'es' ? 'Ayer' : 'Yesterday';
+  if (diffDays < 7) return date.toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { weekday: 'short' });
+  return date.toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { day: '2-digit', month: 'short' });
+}
+
 // ── Detección de ejercicios mencionados en respuesta IA ──────────────────────
 type ExerciseMatch = { id: string; labelEs: string; labelEn: string };
 
@@ -169,6 +252,7 @@ async function callQueue(action: string, userId: string): Promise<{ status?: str
 
 function cleanTextForSpeech(text: string): string {
   return text
+    .replace(/20-20-20/g, '20 20 20')
     .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')
     .replace(/[^\P{Emoji_Presentation}\s]/gu, '')
     .replace(/[*_~`#>|]/g, '')
@@ -211,11 +295,15 @@ function ChatBubble({
   lang,
   exercises,
   onStartExercise,
+  voiceEnabled,
+  onSpeak,
 }: {
   msg: Message;
   lang: string;
   exercises?: ExerciseMatch[];
   onStartExercise?: (id: string) => void;
+  voiceEnabled?: boolean;
+  onSpeak?: (text: string) => void;
 }) {
   const isBot = msg.role === 'assistant';
   const formattedTime = msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -257,6 +345,15 @@ function ChatBubble({
               {msg.provider}
             </span>
           )}
+          {isBot && !voiceEnabled && onSpeak && (
+            <button
+              onClick={() => onSpeak(msg.content)}
+              className="text-gray-300 hover:text-indigo-500 transition p-0.5 rounded"
+              title={lang === 'es' ? 'Escuchar' : 'Listen'}
+            >
+              <Volume2 className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
       {!isBot && (
@@ -286,6 +383,19 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const [currentProvider, setCurrentProvider] = useState('');
   const [supportSent, setSupportSent] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
+
+  // ── Historial de conversaciones ────────────────────────────────────────────
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatHistory, setChatHistory] = useState<StoredConversation[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+
+  // Refs para auto-guardar al salir (evitan stale closures en handleBack)
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  const chatHistoryRef = useRef(chatHistory);
+  useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
+  const activeConvIdRef = useRef(activeConvId);
+  useEffect(() => { activeConvIdRef.current = activeConvId; }, [activeConvId]);
 
   // ── Cola de espera ─────────────────────────────────────────────────────────
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -344,6 +454,11 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
       saveChatMessages(messages, user.id);
     }
   }, [messages, user?.id]);
+
+  // Cargar historial de conversaciones al montar
+  useEffect(() => {
+    if (user?.id) setChatHistory(loadChatHistory(user.id));
+  }, [user?.id]);
 
   // ── Efecto 1: Unirse a la cola al montar ──────────────────────────────────
   useEffect(() => {
@@ -465,6 +580,10 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     if (user?.id) callQueue('leave', user.id);
     if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    // Auto-guardar conversación actual al salir (usando refs para evitar stale closure)
+    if (user?.id && messagesRef.current.length > 1) {
+      upsertConvInHistory(messagesRef.current, user.id, chatHistoryRef.current, activeConvIdRef.current ?? undefined);
+    }
     onBack();
   }, [user?.id, onBack]);
 
@@ -523,6 +642,10 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   };
 
   const handleReset = () => {
+    // Guardar conversación actual en historial antes de limpiar
+    if (user?.id && messages.length > 1) {
+      setChatHistory(prev => upsertConvInHistory(messages, user.id!, prev, activeConvId ?? undefined));
+    }
     if (user?.id) clearChatMessages(user.id);
     setMessages([{ role: 'assistant', content: welcomeMsg, timestamp: new Date() }]);
     setError('');
@@ -530,6 +653,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     setSupportSent(false);
     setResumed(false);
     setHasHistory(false);
+    setActiveConvId(null);
   };
 
   const handleResume = useCallback(() => {
@@ -539,6 +663,50 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     setResumed(true);
     setHasHistory(false);
   }, [user?.id, welcomeMsg]);
+
+  const handleLoadConversation = useCallback((conv: StoredConversation) => {
+    // Guardar conversación actual antes de cambiar (si tiene mensajes de usuario)
+    if (user?.id && messages.length > 1) {
+      setChatHistory(prev => upsertConvInHistory(messages, user.id!, prev, activeConvId ?? undefined));
+    }
+    // Cargar la conversación seleccionada
+    const loadedMsgs: Message[] = conv.messages.map(m => ({
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(m.timestamp),
+      provider: m.provider,
+    }));
+    setMessages(loadedMsgs);
+    setActiveConvId(conv.id);
+    setResumed(true);
+    setHasHistory(false);
+    setSupportSent(false);
+    setError('');
+    setSidebarOpen(false);
+  }, [user?.id, messages, activeConvId]);
+
+  const handleDeleteConversation = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user?.id) return;
+    setChatHistory(prev => deleteConvFromHistory(id, user.id!, prev));
+    if (activeConvId === id) setActiveConvId(null);
+  }, [user?.id, activeConvId]);
+
+  const handleNewConversation = useCallback(() => {
+    // Guardar conversación actual en historial
+    if (user?.id && messages.length > 1) {
+      setChatHistory(prev => upsertConvInHistory(messages, user.id!, prev, activeConvId ?? undefined));
+    }
+    if (user?.id) clearChatMessages(user.id);
+    setMessages([{ role: 'assistant', content: welcomeMsg, timestamp: new Date() }]);
+    setError('');
+    setInput('');
+    setSupportSent(false);
+    setResumed(false);
+    setHasHistory(false);
+    setActiveConvId(null);
+    setSidebarOpen(false);
+  }, [user?.id, messages, activeConvId, welcomeMsg]);
 
   const handleSendSupport = async () => {
     if (supportSending || supportSent) return;
@@ -590,7 +758,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -632,6 +800,20 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
               ? <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-pulse' : ''}`} />
               : <VolumeX className="w-4 h-4" />
             }
+          </button>
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            className={`transition p-1.5 rounded-lg relative ${
+              sidebarOpen
+                ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            }`}
+            title={lang === 'es' ? 'Historial de conversaciones' : 'Conversation history'}
+          >
+            <History className="w-4 h-4" />
+            {chatHistory.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-indigo-500 rounded-full" />
+            )}
           </button>
           <button
             onClick={handleReset}
@@ -724,6 +906,8 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
                 lang={lang}
                 exercises={msg.role === 'assistant' && i > 0 ? detectExercises(msg.content, lang) : undefined}
                 onStartExercise={onStartExercise}
+                voiceEnabled={voiceEnabled}
+                onSpeak={(text) => speak(text, lang)}
               />
             ))}
 
@@ -859,6 +1043,117 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
           </div>
         </>
       )}
+
+      {/* ── Overlay oscuro cuando el sidebar está abierto ── */}
+      {sidebarOpen && (
+        <div
+          className="absolute inset-0 bg-black/30 z-40 backdrop-blur-[1px]"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar de historial ── */}
+      <div
+        className={`absolute top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <History className="w-4 h-4 text-indigo-600" />
+            <span className="font-semibold text-gray-800 text-sm">
+              {lang === 'es' ? 'Historial' : 'History'}
+            </span>
+            {chatHistory.length > 0 && (
+              <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-medium">
+                {chatHistory.length}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Botón nueva conversación */}
+        <div className="px-3 py-3 border-b border-gray-100 flex-shrink-0">
+          <button
+            onClick={handleNewConversation}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-sm font-semibold transition border border-indigo-100 active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            {lang === 'es' ? 'Nueva conversación' : 'New conversation'}
+          </button>
+        </div>
+
+        {/* Lista de conversaciones */}
+        <div className="flex-1 overflow-y-auto">
+          {chatHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                <MessageSquare className="w-7 h-7 text-gray-300" />
+              </div>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                {lang === 'es'
+                  ? 'Las conversaciones guardadas aparecerán aquí'
+                  : 'Saved conversations will appear here'}
+              </p>
+            </div>
+          ) : (
+            <div className="py-2 px-2">
+              {chatHistory.map(conv => (
+                <div
+                  key={conv.id}
+                  onClick={() => handleLoadConversation(conv)}
+                  className={`group flex items-start gap-2 px-3 py-3 rounded-xl cursor-pointer transition mb-1 ${
+                    activeConvId === conv.id
+                      ? 'bg-indigo-50 border border-indigo-100'
+                      : 'hover:bg-gray-50 border border-transparent'
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate leading-snug">
+                      {conv.title}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate leading-snug">
+                      {conv.preview}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="text-[10px] text-gray-400">
+                        {formatConvDate(conv.updatedAt, lang)}
+                      </span>
+                      <span className="text-[10px] text-gray-300">·</span>
+                      <span className="text-[10px] text-gray-400">
+                        {conv.messageCount} msgs
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={e => handleDeleteConversation(conv.id, e)}
+                    className="flex-shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition mt-0.5"
+                    title={lang === 'es' ? 'Eliminar conversación' : 'Delete conversation'}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer del sidebar */}
+        <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0">
+          <p className="text-[10px] text-gray-400 text-center">
+            {lang === 'es'
+              ? `Guardando hasta ${MAX_HISTORY_ENTRIES} conversaciones`
+              : `Storing up to ${MAX_HISTORY_ENTRIES} conversations`}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

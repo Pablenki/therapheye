@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  ArrowLeft, Eye, EyeOff, AlertTriangle, CheckCircle2,
+  ArrowLeft, Eye, EyeOff, CheckCircle2,
   Camera, CameraOff, Save, Clock, BookOpen, Zap,
 } from 'lucide-react';
 import { sql } from '../neonCliente';
@@ -43,7 +43,7 @@ const NORMAL_BLINK_MIN = 12;
 // ── Datos curiosos de salud visual ──────────────────────────────────────────
 const READING_FACTS = [
   { tag: 'Pantallas y parpadeo',       text: 'Frente a una pantalla, la tasa de parpadeo puede caer hasta 5–7 veces por minuto — apenas un tercio de lo normal. Esto reduce significativamente la lubricación de la córnea.' },
-  { tag: 'Regla 20-20-20',             text: 'Cada 20 minutos de pantalla, enfoca algo a 6 metros de distancia durante 20 segundos. Este ejercicio simple reduce la fatiga del músculo ciliar hasta en un 40%.' },
+  { tag: 'Regla 20 20 20',             text: 'Cada 20 minutos de pantalla, enfoca algo a 6 metros de distancia durante 20 segundos. Este ejercicio simple reduce la fatiga del músculo ciliar hasta en un 40%.' },
   { tag: 'El parpadeo completo',        text: 'Un parpadeo parcial no distribuye bien la película lagrimal. Practicar parpadeos lentos y completos —cerrando los ojos del todo— mejora notablemente la hidratación ocular.' },
   { tag: 'Síndrome visual digital',     text: 'El síndrome de visión por computadora afecta al 50–90% de los trabajadores de oficina. Sus síntomas: ardor, visión borrosa, dolor de cabeza y sensación de arenilla.' },
   { tag: 'Posición de pantalla',        text: 'La pantalla debería estar entre 20 y 30 cm por debajo del nivel de los ojos. Esa posición reduce la apertura del párpado y disminuye la evaporación lagrimal hasta un 30%.' },
@@ -523,6 +523,21 @@ export default function BlinkDetector({ onBack }: Props) {
                   <CameraOff className="w-5 h-5" />
                 </button>
               </div>
+              {hasEnoughData && !finishPromptDismissed && (
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p className="text-sm text-green-700 font-medium">✓ Ya tienes suficientes datos · ¿Deseas finalizar?</p>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => setFinishPromptDismissed(true)}
+                      className="text-xs text-green-600 hover:text-green-800 font-semibold px-3 py-1.5 rounded-lg hover:bg-green-100 transition border border-green-200">
+                      Continuar midiendo
+                    </button>
+                    <button onClick={() => stopSession(true)} disabled={saving}
+                      className="text-xs bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                      {saving ? 'Guardando...' : 'Guardar y terminar'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Stats — 2/5 */}
@@ -563,15 +578,6 @@ export default function BlinkDetector({ onBack }: Props) {
                   <p className="text-xs text-gray-500 mt-0.5">Tiempo sesión</p>
                 </div>
               </div>
-              {blinksPerMin > 0 && blinksPerMin < LOW_BLINK_ALERT && (
-                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-red-700">Tasa muy baja</p>
-                    <p className="text-xs text-red-600 mt-0.5">Haz varios parpadeos completos y lentos.</p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -656,17 +662,6 @@ export default function BlinkDetector({ onBack }: Props) {
                   >
                     {saving ? 'Guardando...' : 'Guardar y terminar'}
                   </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── Alerta tasa baja ── */}
-            {blinksPerMin > 0 && blinksPerMin < LOW_BLINK_ALERT && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-red-700">Tasa muy baja</p>
-                  <p className="text-xs text-red-600 mt-0.5">Haz varios parpadeos completos y lentos ahora.</p>
                 </div>
               </div>
             )}

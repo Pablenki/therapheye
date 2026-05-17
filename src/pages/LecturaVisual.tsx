@@ -8,7 +8,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   ArrowLeft, Mic, MicOff, ChevronRight,
   Eye, CheckCircle2, XCircle,
-  Info, Save, Loader2, Award, Camera, CameraOff,
+  Info, Save, Loader2, Award,
 } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
@@ -21,27 +21,27 @@ interface Props { onBack: () => void }
 
 const LEVELS_ES = [
   {
-    level: 1, size: 30, label: 'Nivel 1 — Muy grande',
+    level: 1, size: 48, label: 'Nivel 1 — Muy grande',
     text: 'Cuida tu visión cada día.',
     description: '~20/200 — visible con agudeza muy reducida',
   },
   {
-    level: 2, size: 22, label: 'Nivel 2 — Grande',
+    level: 2, size: 34, label: 'Nivel 2 — Grande',
     text: 'El parpadeo frecuente lubrica y protege tus ojos.',
     description: '~20/100 — lectura básica funcional',
   },
   {
-    level: 3, size: 17, label: 'Nivel 3 — Mediano',
+    level: 3, size: 24, label: 'Nivel 3 — Mediano',
     text: 'Realiza pausas visuales cada veinte minutos para descansar la vista y reducir la fatiga.',
     description: '~20/50 — lectura cómoda para adultos',
   },
   {
-    level: 4, size: 13, label: 'Nivel 4 — Pequeño',
+    level: 4, size: 17, label: 'Nivel 4 — Pequeño',
     text: 'La fatiga ocular puede causar visión borrosa, dolores de cabeza y dificultad para concentrarse durante el trabajo.',
     description: '~20/25 — lectura de texto de periódico',
   },
   {
-    level: 5, size: 10, label: 'Nivel 5 — Muy pequeño',
+    level: 5, size: 13, label: 'Nivel 5 — Muy pequeño',
     text: 'La miopía, hipermetropía y astigmatismo son los defectos refractivos más frecuentes y se corrigen con lentes graduadas o cirugía refractiva láser.',
     description: '~20/20 — agudeza visual óptima',
   },
@@ -49,27 +49,27 @@ const LEVELS_ES = [
 
 const LEVELS_EN = [
   {
-    level: 1, size: 30, label: 'Level 1 — Very large',
+    level: 1, size: 48, label: 'Level 1 — Very large',
     text: 'Take care of your vision every day.',
     description: '~20/200 — visible with very reduced acuity',
   },
   {
-    level: 2, size: 22, label: 'Level 2 — Large',
+    level: 2, size: 34, label: 'Level 2 — Large',
     text: 'Frequent blinking keeps your eyes lubricated and protected.',
     description: '~20/100 — basic functional reading',
   },
   {
-    level: 3, size: 17, label: 'Level 3 — Medium',
+    level: 3, size: 24, label: 'Level 3 — Medium',
     text: 'Take visual breaks every twenty minutes to rest your eyes and reduce fatigue.',
     description: '~20/50 — comfortable reading for adults',
   },
   {
-    level: 4, size: 13, label: 'Level 4 — Small',
+    level: 4, size: 17, label: 'Level 4 — Small',
     text: 'Eye strain can cause blurred vision, headaches and difficulty concentrating during work.',
     description: '~20/25 — newspaper text reading',
   },
   {
-    level: 5, size: 10, label: 'Level 5 — Very small',
+    level: 5, size: 13, label: 'Level 5 — Very small',
     text: 'Myopia, hyperopia and astigmatism are the most common refractive defects and are corrected with prescription lenses or refractive laser surgery.',
     description: '~20/20 — optimal visual acuity',
   },
@@ -412,7 +412,7 @@ export default function LecturaVisual({ onBack }: Props) {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 pb-24">
-        <div className="max-w-2xl mx-auto px-4 pt-8">
+        <div className="max-w-4xl mx-auto px-4 pt-8">
           <button onClick={() => { stopListening(); stopVal(); setPhase('config'); setCurrentLevel(0); setResults([]); }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
             <ArrowLeft className="w-5 h-5" />
@@ -517,7 +517,7 @@ export default function LecturaVisual({ onBack }: Props) {
           })()}
 
           {/* Text card */}
-          <div className="bg-white rounded-2xl shadow-lg p-8 mb-5 min-h-[160px] flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-5 min-h-[220px] flex items-center justify-center">
             {levelResult ? (
               // Show highlighted words
               <p className="leading-relaxed text-center" style={{ fontSize: lv.size }}>
