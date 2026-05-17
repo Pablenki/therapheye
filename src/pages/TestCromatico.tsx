@@ -36,42 +36,50 @@ const PLACAS: Placa[] = [
   { id: 7, numero: 3,  colorFigura: ['#e53e3e','#c53030','#fc8181'], colorFondo: ['#a0aec0','#718096','#e2e8f0'], deficiencia: 'normal' }, // todos la ven
 ];
 
-// Generate pseudo-ishihara dot plate with SVG
-function generatePlateSVG(placa: Placa, size = 280): string {
+// Generate pseudo-ishihara dot plate with SVG — grid-based for reliable digit visibility
+function generatePlateSVG(placa: Placa, size = 300): string {
   const cx = size / 2;
   const cy = size / 2;
-  const radius = size * 0.47;
+  const radius = size * 0.46;
   const dots: string[] = [];
-  const NDOTS = 320;
 
-  // Number shape mask — simplified bitmaps for numbers 0-9
   const numStr = placa.numero?.toString() ?? '';
-  const getInNumber = (px: number, py: number): boolean => {
-    // Normalize to 0-1 in a bounding box
-    const nx = (px - cx) / radius;
-    const ny = (py - cy) / radius;
-    return isInDigitShape(numStr, nx, ny);
-  };
 
-  for (let i = 0; i < NDOTS; i++) {
-    // Random position in circle
-    const angle = Math.random() * 2 * Math.PI;
-    const r = Math.sqrt(Math.random()) * radius * 0.92;
-    const x = cx + r * Math.cos(angle);
-    const y = cy + r * Math.sin(angle);
-    const dotR = 5 + Math.random() * 7;
+  // Grid spacing: smaller = more dots = clearer numbers
+  const spacing = 13;
+  const jitter = 2.5; // tiny random offset for organic look
 
-    const inFig = getInNumber(x, y);
-    const colorArr = inFig ? placa.colorFigura : placa.colorFondo;
-    const color = colorArr[Math.floor(Math.random() * colorArr.length)];
+  for (let gx = spacing * 0.5; gx < size; gx += spacing) {
+    for (let gy = spacing * 0.5; gy < size; gy += spacing) {
+      // Small random jitter for natural appearance
+      const x = gx + (Math.random() - 0.5) * jitter;
+      const y = gy + (Math.random() - 0.5) * jitter;
 
-    dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR.toFixed(1)}" fill="${color}" opacity="0.9"/>`);
+      // Only place dots inside the circle
+      if (Math.hypot(x - cx, y - cy) > radius * 0.97) continue;
+
+      // Normalize coordinates for digit shape check
+      const nx = (x - cx) / radius;
+      const ny = (y - cy) / radius;
+      const inFig = isInDigitShape(numStr, nx, ny);
+
+      // Figure dots slightly larger for better readability
+      const dotR = inFig
+        ? 5 + Math.random() * 2
+        : 3.5 + Math.random() * 2.5;
+
+      const colorArr = inFig ? placa.colorFigura : placa.colorFondo;
+      const color = colorArr[Math.floor(Math.random() * colorArr.length)];
+
+      dots.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${dotR.toFixed(1)}" fill="${color}" opacity="0.92"/>`);
+    }
   }
 
   return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-    <defs><clipPath id="cp"><circle cx="${cx}" cy="${cy}" r="${radius}"/></clipPath></defs>
-    <g clip-path="url(#cp)">${dots.join('')}</g>
-    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+    <defs><clipPath id="cp${placa.id}"><circle cx="${cx}" cy="${cy}" r="${radius}"/></clipPath></defs>
+    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f8f8f8"/>
+    <g clip-path="url(#cp${placa.id})">${dots.join('')}</g>
+    <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#d1d5db" stroke-width="2"/>
   </svg>`;
 }
 
@@ -89,7 +97,7 @@ function isInDigitShape(str: string, nx: number, ny: number): boolean {
       segs.forEach(([x1, y1, x2, y2]) => segments.push([x1 + ox, y1, x2 + ox, y2]));
     };
 
-    const W = 0.22; const H = 0.1; const T = 0.07;
+    const W = 0.25; const H = 0.12; const T = 0.10;
     switch (d) {
       case '0': pushSegs([[-W,-H*3.5,W,-H*2.8],[-W,H*2.8,W,H*3.5],[-W-T,-H*3.5,-W,H*3.5],[W,-H*3.5,W+T,H*3.5]]); break;
       case '1': pushSegs([[0,-H*3.5,T*1.5,H*3.5]]); break;
@@ -104,9 +112,10 @@ function isInDigitShape(str: string, nx: number, ny: number): boolean {
     }
   }
 
+  const TOL = 0.01;
   return segments.some(([x1, y1, x2, y2]) =>
-    nx >= Math.min(x1,x2) - 0.08 && nx <= Math.max(x1,x2) + 0.08 &&
-    ny >= Math.min(y1,y2) - 0.08 && ny <= Math.max(y1,y2) + 0.08
+    nx >= Math.min(x1,x2) - TOL && nx <= Math.max(x1,x2) + TOL &&
+    ny >= Math.min(y1,y2) - TOL && ny <= Math.max(y1,y2) + TOL
   );
 }
 

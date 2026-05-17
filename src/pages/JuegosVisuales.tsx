@@ -9,7 +9,7 @@ import { ArrowLeft, Trophy, Gamepad2, Star, RotateCcw, Play } from 'lucide-react
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 
-interface Props { onBack: () => void; }
+interface Props { onBack: () => void; onNavigateToMental?: () => void; }
 
 type GameId = 'sigue-punto' | 'sacadico' | 'enfoque';
 type GameState = 'menu' | 'playing' | 'result';
@@ -334,7 +334,7 @@ const GAME_META: Record<GameId, { title: string; desc: string; clinical: string;
   },
 };
 
-export default function JuegosVisuales({ onBack }: Props) {
+export default function JuegosVisuales({ onBack, onNavigateToMental }: Props) {
   const { user } = useUser();
   const [gameState, setGameState] = useState<GameState>('menu');
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
@@ -420,12 +420,14 @@ export default function JuegosVisuales({ onBack }: Props) {
 
         {/* ── MENÚ ── */}
         {gameState === 'menu' && (
-          <div className="max-w-2xl mx-auto space-y-4">
+          <div className="max-w-3xl mx-auto space-y-4">
             <p className="text-gray-400 text-sm text-center mb-6">
-              Entrena tu sistema visual con juegos diseñados clínicamente.<br/>
+              Entrena tu sistema visual y cognitivo con juegos diseñados clínicamente.<br/>
               Los resultados se guardan automáticamente.
             </p>
 
+            {/* Juegos visuales */}
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">Juegos visuales</p>
             {(Object.entries(GAME_META) as [GameId, typeof GAME_META[GameId]][]).map(([id, g]) => (
               <div key={id}
                 className={`rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-r ${g.color} cursor-pointer hover:scale-[1.01] transition-all`}
@@ -454,6 +456,33 @@ export default function JuegosVisuales({ onBack }: Props) {
                 </div>
               </div>
             ))}
+
+            {/* Entrenamiento cognitivo-visual */}
+            {onNavigateToMental && (
+              <>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1 pt-2">Entrenamiento cognitivo</p>
+                <div
+                  className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-r from-rose-600 to-pink-700 cursor-pointer hover:scale-[1.01] transition-all"
+                  onClick={onNavigateToMental}
+                >
+                  <div className="p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className="text-4xl">🧠</span>
+                      <div>
+                        <p className="text-white font-black text-lg">Entrenamiento Mental</p>
+                        <p className="text-white/80 text-xs mt-0.5">Stroop, memoria, secuencias y Trail Making</p>
+                        <p className="text-white/60 text-[10px] mt-1 italic">🩺 Entrena atención, velocidad de procesamiento y memoria visual</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-4">
+                      <button className="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-xs font-bold transition">
+                        <Play className="w-3 h-3" /> Entrenar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 

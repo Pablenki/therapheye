@@ -97,25 +97,32 @@ export default function Onboarding({ onDone }: Props) {
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden" {...swipe} style={{ touchAction: 'pan-y' }}>
 
-        {/* Slide content */}
-        <div className={`bg-gradient-to-br ${s.gradient} p-8 flex flex-col items-center text-center transition-all duration-280 ${slideClass}`}>
-          <div className="w-20 h-20 rounded-3xl bg-white/20 flex items-center justify-center mb-5 shadow-lg">
+        {/* Slide content — altura fija para que el botón "Siguiente" no se mueva */}
+        <div className={`bg-gradient-to-br ${s.gradient} px-8 pt-8 pb-6 flex flex-col items-center text-center min-h-[230px] justify-center transition-all duration-280 ${slideClass}`}>
+          <div className="w-20 h-20 rounded-3xl bg-white/20 flex items-center justify-center mb-4 shadow-lg flex-shrink-0">
             <span className="text-4xl">{s.emoji}</span>
           </div>
-          <h2 className="text-2xl font-black text-white leading-tight mb-1">{s.titulo}</h2>
-          <p className="text-white/80 text-sm font-medium mb-3">{s.subtitulo}</p>
-          <p className="text-white/70 text-sm leading-relaxed">{s.desc}</p>
+          <h2 className="text-xl font-black text-white leading-tight mb-1">{s.titulo}</h2>
+          <p className="text-white/80 text-sm font-medium mb-2">{s.subtitulo}</p>
+          <p className="text-white/70 text-xs leading-relaxed line-clamp-3">{s.desc}</p>
         </div>
 
-        <div className={`px-6 py-5 transition-all duration-280 ${slideClass}`}>
-          {s.tip && (
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5 mb-4 text-xs text-indigo-700 leading-relaxed">
-              {s.tip}
-            </div>
-          )}
+        {/* Sección inferior con altura siempre fija */}
+        <div className={`px-6 pt-4 pb-5 transition-all duration-280 ${slideClass}`}>
+          {/* Tip — siempre ocupa espacio (invisible cuando no hay tip) */}
+          <div
+            className={`rounded-xl px-3 py-2.5 mb-4 text-xs leading-relaxed transition-opacity duration-200 ${
+              s.tip
+                ? 'bg-indigo-50 border border-indigo-100 text-indigo-700 opacity-100'
+                : 'opacity-0 pointer-events-none'
+            }`}
+            style={{ minHeight: '48px' }}
+          >
+            {s.tip ?? '\u00A0'}
+          </div>
 
           {/* Progress dots */}
-          <div className="flex justify-center gap-2 mb-5">
+          <div className="flex justify-center gap-2 mb-4">
             {SLIDES.map((_, i) => (
               <button
                 key={i}
@@ -129,19 +136,18 @@ export default function Onboarding({ onDone }: Props) {
 
           {/* Actions */}
           <div className="flex gap-2">
-            {slide > 0 && (
-              <button
-                onClick={prev}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
-              >
-                Atrás
-              </button>
-            )}
+            {/* Botón atrás — siempre ocupa espacio para mantener ancho del botón siguiente */}
+            <button
+              onClick={prev}
+              className={`flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition ${
+                slide > 0 ? 'visible' : 'invisible pointer-events-none'
+              }`}
+            >
+              Atrás
+            </button>
             <button
               onClick={next}
-              className={`py-3 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2 ${
-                slide > 0 ? 'flex-1' : 'w-full'
-              } bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90`}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:opacity-90"
             >
               {slide < SLIDES.length - 1 ? (
                 <>Siguiente <ChevronRight className="w-4 h-4" /></>
@@ -151,14 +157,15 @@ export default function Onboarding({ onDone }: Props) {
             </button>
           </div>
 
-          {slide < SLIDES.length - 1 && (
-            <button
-              onClick={finish}
-              className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition mt-3 py-1"
-            >
-              Saltar introducción
-            </button>
-          )}
+          {/* Saltar — visible en todas las slides excepto la última */}
+          <button
+            onClick={finish}
+            className={`w-full text-center text-sm text-gray-500 hover:text-gray-800 font-medium transition mt-3 py-1.5 rounded-xl hover:bg-gray-50 ${
+              slide < SLIDES.length - 1 ? 'visible' : 'invisible pointer-events-none'
+            }`}
+          >
+            Saltar presentación →
+          </button>
         </div>
       </div>
     </div>

@@ -7,9 +7,9 @@ import {
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ChevronDown, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, MoreHorizontal, EarOff, Contrast,
-  Timer, Orbit, BarChart2, ClipboardCheck, Palette, FlaskConical,
-  Focus, ScrollText, TriangleAlert, BrainCircuit, AreaChart,
-  Crown, HelpCircle, Wind, Dot, Settings, Moon, LineChart,
+  Timer, BarChart2, ClipboardCheck, FlaskConical,
+  ScrollText, AreaChart,
+  Crown, HelpCircle, Wind, Settings, Moon, LineChart,
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -90,12 +90,12 @@ type Page =
   | 'blink-detector' | 'reading-test' | 'chat-sintomas' | 'mapa-oftalmologos' | 'juegos-visuales'
   | 'rutinas-ia' | 'diario-visual'
   | 'campo-visual' | 'modo-zen' | 'contrast-test'
-  | 'reaccion-visual' | 'vergencia' | 'carga-visual'
+  | 'reaccion-visual'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
-  | 'test-acomodacion' | 'ejercicios-avanzados' | 'historial-ocular'
-  | 'analizador-sintomas' | 'entrenamiento-mental' | 'estadisticas-avanzadas'
+  | 'ejercicios-avanzados' | 'historial-ocular'
+  | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'plan-premium'
-  | 'dominancia-ocular' | 'respiracion-478' | 'evolucion-tests';
+  | 'respiracion-478' | 'evolucion-tests';
 
 interface Props {
   currentPage: Page;
@@ -134,19 +134,12 @@ const ADVANCED_NAV_ITEMS: NavItem[] = [
   { icon: EarOff,             label: 'Modo Zen',            labelEn: 'Zen Mode',            page: 'modo-zen'              },
   { icon: Contrast,           label: 'Test Contraste',      labelEn: 'Contrast Test',       page: 'contrast-test'         },
   { icon: Timer,              label: 'Reacción Visual',     labelEn: 'Visual Reaction',     page: 'reaccion-visual'       },
-  { icon: Orbit,              label: 'Vergencia',           labelEn: 'Vergence',            page: 'vergencia'             },
-  { icon: BarChart2,          label: 'Carga Visual',        labelEn: 'Visual Load',         page: 'carga-visual'          },
   { icon: ClipboardCheck,     label: 'Notas Médicas',       labelEn: 'Medical Notes',       page: 'notas-medicas'         },
-  { icon: Palette,            label: 'Simulador Visual',    labelEn: 'Visual Simulator',    page: 'simulador'             },
   { icon: FlaskConical,       label: 'Test Cromático',      labelEn: 'Chromatic Test',      page: 'test-cromatico'        },
-  { icon: Focus,              label: 'Test Acomodación',    labelEn: 'Accommodation Test',  page: 'test-acomodacion'      },
-  // { icon: Microscope,         label: 'Ejerc. Avanzados',    labelEn: 'Adv. Exercises',      page: 'ejercicios-avanzados'  }, // HIDDEN - access disabled
+  // { icon: Microscope,         label: 'Ejerc. Avanzados',    labelEn: 'Adv. Exercises',      page: 'ejercicios-avanzados'  }, // HIDDEN
   { icon: ScrollText,         label: 'Historial Ocular',    labelEn: 'Ocular History',      page: 'historial-ocular'      },
-  { icon: TriangleAlert,      label: 'Analizador Síntomas', labelEn: 'Symptom Analyzer',    page: 'analizador-sintomas'   },
-  { icon: BrainCircuit,       label: 'Entrena. Mental',     labelEn: 'Mental Training',     page: 'entrenamiento-mental'  },
   { icon: AreaChart,          label: 'Stats Avanzadas',     labelEn: 'Advanced Stats',      page: 'estadisticas-avanzadas'},
   ...(PREMIUM_ENABLED ? [{ icon: Crown, label: 'Premium', labelEn: 'Premium', page: 'plan-premium' as Page }] : []),
-  { icon: Dot,                label: 'Dom. Ocular',         labelEn: 'Eye Dominance',       page: 'dominancia-ocular'     },
   { icon: Wind,               label: 'Respiración 4-7-8',   labelEn: '4-7-8 Breathing',     page: 'respiracion-478'       },
   { icon: LineChart,          label: 'Evolución Tests',     labelEn: 'Test Evolution',      page: 'evolucion-tests'       },
 ];
@@ -342,7 +335,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex overflow-hidden bg-gray-50" style={{ height: 'var(--a11y-vh, 100vh)' }}>
 
       {/* ── Mobile overlay backdrop ─────────────────────────────────────── */}
       {isMobile && open && (
@@ -355,9 +348,9 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
 
       {/* ══════════════════ SIDEBAR ══════════════════ */}
       <aside
-        style={{ width: sideW, backgroundColor: 'var(--sidebar-bg, #0e1f47)' }}
+        style={{ width: sideW, backgroundColor: 'var(--sidebar-bg, #0e1f47)', height: 'var(--a11y-vh, 100vh)' }}
         className={`
-          fixed top-0 left-0 h-screen z-40 flex flex-col
+          fixed top-0 left-0 z-40 flex flex-col
           transition-all duration-300 ease-in-out flex-shrink-0
           ${isMobile ? (open ? 'translate-x-0 shadow-2xl' : '-translate-x-full') : 'translate-x-0'}
         `}

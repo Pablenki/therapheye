@@ -31,7 +31,6 @@ interface Rutina {
 const EXERCISE_IDS: Record<string, string> = {
   'Palming': 'palming',
   'Enfoque cercano-lejano': 'focus',
-  'Regla 20-20-20': '20-20-20',
   'Círculos oculares': 'circles',
   'Simulación cerca/lejos': 'near-far',
 };
@@ -111,12 +110,11 @@ const SINTOMAS_CHIPS: SintomaChip[] = [
 
 const SYSTEM_PROMPT = `Eres un especialista en salud visual que crea rutinas personalizadas de ejercicios oculares.
 
-El usuario te describirá sus síntomas o metas visuales. Debes crear una rutina semanal de 7 días con ejercicios oculares terapéuticos.
+El usuario puede tener uno o varios síntomas o metas visuales combinadas. Debes crear una rutina semanal de 7 días que aborde TODOS los síntomas mencionados, priorizando los más relevantes.
 
 Los ejercicios disponibles son ÚNICAMENTE estos (usa exactamente estos nombres):
 - Palming (relajación ocular, 2-5 min)
 - Enfoque cercano-lejano (acomodación, 3-5 min)
-- Regla 20-20-20 (descanso digital, 1-2 min)
 - Círculos oculares (movilidad, 2-3 min)
 - Simulación cerca/lejos (flexibilidad, 3-5 min)
 
@@ -140,7 +138,7 @@ Adapta la intensidad y tipo de ejercicios según los síntomas. Los fines de sem
 export default function RutinasIA({ onBack, onStartExercise }: Props) {
   const { user } = useUser();
   const [sintomas, setSintomas] = useState('');
-  const [selectedChip, setSelectedChip] = useState<SintomaChip | null>(null);
+  const [selectedChips, setSelectedChips] = useState<SintomaChip[]>([]);
   const [rutina, setRutina] = useState<Rutina | null>(null);
   const [historial, setHistorial] = useState<Rutina[]>([]);
   const [loading, setLoading] = useState(false);
@@ -215,6 +213,33 @@ export default function RutinasIA({ onBack, onStartExercise }: Props) {
 
   const getDiaActual = () => DIAS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
+  // Toggle a chip in/out and rebuild the combined symptom text
+  const toggleChip = (chip: SintomaChip) => {
+    setSelectedChips(prev => {
+      const isSelected = prev.some(c => c.label === chip.label);
+      const next = isSelected ? prev.filter(c => c.label !== chip.label) : [...prev, chip];
+      // Rebuild base text from selected chips (without sub-detail suffixes)
+      if (next.length === 0) {
+        setSintomas('');
+      } else {
+        setSintomas(next.map(c => c.texto).join('. ') + '.');
+      }
+      return next;
+    });
+  };
+
+  // Apply sub-detail for a specific chip (replaces that chip's contribution)
+  const applyDetail = (chip: SintomaChip, detalle: { label: string; texto: string }) => {
+    setSintomas(prev => {
+      // Replace the base text of this chip with the detailed version
+      const withDetail = chip.texto + detalle.texto;
+      if (prev.includes(chip.texto)) {
+        return prev.replace(chip.texto + '.', withDetail + '.').replace(chip.texto, withDetail);
+      }
+      return prev;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -238,44 +263,50 @@ export default function RutinasIA({ onBack, onStartExercise }: Props) {
         {/* Input de síntomas — selección guiada + texto libre */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
           <div>
-            <h2 className="font-semibold text-gray-800 mb-0.5">¿Qué síntoma principal tienes?</h2>
-            <p className="text-xs text-gray-500">Selecciona uno o escribe directamente abajo.</p>
+            <h2 className="font-semibold text-gray-800 mb-0.5">¿Qué síntomas tienes?</h2>
+            <p className="text-xs text-gray-500">Selecciona uno o varios y la IA combinará todo en tu rutina.</p>
           </div>
 
-          {/* Chips de síntoma */}
+          {/* Chips de síntoma — selección múltiple */}
           <div className="grid grid-cols-2 gap-2">
-            {SINTOMAS_CHIPS.map(chip => (
-              <button
-                key={chip.label}
-                onClick={() => {
-                  setSelectedChip(selectedChip?.label === chip.label ? null : chip);
-                  if (selectedChip?.label !== chip.label) {
-                    setSintomas(chip.texto);
-                  }
-                }}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-sm ${
-                  selectedChip?.label === chip.label
-                    ? 'border-violet-500 bg-violet-50 text-violet-800 font-semibold'
-                    : 'border-gray-200 text-gray-700 hover:border-violet-300 hover:bg-violet-50/50'
-                }`}
-              >
-                <span className="text-lg leading-none flex-shrink-0">{chip.emoji}</span>
-                <span className="leading-tight">{chip.label}</span>
-              </button>
-            ))}
+            {SINTOMAS_CHIPS.map(chip => {
+              const isSelected = selectedChips.some(c => c.label === chip.label);
+              return (
+                <button
+                  key={chip.label}
+                  onClick={() => toggleChip(chip)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-sm ${
+                    isSelected
+                      ? 'border-violet-500 bg-violet-50 text-violet-800 font-semibold'
+                      : 'border-gray-200 text-gray-700 hover:border-violet-300 hover:bg-violet-50/50'
+                  }`}
+                >
+                  <span className="text-lg leading-none flex-shrink-0">{chip.emoji}</span>
+                  <span className="leading-tight">{chip.label}</span>
+                  {isSelected && <span className="ml-auto text-violet-500 text-xs font-bold">✓</span>}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Sub-chips de detalle cuando hay un síntoma seleccionado */}
-          {selectedChip && (
-            <div className="bg-violet-50 rounded-xl p-3 space-y-2">
+          {selectedChips.length > 0 && (
+            <p className="text-[11px] text-violet-600 font-medium">
+              {selectedChips.length} síntoma{selectedChips.length > 1 ? 's' : ''} seleccionado{selectedChips.length > 1 ? 's' : ''}
+              {selectedChips.length > 1 && ' — la IA combinará todos en tu rutina'}
+            </p>
+          )}
+
+          {/* Sub-chips de detalle para cada síntoma seleccionado */}
+          {selectedChips.map(chip => (
+            <div key={chip.label} className="bg-violet-50 rounded-xl p-3 space-y-2">
               <p className="text-xs font-semibold text-violet-700">
-                <ChevronRight className="w-3 h-3 inline" /> ¿Cómo es el {selectedChip.label.toLowerCase()}?
+                <ChevronRight className="w-3 h-3 inline" /> {chip.emoji} ¿Cómo es el {chip.label.toLowerCase()}?
               </p>
               <div className="flex flex-wrap gap-2">
-                {selectedChip.detalles.map(d => (
+                {chip.detalles.map(d => (
                   <button
                     key={d.label}
-                    onClick={() => setSintomas(selectedChip.texto + d.texto)}
+                    onClick={() => applyDetail(chip, d)}
                     className="px-3 py-1.5 bg-white text-violet-700 border border-violet-200 rounded-full text-xs font-medium hover:bg-violet-100 transition"
                   >
                     {d.label}
@@ -283,7 +314,7 @@ export default function RutinasIA({ onBack, onStartExercise }: Props) {
                 ))}
               </div>
             </div>
-          )}
+          ))}
 
           {/* Textarea — editable libre */}
           <div>

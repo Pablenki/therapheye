@@ -43,19 +43,14 @@ const CampoVisual        = lazy(() => import('./pages/CampoVisual'))
 const ModoZen            = lazy(() => import('./pages/ModoZen'))
 const ContrastTest       = lazy(() => import('./pages/ContrastTest'))
 const ReaccionVisual     = lazy(() => import('./pages/ReaccionVisual'))
-const VergenciaTraining  = lazy(() => import('./pages/VergenciaTraining'))
-const CargaVisual        = lazy(() => import('./pages/CargaVisual'))
 const NotasMedicas       = lazy(() => import('./pages/NotasMedicas'))
-const SimuladorCondiciones= lazy(() => import('./pages/SimuladorCondiciones'))
+const SimuladorCondiciones= lazy(() => import('./pages/SimuladorCondiciones')) // conservado para ideas futuras
 const TestCromatico      = lazy(() => import('./pages/TestCromatico'))
-const TestAcomodacion    = lazy(() => import('./pages/TestAcomodacion'))
 const EjerciciosAvanzados= lazy(() => import('./pages/EjerciciosAvanzados'))
 const HistorialOcular    = lazy(() => import('./pages/HistorialOcular'))
-const AnalizadorSintomas = lazy(() => import('./pages/AnalizadorSintomas'))
-const EntrenamientoMental= lazy(() => import('./pages/EntrenamientoMental'))
+const EntrenamientoMental= lazy(() => import('./pages/EntrenamientoMental')) // accesible desde JuegosVisuales
 const EstadisticasAvanzadas= lazy(() => import('./pages/EstadisticasAvanzadas'))
 const PlanPremium         = lazy(() => import('./pages/PlanPremium'))
-const DominanciaOcular    = lazy(() => import('./pages/DominanciaOcular'))
 const Respiracion478      = lazy(() => import('./pages/Respiracion478'))
 const EvolucionTests      = lazy(() => import('./pages/EvolucionTests'))
 
@@ -97,19 +92,14 @@ type Page =
   | 'modo-zen'
   | 'contrast-test'
   | 'reaccion-visual'
-  | 'vergencia'
-  | 'carga-visual'
   | 'notas-medicas'
   | 'simulador'
   | 'test-cromatico'
-  | 'test-acomodacion'
   | 'ejercicios-avanzados'
   | 'historial-ocular'
-  | 'analizador-sintomas'
   | 'entrenamiento-mental'
   | 'estadisticas-avanzadas'
   | 'plan-premium'
-  | 'dominancia-ocular'
   | 'respiracion-478'
   | 'evolucion-tests';
 
@@ -301,7 +291,7 @@ function AppContent() {
       case 'mapa-oftalmologos':
         return <MapaOftalmologos onBack={() => handleNavigate('dashboard')} />
       case 'juegos-visuales':
-        return <JuegosVisuales onBack={() => handleNavigate('dashboard')} />
+        return <JuegosVisuales onBack={() => handleNavigate('dashboard')} onNavigateToMental={() => handleNavigate('entrenamiento-mental')} />
       case 'rutinas-ia':
         return <RutinasIA onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       case 'diario-visual':
@@ -314,32 +304,22 @@ function AppContent() {
         return <ContrastTest onBack={() => handleNavigate('dashboard')} />
       case 'reaccion-visual':
         return <ReaccionVisual onBack={() => handleNavigate('dashboard')} />
-      case 'vergencia':
-        return <VergenciaTraining onBack={() => handleNavigate('dashboard')} />
-      case 'carga-visual':
-        return <CargaVisual onBack={() => handleNavigate('dashboard')} />
       case 'notas-medicas':
         return <NotasMedicas onBack={() => handleNavigate('dashboard')} />
       case 'simulador':
         return <SimuladorCondiciones onBack={() => handleNavigate('dashboard')} />
       case 'test-cromatico':
         return <TestCromatico onBack={() => handleNavigate('dashboard')} />
-      case 'test-acomodacion':
-        return <TestAcomodacion onBack={() => handleNavigate('dashboard')} />
       case 'ejercicios-avanzados':
         return <EjerciciosAvanzados onBack={() => handleNavigate('dashboard')} onStartExercise={handleStartExercise} />
       case 'historial-ocular':
         return <HistorialOcular onBack={() => handleNavigate('dashboard')} />
-      case 'analizador-sintomas':
-        return <AnalizadorSintomas onBack={() => handleNavigate('dashboard')} />
       case 'entrenamiento-mental':
         return <EntrenamientoMental onBack={() => handleNavigate('dashboard')} />
       case 'estadisticas-avanzadas':
         return <EstadisticasAvanzadas onBack={() => handleNavigate('dashboard')} />
       case 'plan-premium':
         return <PlanPremium onBack={() => handleNavigate('dashboard')} />
-      case 'dominancia-ocular':
-        return <DominanciaOcular onBack={() => handleNavigate('dashboard')} />
       case 'respiracion-478':
         return <Respiracion478 onBack={() => handleNavigate('dashboard')} />
       case 'evolucion-tests':
