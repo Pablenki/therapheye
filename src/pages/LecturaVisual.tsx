@@ -6,13 +6,14 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  ArrowLeft, Mic, MicOff, ChevronRight, ChevronLeft,
-  Eye, CheckCircle2, XCircle, RotateCcw,
-  Info, Save, Loader2, Award,
+  ArrowLeft, Mic, MicOff, ChevronRight,
+  Eye, CheckCircle2, XCircle,
+  Info, Save, Loader2, Award, Camera, CameraOff,
 } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
+import { useExerciseValidator } from '../hooks/useExerciseValidator';
 
 interface Props { onBack: () => void }
 
@@ -144,6 +145,11 @@ export default function LecturaVisual({ onBack }: Props) {
   const [saved, setSaved] = useState(false);
   const [noSpeech, setNoSpeech] = useState(false);
 
+  // Camera validation (optional)
+  const [useValidator, setUseValidator] = useState(false);
+  const [selectedDistance, setSelectedDistance] = useState(40);
+  const { state: val, start: startVal, stop: stopVal, videoRef: valVideoRef } = useExerciseValidator();
+
   const recognitionRef = useRef<any>(null);
 
   // ── Speech Recognition setup ──────────────────────────────────────────────
@@ -199,8 +205,13 @@ export default function LecturaVisual({ onBack }: Props) {
     recognition.start();
   }, [SpeechRecognition, lang, currentLevel, LEVELS]);
 
+  // Stop validator when done phase or unmount
+  useEffect(() => {
+    if (phase === 'done' && val.active) stopVal();
+  }, [phase, val.active, stopVal]);
+
   // Cleanup on unmount
-  useEffect(() => () => stopListening(), [stopListening]);
+  useEffect(() => () => { stopListening(); stopVal(); }, [stopListening, stopVal]);
 
   const handleSkip = useCallback(() => {
     stopListening();
@@ -310,6 +321,54 @@ export default function LecturaVisual({ onBack }: Props) {
             </div>
           </div>
 
+          {/* Camera validation toggle */}
+          <div className="bg-white rounded-2xl shadow-md p-5 mb-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-base font-bold text-gray-800">
+                  {lang === 'es' ? 'Validación por cámara' : 'Camera validation'}
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {lang === 'es'
+                    ? 'Verifica que cubres el ojo correcto y estás a la distancia adecuada'
+                    : 'Verifies you cover the right eye and are at the correct distance'}
+                </p>
+              </div>
+              <button
+                onClick={() => setUseValidator(v => !v)}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                  useValidator ? 'bg-indigo-600' : 'bg-gray-200'
+                }`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  useValidator ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+            {useValidator && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-gray-600 mb-2">
+                  {lang === 'es' ? 'Distancia de lectura' : 'Reading distance'}
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {[30, 40, 50, 60, 70].map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setSelectedDistance(d)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all ${
+                        selectedDistance === d
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                          : 'border-gray-200 text-gray-500 hover:border-indigo-300'
+                      }`}
+                    >
+                      {d} cm
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* How it works */}
           <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 mb-6">
             <p className="text-sm font-bold text-indigo-700 flex items-center gap-2 mb-3">
@@ -332,7 +391,7 @@ export default function LecturaVisual({ onBack }: Props) {
           </div>
 
           <button
-            onClick={() => setPhase('test')}
+            onClick={() => { setPhase('test'); if (useValidator) startVal(); }}
             className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition shadow-lg"
           >
             {lang === 'es' ? 'Comenzar prueba →' : 'Start test →'}
@@ -354,7 +413,7 @@ export default function LecturaVisual({ onBack }: Props) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 pb-24">
         <div className="max-w-2xl mx-auto px-4 pt-8">
-          <button onClick={() => { stopListening(); setPhase('config'); setCurrentLevel(0); setResults([]); }}
+          <button onClick={() => { stopListening(); stopVal(); setPhase('config'); setCurrentLevel(0); setResults([]); }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
             <ArrowLeft className="w-5 h-5" />
             {lang === 'es' ? 'Reiniciar' : 'Restart'}
@@ -384,9 +443,78 @@ export default function LecturaVisual({ onBack }: Props) {
           </div>
 
           {/* Eye instruction */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 text-sm font-semibold text-amber-700">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3 text-sm font-semibold text-amber-700">
             {eyeInstr}
           </div>
+
+          {/* Camera validator panel */}
+          {useValidator && (() => {
+            // Eye coverage: which eye should be closed?
+            const eyeClosed = eye === 'both' ? null
+              : eye === 'left' ? val.blinkLeft
+              : val.blinkRight;
+            const EYE_THRESHOLD = 0.65;
+            const eyeOk = eye === 'both' || (eyeClosed !== null && eyeClosed > EYE_THRESHOLD);
+
+            // Distance: ±10cm tolerance
+            const distOk = val.distanceCm !== null
+              && Math.abs(val.distanceCm - selectedDistance) <= 10;
+            const distDiff = val.distanceCm !== null ? val.distanceCm - selectedDistance : null;
+
+            const loading = val.loading;
+            const noFace = val.active && !val.faceDetected && !loading;
+
+            return (
+              <div className="bg-white border border-gray-100 rounded-xl p-3 mb-4 shadow-sm">
+                {/* Hidden video for MediaPipe */}
+                <video ref={valVideoRef} className="hidden" playsInline muted />
+
+                {loading && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    {lang === 'es' ? 'Iniciando cámara…' : 'Starting camera…'}
+                  </div>
+                )}
+                {val.error && (
+                  <p className="text-xs text-red-500">{val.error}</p>
+                )}
+                {noFace && (
+                  <p className="text-xs text-amber-600">
+                    {lang === 'es' ? 'No se detecta rostro — acércate a la cámara' : 'No face detected — move closer to camera'}
+                  </p>
+                )}
+                {val.active && val.faceDetected && (
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {/* Distance indicator */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className={`w-2 h-2 rounded-full ${distOk ? 'bg-green-500' : 'bg-red-400'}`} />
+                      <span className={distOk ? 'text-green-700' : 'text-red-600'}>
+                        {val.distanceCm !== null ? (
+                          distDiff !== null && Math.abs(distDiff) > 10
+                            ? `${val.distanceCm}cm (${distDiff > 0 ? '+' : ''}${distDiff}cm)`
+                            : `${val.distanceCm}cm ✓`
+                        ) : '—'}
+                      </span>
+                      <span className="text-gray-400">{lang === 'es' ? `· meta ${selectedDistance}cm` : `· target ${selectedDistance}cm`}</span>
+                    </div>
+                    {/* Eye coverage (only when testing one eye) */}
+                    {eye !== 'both' && (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className={`w-2 h-2 rounded-full ${eyeOk ? 'bg-green-500' : 'bg-amber-400'}`} />
+                        <span className={eyeOk ? 'text-green-700' : 'text-amber-700'}>
+                          {eyeOk
+                            ? (lang === 'es' ? 'Ojo cubierto ✓' : 'Eye covered ✓')
+                            : (lang === 'es'
+                              ? `Cubre el ojo ${eye === 'left' ? 'izquierdo' : 'derecho'}`
+                              : `Cover your ${eye} eye`)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Text card */}
           <div className="bg-white rounded-2xl shadow-lg p-8 mb-5 min-h-[160px] flex items-center justify-center">

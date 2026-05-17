@@ -17,6 +17,8 @@ export interface ValidatorState {
   irisMoving: boolean;      // circles: iris en movimiento circular
   headStable: boolean;      // circles: cabeza quieta
   blinkScore: number;       // raw avg blink (0-1)
+  blinkLeft: number;        // raw blink score for user's left eye (0-1)
+  blinkRight: number;       // raw blink score for user's right eye (0-1)
 }
 
 // Constante de distancia basada en IPD promedio adulto ~63mm y FOV ~70°
@@ -55,6 +57,8 @@ export function useExerciseValidator() {
     irisMoving: false,
     headStable: true,
     blinkScore: 0,
+    blinkLeft: 0,
+    blinkRight: 0,
   });
 
   const stop = useCallback(() => {
@@ -73,6 +77,7 @@ export function useExerciseValidator() {
       distanceCm: null, distanceStatus: null,
       eyesCovered: false, eyesCoveredPct: 0,
       irisMoving: false, headStable: true, blinkScore: 0,
+      blinkLeft: 0, blinkRight: 0,
     });
   }, []);
 
@@ -125,7 +130,7 @@ export function useExerciseValidator() {
 
           if (!landmarks || landmarks.length === 0) {
             // Sin cara detectada: para palming se trata como cubierto
-            setState(s => ({ ...s, active: true, faceDetected: false, eyesCovered: true, eyesCoveredPct: 100 }));
+            setState(s => ({ ...s, active: true, faceDetected: false, eyesCovered: true, eyesCoveredPct: 100, blinkLeft: 1, blinkRight: 1 }));
           } else {
             // ── Blink blendshapes ──────────────────────────────────────────
             const blinkL = shapes.find((c: any) => c.categoryName === 'eyeBlinkLeft')?.score  ?? 0;
@@ -187,6 +192,8 @@ export function useExerciseValidator() {
               eyesCoveredPct: Math.round(smoothedBlink * 100),
               irisMoving, headStable,
               blinkScore: avgBlink,
+              blinkLeft: blinkL,
+              blinkRight: blinkR,
             });
           }
         }

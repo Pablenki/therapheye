@@ -23,9 +23,26 @@ if (isTherapheye()) {
 
 function syncToLocalStorage() {
   try {
-    chrome.storage.local.get(['daily_history', 'therapeye_ext_timer'], function(data) {
+    chrome.storage.local.get(['daily_history', 'therapeye_ext_timer', 'therapeye_user'], function(data) {
       if (chrome.runtime.lastError) return;
       try {
+        // Sincronizar therapeye_user de localStorage → chrome.storage.local
+        // Esto permite que background.js detecte sesiones foráneas en este navegador
+        try {
+          var rawUser = localStorage.getItem('therapeye_user');
+          if (rawUser) {
+            var localUser = JSON.parse(rawUser);
+            var storedUser = data.therapeye_user;
+            if (localUser && localUser.id && (!storedUser || storedUser.id !== localUser.id)) {
+              chrome.storage.local.set({ therapeye_user: localUser }, function() {
+                if (!chrome.runtime.lastError) {
+                  chrome.runtime.sendMessage({ type: 'USER_SYNCED', user: localUser });
+                }
+              });
+            }
+          }
+        } catch(eu) {}
+
         // Combinar daily_history con el estado actual del timer de hoy
         var history = Object.assign({}, data.daily_history || {});
         var timer = data.therapeye_ext_timer;
@@ -62,6 +79,29 @@ function throttledSync() {
     _lastThrottledSync = now;
     syncToLocalStorage();
   }
+}
+
+// ─── Bridge: la app web puede disparar eventos para comandar la extensión ─────
+
+if (isTherapheye()) {
+  // 'therapheye-save-session' → relay SAVE_SESSION a background
+  document.addEventListener('therapheye-save-session', function(e) {
+    var detail = e.detail || {};
+    chrome.runtime.sendMessage({ type: 'SAVE_SESSION', final: detail.final !== false }, function(resp) {
+      if (chrome.runtime.lastError) return;
+      // Notificar a la app del resultado + refrescar timer en localStorage
+      if (resp && resp.ok) syncToLocalStorage();
+      try {
+        localStorage.setItem('therapeye_ext_save_result', JSON.stringify({
+          ok: resp?.ok ?? false,
+          savedMs: resp?.savedMs ?? 0,
+          final: detail.final !== false,
+          ts: Date.now(),
+        }));
+        window.dispatchEvent(new CustomEvent('therapheye-ext-save-result', { detail: resp }));
+      } catch(e2) {}
+    });
+  });
 }
 
 // ─── Overlay 20-20-20 ────────────────────────────────────────────────────────
