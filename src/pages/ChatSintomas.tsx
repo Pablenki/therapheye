@@ -6,12 +6,62 @@
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, Sparkles, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX, History, Trash2, X, Plus, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX, History, Trash2, X, Plus, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
 import { enviarSoporteTecnico } from '../utils/emailService';
 import { speakViaProxy } from '../utils/tts';
+
+// ── Voces Deepgram ────────────────────────────────────────────────────────────
+// ES → Aura 2  |  EN → Aura v1
+const VOICES_ES = {
+  f: [
+    { id: 'aura-2-estrella-es', name: 'Estrella', style: 'Natural · Mexicana' },
+    { id: 'aura-2-olivia-es',   name: 'Olivia',   style: 'Cálida · Mexicana' },
+    { id: 'aura-2-selena-es',   name: 'Selena',   style: 'Amigable · Latina' },
+    { id: 'aura-2-celeste-es',  name: 'Celeste',  style: 'Enérgica · Colombiana' },
+  ],
+  m: [
+    { id: 'aura-2-luciano-es', name: 'Luciano', style: 'Expresivo · Mexicano' },
+    { id: 'aura-2-sirio-es',   name: 'Sirio',   style: 'Ronco · Mexicano' },
+    { id: 'aura-2-valerio-es', name: 'Valerio', style: 'Profundo · Mexicano' },
+    { id: 'aura-2-javier-es',  name: 'Javier',  style: 'Calmado · Latino' },
+  ],
+} as const;
+
+const VOICES_EN = {
+  f: [
+    { id: 'aura-asteria-en', name: 'Asteria', style: 'Confident · Clear' },
+    { id: 'aura-hera-en',    name: 'Hera',    style: 'Deep · Warm' },
+    { id: 'aura-luna-en',    name: 'Luna',    style: 'Friendly · Natural' },
+    { id: 'aura-stella-en',  name: 'Stella',  style: 'Raspy · Cheerful' },
+  ],
+  m: [
+    { id: 'aura-orpheus-en', name: 'Orpheus', style: 'Professional · Clear' },
+    { id: 'aura-arcas-en',   name: 'Arcas',   style: 'Natural · Smooth' },
+    { id: 'aura-orion-en',   name: 'Orion',   style: 'Calm · Approachable' },
+    { id: 'aura-perseus-en', name: 'Perseus', style: 'Expressive · Melodic' },
+    { id: 'aura-zeus-en',    name: 'Zeus',    style: 'Deep · Trustworthy' },
+  ],
+} as const;
+
+const VOICE_STORAGE_KEY_ES = 'therapheye_chat_voice_es';
+const VOICE_STORAGE_KEY_EN = 'therapheye_chat_voice_en';
+const DEFAULT_VOICE_ES = 'aura-2-estrella-es';
+const DEFAULT_VOICE_EN = 'aura-asteria-en';
+
+function loadVoice(lang: string): string {
+  try {
+    const key = lang === 'en' ? VOICE_STORAGE_KEY_EN : VOICE_STORAGE_KEY_ES;
+    return localStorage.getItem(key) || (lang === 'en' ? DEFAULT_VOICE_EN : DEFAULT_VOICE_ES);
+  } catch { return lang === 'en' ? DEFAULT_VOICE_EN : DEFAULT_VOICE_ES; }
+}
+function saveVoice(v: string, lang: string) {
+  try { localStorage.setItem(lang === 'en' ? VOICE_STORAGE_KEY_EN : VOICE_STORAGE_KEY_ES, v); } catch { /* noop */ }
+}
+
+type VoiceGender = 'f' | 'm';
 
 interface Props {
   onBack: () => void;
@@ -262,10 +312,10 @@ function cleanTextForSpeech(text: string): string {
     .trim();
 }
 
-function speak(text: string, lang: string, onEnd?: () => void) {
+function speak(text: string, lang: string, onEnd?: () => void, voice?: string) {
   const cleaned = cleanTextForSpeech(text);
   if (!cleaned) { onEnd?.(); return; }
-  speakViaProxy(cleaned, lang === 'en' ? 'en' : 'es').finally(() => onEnd?.());
+  speakViaProxy(cleaned, lang === 'en' ? 'en' : 'es', voice).finally(() => onEnd?.());
 }
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
@@ -374,7 +424,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
-  const [currentProvider, setCurrentProvider] = useState('');
+  const [, setCurrentProvider] = useState('');
   const [supportSent, setSupportSent] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
 
@@ -394,6 +444,12 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   // ── Cola de espera ─────────────────────────────────────────────────────────
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState(() => loadVoice(lang));
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>(() => {
+    const v = loadVoice(lang);
+    return [...VOICES_ES.m, ...VOICES_EN.m].some(x => x.id === v) ? 'm' : 'f';
+  });
+  const [showVoicePanel, setShowVoicePanel] = useState(false);
 
   const [queueStatus, setQueueStatus] = useState<QueueStatus>('checking');
   const [queuePosition, setQueuePosition] = useState(0);
@@ -414,7 +470,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     const last = messages[messages.length - 1];
     if (last.role !== 'assistant') return;
     setIsSpeaking(true);
-    speak(last.content, lang, () => setIsSpeaking(false));
+    speak(last.content, lang, () => setIsSpeaking(false), selectedVoice);
   }, [messages]); // intentionally only react to new messages
 
   // Stop speech when voice is toggled off
@@ -754,55 +810,45 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition mr-1">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-indigo-600" />
-          </div>
-          <div>
-            <p className="font-bold text-gray-800 text-sm leading-tight">
-              {lang === 'es' ? 'Asistente Visual' : 'Visual Assistant'}
-            </p>
-            <p className={`text-xs flex items-center gap-1 ${statusColor}`}>
-              <span className={`w-1.5 h-1.5 rounded-full inline-block ${statusDotColor}`} />
-              {statusText}
-            </p>
-          </div>
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-100 shadow-sm flex-shrink-0">
+        {/* Atrás */}
+        <button onClick={handleBack} className="text-gray-500 hover:text-gray-800 transition flex-shrink-0 p-1">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        {/* Avatar */}
+        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+          <Bot className="w-4 h-4 text-indigo-600" />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-medium flex items-center gap-1">
-            <Sparkles className="w-3 h-3" />
-            {currentProvider || 'Therapheye IA'}
-          </span>
+        {/* Título + estado — ocupa el espacio disponible */}
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-gray-800 text-sm leading-tight truncate">
+            {lang === 'es' ? 'Asistente Visual' : 'Visual Assistant'}
+          </p>
+          <p className={`text-xs flex items-center gap-1 truncate ${statusColor}`}>
+            <span className={`w-1.5 h-1.5 rounded-full inline-block flex-shrink-0 ${statusDotColor}`} />
+            <span className="truncate">{statusText}</span>
+          </p>
+        </div>
+        {/* Acciones — 3 iconos fijos */}
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
-            onClick={() => setVoiceEnabled(v => !v)}
-            className={`transition p-1.5 rounded-lg ${
-              voiceEnabled
-                ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+            onClick={() => {
+              if (!voiceEnabled) { setVoiceEnabled(true); setShowVoicePanel(true); }
+              else { setVoiceEnabled(false); setShowVoicePanel(false); }
+            }}
+            className={`p-1.5 rounded-lg transition ${
+              voiceEnabled ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
             }`}
-            title={
-              voiceEnabled
-                ? (lang === 'es' ? 'Desactivar voz' : 'Disable voice')
-                : (lang === 'es' ? 'Activar voz' : 'Enable voice')
-            }
+            title={voiceEnabled ? (lang === 'es' ? 'Desactivar voz' : 'Disable voice') : (lang === 'es' ? 'Activar voz' : 'Enable voice')}
           >
             {voiceEnabled
               ? <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-pulse' : ''}`} />
-              : <VolumeX className="w-4 h-4" />
-            }
+              : <VolumeX className="w-4 h-4" />}
           </button>
           <button
             onClick={() => setSidebarOpen(v => !v)}
-            className={`transition p-1.5 rounded-lg relative ${
-              sidebarOpen
-                ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'
-                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-            }`}
-            title={lang === 'es' ? 'Historial de conversaciones' : 'Conversation history'}
+            className={`p-1.5 rounded-lg transition relative ${sidebarOpen ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+            title={lang === 'es' ? 'Historial' : 'History'}
           >
             <History className="w-4 h-4" />
             {chatHistory.length > 0 && (
@@ -811,13 +857,54 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
           </button>
           <button
             onClick={handleReset}
-            className="text-gray-400 hover:text-gray-600 transition p-1.5 rounded-lg hover:bg-gray-100"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
             title={lang === 'es' ? 'Nueva conversación' : 'New conversation'}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* ── Panel selector de voz ── */}
+      {showVoicePanel && (() => {
+        const voices = lang === 'en' ? VOICES_EN : VOICES_ES;
+        return (
+          <div className="bg-indigo-50 border-b border-indigo-100 px-3 py-2.5 flex-shrink-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[11px] text-indigo-500 font-semibold uppercase tracking-wide">
+                {lang === 'es' ? 'Voz del asistente' : 'Assistant voice'}
+              </span>
+              <div className="flex rounded-lg overflow-hidden border border-indigo-200 ml-auto">
+                <button
+                  onClick={() => { setVoiceGender('f'); const v = voices.f[0].id; setSelectedVoice(v); saveVoice(v, lang); }}
+                  className={`px-2.5 py-1 text-xs font-semibold transition ${voiceGender === 'f' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
+                >{lang === 'es' ? '♀ Mujer' : '♀ Female'}</button>
+                <button
+                  onClick={() => { setVoiceGender('m'); const v = voices.m[0].id; setSelectedVoice(v); saveVoice(v, lang); }}
+                  className={`px-2.5 py-1 text-xs font-semibold transition ${voiceGender === 'm' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
+                >{lang === 'es' ? '♂ Hombre' : '♂ Male'}</button>
+              </div>
+              <button onClick={() => setShowVoicePanel(false)} className="text-indigo-400 hover:text-indigo-600 transition text-xs ml-1">✕</button>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {voices[voiceGender].map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => { setSelectedVoice(v.id); saveVoice(v.id, lang); }}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition flex flex-col items-start leading-tight ${
+                    selectedVoice === v.id
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400'
+                  }`}
+                >
+                  <span className="font-semibold">{v.name}</span>
+                  <span className={`text-[10px] ${selectedVoice === v.id ? 'text-indigo-200' : 'text-gray-400'}`}>{v.style}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Pantallas de cola (checking / waiting / inactive_kicked) ── */}
       {queueStatus !== 'active' && (
@@ -901,7 +988,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
                 exercises={msg.role === 'assistant' && i > 0 ? detectExercises(msg.content, lang) : undefined}
                 onStartExercise={onStartExercise}
                 voiceEnabled={voiceEnabled}
-                onSpeak={(text) => speak(text, lang)}
+                onSpeak={(text) => speak(text, lang, undefined, selectedVoice)}
               />
             ))}
 

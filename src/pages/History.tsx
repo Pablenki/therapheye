@@ -1222,19 +1222,17 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
           {t('common', 'backToDashboard')}
         </button>
 
-        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-1">
-              {t('history', 'title')} {user?.nombre}
-            </h1>
-            <p className="text-gray-600">{t('history', 'subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-1">
+            {t('history', 'title')} {user?.nombre}
+          </h1>
+          <p className="text-gray-600 mb-4">{t('history', 'subtitle')}</p>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <PDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} lang={lang} />
             <MedicalPDFDownloadButton userId={user?.id} userName={user?.nombre ?? ''} />
             <button
               onClick={handleExportCSV}
-              className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-emerald-700 transition"
+              className="flex items-center justify-center gap-2 bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-emerald-700 transition w-full sm:w-auto"
               title="Exportar historial como CSV"
             >
               <FileDown className="w-4 h-4"/>
@@ -1243,7 +1241,7 @@ const History = ({ onBack, onStartExercise }: HistoryProps) => {
             <button
               onClick={handleShare}
               disabled={sharing}
-              className="flex items-center gap-2 bg-violet-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-violet-700 transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-violet-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-violet-700 transition disabled:opacity-50 w-full sm:w-auto"
             >
               <Share2 className="w-4 h-4"/>
               {sharing ? 'Generando…' : 'Compartir'}

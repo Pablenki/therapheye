@@ -97,7 +97,7 @@ export async function speak(text: string, lang: Lang = 'es'): Promise<void> {
 // ── speakViaProxy() — Cascada proxy (solo ChatSintomas) ───────────────────────
 // Unreal Speech → PlayHT → ElevenLabs → Web Speech API como fallback final.
 
-export async function speakViaProxy(text: string, lang: Lang = 'es'): Promise<void> {
+export async function speakViaProxy(text: string, lang: Lang = 'es', voice?: string): Promise<void> {
   if (!text.trim()) return;
   stopSpeech();
 
@@ -105,7 +105,7 @@ export async function speakViaProxy(text: string, lang: Lang = 'es'): Promise<vo
     const res = await fetch('/.netlify/functions/tts-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang }),
+      body: JSON.stringify({ text, lang, ...(voice ? { voice } : {}) }),
     });
 
     if (res.ok) {

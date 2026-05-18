@@ -1,11 +1,11 @@
 // =========================================
 // Netlify Function: tts-proxy
-// Cascada: Unreal Speech (x2) → PlayHT → ElevenLabs (x2) → [client: Web Speech API]
-// Unreal Speech key1 : 250K chars/mes  (Pablo)
-// Unreal Speech key2 : 250K chars/mes  (Migue)  → 500K total
-// PlayHT             : 12.5K words/mes (opcional)
-// ElevenLabs key1    : 10K chars/mes   (Pablo)
-// ElevenLabs key2    : 10K chars/mes   (Migue)  → 20K total
+// ES: Deepgram Aura → ElevenLabs (x2) → PlayHT → Web Speech
+// EN: Unreal Speech (x2) → Deepgram Aura → ElevenLabs (x2) → Web Speech
+// Unreal Speech  : 250K chars/mes × 2 = 500K  (solo inglés)
+// Deepgram Aura  : pay-as-you-go / $200 crédito inicial
+// ElevenLabs     : 10K chars/mes × 2 = 20K    (multilingual)
+// PlayHT         : 12.5K words/mes             (opcional, español)
 // =========================================
 
 import type { Handler } from '@netlify/functions';
@@ -131,6 +131,48 @@ async function callElevenLabs(
   return { ok: true, audioBase64 };
 }
 
+// ── Deepgram Aura 2 TTS ────────────────────────────────────────────────────────
+// Voces ES disponibles:
+//   Mujer : aura-2-estrella-es | aura-2-olivia-es | aura-2-selena-es | aura-2-celeste-es
+//   Hombre: aura-2-luciano-es  | aura-2-sirio-es  | aura-2-valerio-es | aura-2-javier-es
+// Voz EN por defecto: aura-2-thalia-en (female) / aura-2-orion-en (male)
+
+const DEEPGRAM_DEFAULT_ES = 'aura-2-estrella-es';
+const DEEPGRAM_DEFAULT_EN = 'aura-asteria-en';
+
+async function callDeepgram(
+  apiKey: string,
+  text: string,
+  lang: string,
+  voiceModel?: string,
+): Promise<{ ok: boolean; audioBase64?: string; error?: string; quota?: boolean }> {
+  const model = voiceModel ?? (lang === 'es' ? DEEPGRAM_DEFAULT_ES : DEEPGRAM_DEFAULT_EN);
+
+  let res: Response;
+  try {
+    res = await fetch(`https://api.deepgram.com/v1/speak?model=${model}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text }),
+    });
+  } catch (e: any) {
+    return { ok: false, error: `Deepgram network: ${e.message}` };
+  }
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    const isQuota = res.status === 429 || res.status === 402;
+    console.warn(`[tts-proxy] Deepgram falló (${res.status}):`, errText);
+    return { ok: false, error: `Deepgram ${res.status}`, quota: isQuota };
+  }
+
+  const buffer = await res.arrayBuffer();
+  return { ok: true, audioBase64: Buffer.from(buffer).toString('base64') };
+}
+
 // ── Handler principal ──────────────────────────────────────────────────────────
 
 const handler: Handler = async (event) => {
@@ -140,11 +182,13 @@ const handler: Handler = async (event) => {
 
   let text: string;
   let lang: string;
+  let voice: string | undefined;
 
   try {
     const body = JSON.parse(event.body || '{}');
-    text = String(body.text || '').slice(0, MAX_TEXT_LENGTH);
-    lang = body.lang === 'en' ? 'en' : 'es';
+    text  = String(body.text || '').slice(0, MAX_TEXT_LENGTH);
+    lang  = body.lang === 'en' ? 'en' : 'es';
+    voice = typeof body.voice === 'string' && body.voice ? body.voice : undefined;
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) };
   }
@@ -153,12 +197,13 @@ const handler: Handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'No text provided' }) };
   }
 
-  const unrealKey1 = process.env.UNREAL_SPEECH_API_KEY;
-  const unrealKey2 = process.env.UNREAL_SPEECH_API_KEY_2;
-  const playhtKey  = process.env.PLAYHT_API_KEY;
-  const playhtUser = process.env.PLAYHT_USER_ID;
-  const elevenKey1 = process.env.ELEVENLABS_API_KEY;
-  const elevenKey2 = process.env.ELEVENLABS_API_KEY_2;
+  const unrealKey1  = process.env.UNREAL_SPEECH_API_KEY;
+  const unrealKey2  = process.env.UNREAL_SPEECH_API_KEY_2;
+  const playhtKey   = process.env.PLAYHT_API_KEY;
+  const playhtUser  = process.env.PLAYHT_USER_ID;
+  const elevenKey1  = process.env.ELEVENLABS_API_KEY;
+  const elevenKey2  = process.env.ELEVENLABS_API_KEY_2;
+  const deepgramKey = process.env.DEEPGRAM_API_KEY;
 
   const ok = (audioBase64: string, provider: string) => ({
     statusCode: 200,
@@ -168,39 +213,59 @@ const handler: Handler = async (event) => {
 
   const errors: string[] = [];
 
-  // 1. Unreal Speech — key Pablo primero, key Migue si Pablo llega a quota
-  let unrealQuotaHit = false;
-  if (unrealKey1) {
-    const r = await callUnrealSpeech(unrealKey1, text, lang);
-    if (r.ok) return ok(r.audioBase64!, 'UnrealSpeech·1');
-    errors.push(r.error!);
-    unrealQuotaHit = !!r.quota;
-  }
-  if (unrealKey2 && unrealQuotaHit) {
-    const r = await callUnrealSpeech(unrealKey2, text, lang);
-    if (r.ok) return ok(r.audioBase64!, 'UnrealSpeech·2');
-    errors.push(r.error!);
-  }
+  if (lang === 'es') {
+    // ── Español: Deepgram Aura → ElevenLabs → PlayHT → Web Speech
+    //            Unreal Speech excluido (voces solo en inglés)
+    if (deepgramKey) {
+      const r = await callDeepgram(deepgramKey, text, lang, voice);
+      if (r.ok) return ok(r.audioBase64!, 'Deepgram');
+      errors.push(r.error!);
+    }
+    if (elevenKey1) {
+      const r = await callElevenLabs(elevenKey1, text);
+      if (r.ok) return ok(r.audioBase64!, 'ElevenLabs·1');
+      errors.push(r.error!);
+    }
+    if (elevenKey2) {
+      const r = await callElevenLabs(elevenKey2, text);
+      if (r.ok) return ok(r.audioBase64!, 'ElevenLabs·2');
+      errors.push(r.error!);
+    }
+    if (playhtKey && playhtUser) {
+      const r = await callPlayHT(playhtKey, playhtUser, text, lang);
+      if (r.ok) return ok(r.audioBase64!, 'PlayHT');
+      errors.push(r.error!);
+    }
 
-  // 2. PlayHT (opcional, 12.5K words/mes)
-  if (playhtKey && playhtUser) {
-    const r = await callPlayHT(playhtKey, playhtUser, text, lang);
-    if (r.ok) return ok(r.audioBase64!, 'PlayHT');
-    errors.push(r.error!);
-  }
-
-  // 3a. ElevenLabs — key Pablo (10K chars/mes)
-  if (elevenKey1) {
-    const r = await callElevenLabs(elevenKey1, text);
-    if (r.ok) return ok(r.audioBase64!, 'ElevenLabs·1');
-    errors.push(r.error!);
-  }
-
-  // 3b. ElevenLabs — key Migue (10K chars/mes)
-  if (elevenKey2) {
-    const r = await callElevenLabs(elevenKey2, text);
-    if (r.ok) return ok(r.audioBase64!, 'ElevenLabs·2');
-    errors.push(r.error!);
+  } else {
+    // ── Inglés: Unreal Speech → Deepgram Aura → ElevenLabs → Web Speech
+    let unrealQuotaHit = false;
+    if (unrealKey1) {
+      const r = await callUnrealSpeech(unrealKey1, text, lang);
+      if (r.ok) return ok(r.audioBase64!, 'UnrealSpeech·1');
+      errors.push(r.error!);
+      unrealQuotaHit = !!r.quota;
+    }
+    if (unrealKey2 && unrealQuotaHit) {
+      const r = await callUnrealSpeech(unrealKey2, text, lang);
+      if (r.ok) return ok(r.audioBase64!, 'UnrealSpeech·2');
+      errors.push(r.error!);
+    }
+    if (deepgramKey) {
+      const r = await callDeepgram(deepgramKey, text, lang, voice);
+      if (r.ok) return ok(r.audioBase64!, 'Deepgram');
+      errors.push(r.error!);
+    }
+    if (elevenKey1) {
+      const r = await callElevenLabs(elevenKey1, text);
+      if (r.ok) return ok(r.audioBase64!, 'ElevenLabs·1');
+      errors.push(r.error!);
+    }
+    if (elevenKey2) {
+      const r = await callElevenLabs(elevenKey2, text);
+      if (r.ok) return ok(r.audioBase64!, 'ElevenLabs·2');
+      errors.push(r.error!);
+    }
   }
 
   // 4. Señalizar al cliente que use Web Speech API nativa

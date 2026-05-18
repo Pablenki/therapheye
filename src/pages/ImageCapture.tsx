@@ -1,11 +1,10 @@
-import { ArrowLeft, Camera, X, CheckCircle, Loader2, Upload, AlertCircle, Sparkles, Brain, Sun, Zap } from 'lucide-react'
+import { ArrowLeft, Camera, X, CheckCircle, Loader2, Upload, AlertCircle, Sun, Zap } from 'lucide-react'
 import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLanguage } from '../i18n'
 import { speak as speakProxy } from '../utils/tts'
 import { sql } from '../neonCliente'
-import { callClaude } from '../utils/claudeApi'
 
 // ── Análisis de calidad de frame ──────────────────────────────────────────────
 type FrameQuality = 'poor' | 'fair' | 'good';
@@ -80,26 +79,40 @@ function speak(text: string) {
   speakProxy(text, 'es');
 }
 
-interface ClaudeVisionResult {
-  analisis: string;
-  signos: string[];
-  nivel_confianza: 'alto' | 'medio' | 'bajo';
-  recomendacion: string;
-}
+// ── Contexto por síntoma detectado ───────────────────────────────────────────
+const SINTOMA_INFO: Record<string, { titulo: string; detalle: string; recomendaciones: string[] }> = {
+  enro_leve: {
+    titulo: 'Enrojecimiento leve detectado',
+    detalle: 'Se observa leve irritación en la conjuntiva. Puede deberse a fatiga visual, exposición prolongada a pantallas o ambiente seco.',
+    recomendaciones: ['Aplica la regla 20-20-20: cada 20 min mira a 6m por 20 seg', 'Parpadea conscientemente para hidratar el ojo', 'Reduce la exposición a pantallas por hoy'],
+  },
+  enro_moderado: {
+    titulo: 'Enrojecimiento moderado detectado',
+    detalle: 'La conjuntiva muestra irritación moderada. Podría indicar ojo seco, alergia o sobrecarga visual significativa.',
+    recomendaciones: ['Descansa de pantallas al menos 30 minutos', 'Usa lágrimas artificiales sin conservantes si tienes', 'Si persiste más de 24h, consulta a un oftalmólogo'],
+  },
+  enro_grave: {
+    titulo: 'Enrojecimiento severo detectado',
+    detalle: 'Se detecta enrojecimiento importante en el ojo. Este nivel puede requerir atención médica.',
+    recomendaciones: ['Evita frotarte el ojo', 'Consulta a un oftalmólogo si el enrojecimiento no cede', 'No uses lentes de contacto hasta que mejore'],
+  },
+  parpado_caido: {
+    titulo: 'Posible ptosis palpebral detectada',
+    detalle: 'Se observa caída parcial del párpado. Puede ser temporal (fatiga) o indicar algo que vale revisar.',
+    recomendaciones: ['Descansa con los ojos cerrados 10-15 minutos', 'Si es persistente o de aparición súbita, visita a un médico', 'Evita conducir si la visión se ve afectada'],
+  },
+  piel_enro: {
+    titulo: 'Irritación periocular detectada',
+    detalle: 'Se detecta enrojecimiento en la piel alrededor del ojo. Puede ser alergia, roce o irritación externa.',
+    recomendaciones: ['No te frotes el área afectada', 'Evita productos químicos cerca del ojo', 'Aplica compresas frías para reducir la inflamación'],
+  },
+};
 
-const CLAUDE_VISION_PROMPT = `Eres un asistente de análisis de salud visual. Analiza esta imagen del ojo de un usuario.
-
-Identifica ÚNICAMENTE signos visibles en la imagen. Responde en JSON:
-{
-  "analisis": "descripción concisa de lo que observas en el ojo (1-2 oraciones)",
-  "signos": ["signo1", "signo2"],
-  "nivel_confianza": "alto|medio|bajo",
-  "recomendacion": "recomendación concreta de 1 oración"
-}
-
-Signos posibles: enrojecimiento leve, enrojecimiento moderado, enrojecimiento severo, párpado caído, ojo seco aparente, conjuntiva irritada, lagrimeo, imagen borrosa, mala iluminación.
-Si la imagen no muestra claramente un ojo, indica "imagen no adecuada" en analisis y usa nivel_confianza "bajo".
-NUNCA diagnostiques enfermedades. Solo describe lo visible.`;
+const SINTOMA_SIN_HALLAZGOS = {
+  titulo: 'Sin signos de alarma',
+  detalle: 'El análisis no detectó señales de irritación o fatiga visual visibles en la imagen.',
+  recomendaciones: ['Mantén la rutina de ejercicios visuales', 'Aplica la regla 20-20-20 durante el uso de pantallas', 'Regresa para otro análisis en una semana'],
+};
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
@@ -134,8 +147,6 @@ const ImageCapture = ({ onBack }: Props) => {
   const [resultado, setResultado] = useState<DiagnosticoResult | null>(null)
   const [isDiagnosing, setIsDiagnosing] = useState(false)
   const [errorDiagnostico, setErrorDiagnostico] = useState<string | null>(null)
-  const [claudeResult, setClaudeResult] = useState<ClaudeVisionResult | null>(null)
-  const [isClaudeAnalyzing, setIsClaudeAnalyzing] = useState(false)
   const [errorCamara, setErrorCamara] = useState<string | null>(null)
   const [cargandoCamara, setCargandoCamara] = useState(false)
   // Smart capture states
@@ -310,44 +321,10 @@ const ImageCapture = ({ onBack }: Props) => {
     e.target.value = ''
   }
 
-  const analizarConClaude = async (imagenBase64: string) => {
-    setIsClaudeAnalyzing(true)
-    try {
-      // Extraer solo la parte base64 (sin el prefijo data:image/...;base64,)
-      const base64Data = imagenBase64.split(',')[1] ?? imagenBase64
-      const mediaType = imagenBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg'
-      const data = await callClaude({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 512,
-        system: CLAUDE_VISION_PROMPT,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-            { type: 'text', text: 'Analiza esta imagen del ojo.' }
-          ]
-        }],
-      })
-      const text = data.content[0].text
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as ClaudeVisionResult
-        setClaudeResult(parsed)
-      }
-    } catch (e) {
-      console.warn('[Claude Vision] Error:', e)
-    } finally {
-      setIsClaudeAnalyzing(false)
-    }
-  }
-
   const realizarDiagnostico = async () => {
     if (!imagenCapturada) return
     setIsDiagnosing(true)
     setErrorDiagnostico(null)
-    setClaudeResult(null)
-    // Lanzar análisis de Claude Vision en paralelo
-    analizarConClaude(imagenCapturada)
     try {
       const res = await fetch(`${API_BASE}/diagnostico`, {
         method: 'POST',
@@ -387,78 +364,52 @@ const ImageCapture = ({ onBack }: Props) => {
       s => !['ojo sano', 'ojo_sano', 'healthy eye', 'sano'].includes(s.toLowerCase().trim())
     );
     const tieneSintomas = sintomasFiltrados.length > 0;
+    // Obtener info contextual del síntoma más grave detectado
+    const sintomaKey = getMostSevere(sintomasFiltrados);
+    const info = tieneSintomas
+      ? (SINTOMA_INFO[sintomaKey] ?? SINTOMA_SIN_HALLAZGOS)
+      : SINTOMA_SIN_HALLAZGOS;
+
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
           <div className="text-center">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">{t('imageCapture', 'title')}</h2>
-            <p className="text-gray-600 mb-6">{resultado.mensaje}</p>
-            <div className={`rounded-xl p-6 mb-6 ${tieneSintomas ? 'bg-amber-50' : 'bg-green-50'}`}>
-              <p className="text-sm text-gray-600 mb-2">Signos detectados en la imagen:</p>
-              {tieneSintomas ? (
-                <ul className="text-left space-y-2">
+            <CheckCircle className={`w-16 h-16 mx-auto mb-4 ${tieneSintomas ? 'text-amber-500' : 'text-green-500'}`} />
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">{info.titulo}</h2>
+            <p className="text-gray-500 text-sm mb-6">{resultado.mensaje}</p>
+
+            {/* Signos detectados */}
+            {tieneSintomas && (
+              <div className="bg-amber-50 border border-amber-100 rounded-xl px-5 py-4 mb-5 text-left">
+                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Signos detectados</p>
+                <div className="flex flex-wrap gap-2">
                   {sintomasFiltrados.map((s, i) => (
-                    <li key={i} className="font-medium text-amber-700">• {s}</li>
+                    <span key={i} className="text-sm bg-white border border-amber-200 text-amber-800 rounded-full px-3 py-1 font-medium">{s}</span>
                   ))}
-                </ul>
-              ) : (
-                <p className="text-lg font-semibold text-green-700">Ningún signo de fatiga visual detectado.</p>
-              )}
-            </div>
-            {/* Análisis Claude Vision */}
-            {(isClaudeAnalyzing || claudeResult) && (
-              <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-indigo-100 rounded-xl p-5 mb-5 text-left">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <Brain className="w-4 h-4 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-indigo-800">Análisis IA — Claude Vision</h3>
-                  {isClaudeAnalyzing && <Loader2 className="w-4 h-4 animate-spin text-indigo-400 ml-auto" />}
                 </div>
-                {claudeResult ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-700 leading-relaxed">{claudeResult.analisis}</p>
-                    {claudeResult.signos.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {claudeResult.signos.map(s => (
-                          <span key={s} className="text-xs bg-white border border-indigo-200 text-indigo-700 rounded-full px-2.5 py-0.5">{s}</span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2">
-                      <span className="text-xs text-gray-500">Confianza del análisis</span>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        claudeResult.nivel_confianza === 'alto' ? 'bg-emerald-100 text-emerald-700' :
-                        claudeResult.nivel_confianza === 'medio' ? 'bg-amber-100 text-amber-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {claudeResult.nivel_confianza === 'alto' ? '● Alta' : claudeResult.nivel_confianza === 'medio' ? '● Media' : '● Baja'}
-                      </span>
-                    </div>
-                    {claudeResult.recomendacion && (
-                      <p className="text-xs text-indigo-700 bg-indigo-50 rounded-lg px-3 py-2 flex items-start gap-1.5">
-                        <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        {claudeResult.recomendacion}
-                      </p>
-                    )}
-                    <p className="text-[10px] text-gray-400 leading-tight">* Análisis generado por IA. No reemplaza diagnóstico médico profesional.</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-indigo-600 animate-pulse">Procesando imagen con IA...</p>
-                )}
               </div>
             )}
 
-            <div className="bg-blue-50 rounded-xl p-6 mb-6 text-left">
-              <h3 className="font-semibold text-gray-800 mb-3">Recomendaciones:</h3>
-              <ul className="space-y-2 text-gray-700">
-                <li>✓ Realiza ejercicios visuales regularmente</li>
-                <li>✓ Toma descansos cada 20 minutos</li>
-                <li>✓ Ajusta la iluminación de tu pantalla</li>
-                <li>✓ Mantén una distancia adecuada del monitor</li>
+            {/* Explicación contextual */}
+            <div className={`rounded-xl px-5 py-4 mb-5 text-left ${tieneSintomas ? 'bg-indigo-50 border border-indigo-100' : 'bg-green-50 border border-green-100'}`}>
+              <p className={`text-sm leading-relaxed ${tieneSintomas ? 'text-indigo-800' : 'text-green-800'}`}>{info.detalle}</p>
+            </div>
+
+            {/* Recomendaciones contextuales */}
+            <div className="bg-gray-50 rounded-xl px-5 py-4 mb-6 text-left">
+              <h3 className="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide">Qué puedes hacer</h3>
+              <ul className="space-y-2">
+                {info.recomendaciones.map((r, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-indigo-500 mt-0.5 flex-shrink-0">✓</span>
+                    {r}
+                  </li>
+                ))}
               </ul>
             </div>
+
+            <p className="text-[11px] text-gray-400 mb-5">* Este análisis es orientativo y no reemplaza el diagnóstico de un profesional de la salud visual.</p>
+
             <button onClick={onBack} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
               {t('common', 'backToDashboard')}
             </button>

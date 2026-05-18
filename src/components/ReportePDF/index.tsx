@@ -648,7 +648,7 @@ Redacta como si fuera la sección A del formato SOAP. Solo el texto del análisi
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-md"
+      className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 disabled:bg-blue-400 text-white rounded-xl text-sm font-semibold transition shadow-md w-full sm:w-auto"
     >
       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
       {loading ? 'Generando...' : 'Informe para Doctor'}
@@ -764,7 +764,7 @@ export function PDFDownloadButton({ userId, userName, lang }: DownloadBtnProps) 
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-sm font-semibold transition shadow-md"
+      className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-sm font-semibold transition shadow-md w-full sm:w-auto"
     >
       {loading
         ? <Loader2 className="w-4 h-4 animate-spin" />
