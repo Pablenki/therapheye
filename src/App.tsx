@@ -20,6 +20,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
 import Dashboard from './pages/Dashboard'
+import ResetPassword from './pages/ResetPassword'
 
 // ── Lazy (se cargan al navegar) ──────────────────────────────────────────────
 const Questionnaire      = lazy(() => import('./pages/Questionnaire'))
@@ -106,7 +107,8 @@ type Page =
   | 'estadisticas-avanzadas'
   | 'plan-premium'
   | 'respiracion-478'
-  | 'evolucion-tests';
+  | 'evolucion-tests'
+  | 'reset-password';
 
 interface PendingUser {
   name: string;
@@ -129,8 +131,22 @@ function AppContent() {
   const [showTour, setShowTour] = useState(false)
   const [showShowcase, setShowShowcase] = useState(false)
   const [pageKey, setPageKey] = useState(0) // for transition animation
+  const [resetToken, setResetToken] = useState('')
   const isPopstateRef = useRef(false)
   useReporteSemanal()
+
+  // Detectar enlace de reset de contraseña en el hash de la URL al cargar
+  useEffect(() => {
+    const hash = window.location.hash // e.g. "#reset-password?token=uuid"
+    if (hash.startsWith('#reset-password')) {
+      const params = new URLSearchParams(hash.split('?')[1] ?? '')
+      const token = params.get('token') ?? ''
+      setResetToken(token)
+      setCurrentPage('reset-password')
+      window.history.replaceState({}, '', window.location.pathname) // limpiar la URL
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Browser Back Button support via History API ──────────────────────────────
   useEffect(() => {
@@ -224,6 +240,13 @@ function AppContent() {
 
   const renderPageContent = () => {
     switch (currentPage) {
+      case 'reset-password':
+        return (
+          <ResetPassword
+            token={resetToken}
+            onDone={() => handleNavigate('login')}
+          />
+        )
       case 'login':
         return (
           <Login

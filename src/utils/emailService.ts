@@ -41,6 +41,9 @@ export const enviarReporteSemanal = (
     resumen: stats.resumen,
   });
 
+export const enviarCorreoResetPassword = (email: string, nombre: string, url: string) =>
+  post({ type: 'reset-password', email, nombre, url });
+
 export const enviarSoporteTecnico = (
   usuarioNombre: string,
   usuarioEmail: string,

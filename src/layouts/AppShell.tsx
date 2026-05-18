@@ -96,7 +96,7 @@ type Page =
   | 'ejercicios-avanzados' | 'historial-ocular'
   | 'entrenamiento-mental' | 'estadisticas-avanzadas'
   | 'plan-premium'
-  | 'respiracion-478' | 'evolucion-tests';
+  | 'respiracion-478' | 'evolucion-tests' | 'reset-password';
 
 interface Props {
   currentPage: Page;

@@ -47,7 +47,8 @@ type Page =
   | 'plan-premium'
   | 'dominancia-ocular'
   | 'respiracion-478'
-  | 'evolucion-tests';
+  | 'evolucion-tests'
+  | 'reset-password';
 
 type Props = {
   currentPage: Page;

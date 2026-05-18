@@ -120,6 +120,19 @@ function templateReporteSemanal(nombre: string, semana: string, ejercicios: numb
   ` + CLOSE;
 }
 
+function templateResetPassword(nombre: string, url: string): string {
+  return BASE + header('Restablecer contraseña', 'Recibimos una solicitud de cambio de contraseña') + `
+    <div style="padding:28px 32px;">
+      <p style="color:#374151;font-size:15px;margin:0 0 8px;">Hola <strong>${nombre}</strong>,</p>
+      <p style="color:#6b7280;font-size:14px;margin:0 0 24px;">Haz clic en el botón para crear una nueva contraseña. Este enlace expira en <strong>30 minutos</strong>.</p>
+      ${btn('Restablecer mi contraseña', url)}
+      <div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;padding:14px 16px;margin:20px 0 0;">
+        <p style="margin:0;color:#92400e;font-size:13px;">⚠️ Si no solicitaste este cambio, ignora este correo. Tu contraseña actual no se modificará.</p>
+      </div>
+    </div>
+  ` + CLOSE;
+}
+
 function templateSoporteTecnico(nombre: string, email: string, transcript: string, fecha: string): string {
   return BASE + header('Nuevo mensaje de soporte', fecha) + `
     <div style="padding:28px 32px;">
@@ -188,6 +201,13 @@ const handler: Handler = async (event) => {
           to: d.email,
           subject: `📊 Tu resumen semanal — Therapheye`,
           html: templateReporteSemanal(d.nombre, d.semana, d.ejercicios, d.racha, d.puntaje_promedio, d.resumen),
+        };
+        break;
+      case 'reset-password':
+        opts = {
+          to: d.email,
+          subject: '🔑 Restablece tu contraseña — Therapheye',
+          html: templateResetPassword(d.nombre, d.url),
         };
         break;
       case 'soporte':
