@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera, Bell, BellOff, BellRing, Download } from 'lucide-react';
+import { ArrowLeft, KeyRound, Trash2, Eye, EyeOff, Loader2, CheckCircle, AlertTriangle, UserCircle2, Camera, Bell, BellOff, BellRing, Download, Volume2, Square } from 'lucide-react';
+import { speakViaProxy, stopSpeech } from '../utils/tts';
 import { hashPassword } from '../utils/authHash';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
@@ -7,7 +8,7 @@ import { sql } from '../neonCliente';
 import { generarCodigo, enviarCorreoEliminacion } from '../utils/emailService';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
-type Tab = 'perfil' | 'password' | 'account' | 'notificaciones' | 'exportar';
+type Tab = 'perfil' | 'password' | 'account' | 'notificaciones' | 'exportar' | 'voz';
 
 interface Props {
   onBack: () => void;
@@ -205,6 +206,7 @@ export default function Profile({ onBack, onLogout }: Props) {
             <SideTab active={tab === 'password'} icon={<KeyRound    className="w-4 h-4" />} label={es ? 'Contraseña' : 'Password'} onClick={() => { setTab('password');  setPwdMsg(null); }} />
             <SideTab active={tab === 'notificaciones'} icon={<Bell className="w-4 h-4" />} label={es ? 'Notificaciones' : 'Notifications'} onClick={() => setTab('notificaciones')} />
             <SideTab active={tab === 'exportar'} icon={<Download    className="w-4 h-4" />} label={es ? 'Exportar datos' : 'Export data'} onClick={() => setTab('exportar')} />
+            <SideTab active={tab === 'voz'}      icon={<Volume2     className="w-4 h-4" />} label={es ? 'Voz IA'       : 'AI Voice'}   onClick={() => setTab('voz')} />
             <SideTab active={tab === 'account'}  icon={<Trash2      className="w-4 h-4" />} label={es ? 'Cuenta'     : 'Account'}  danger onClick={() => { setTab('account'); setDeleteStep('confirm'); setDeleteMsg(null); setInputCode(''); }} />
           </aside>
 
@@ -530,9 +532,200 @@ export default function Profile({ onBack, onLogout }: Props) {
               <ExportarDatos userId={user.id} />
             )}
 
+            {/* ── Tab: Voz IA ── */}
+            {tab === 'voz' && (
+              <VozSettings lang={lang} />
+            )}
+
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Constantes de voces (mismas que ChatSintomas) ───────────────────────────
+const VOICES_ES = {
+  f: [
+    { id: 'aura-2-estrella-es', name: 'Estrella', style: 'Natural · Mexicana' },
+    { id: 'aura-2-olivia-es',   name: 'Olivia',   style: 'Cálida · Mexicana' },
+    { id: 'aura-2-selena-es',   name: 'Selena',   style: 'Amigable · Latina' },
+    { id: 'aura-2-celeste-es',  name: 'Celeste',  style: 'Enérgica · Colombiana' },
+  ],
+  m: [
+    { id: 'aura-2-luciano-es', name: 'Luciano', style: 'Expresivo · Mexicano' },
+    { id: 'aura-2-sirio-es',   name: 'Sirio',   style: 'Ronco · Mexicano' },
+    { id: 'aura-2-valerio-es', name: 'Valerio', style: 'Profundo · Mexicano' },
+    { id: 'aura-2-javier-es',  name: 'Javier',  style: 'Calmado · Latino' },
+  ],
+} as const;
+
+const VOICES_EN = {
+  f: [
+    { id: 'aura-asteria-en', name: 'Asteria', style: 'Confident · Clear' },
+    { id: 'aura-hera-en',    name: 'Hera',    style: 'Deep · Warm' },
+    { id: 'aura-luna-en',    name: 'Luna',    style: 'Friendly · Natural' },
+    { id: 'aura-stella-en',  name: 'Stella',  style: 'Raspy · Cheerful' },
+  ],
+  m: [
+    { id: 'aura-orpheus-en', name: 'Orpheus', style: 'Professional · Clear' },
+    { id: 'aura-arcas-en',   name: 'Arcas',   style: 'Natural · Smooth' },
+    { id: 'aura-orion-en',   name: 'Orion',   style: 'Calm · Approachable' },
+    { id: 'aura-perseus-en', name: 'Perseus', style: 'Expressive · Melodic' },
+    { id: 'aura-zeus-en',    name: 'Zeus',    style: 'Deep · Trustworthy' },
+  ],
+} as const;
+
+const VOICE_KEY_ES = 'therapheye_chat_voice_es';
+const VOICE_KEY_EN = 'therapheye_chat_voice_en';
+
+function getStoredVoice(lang: string) {
+  try { return localStorage.getItem(lang === 'en' ? VOICE_KEY_EN : VOICE_KEY_ES) || ''; }
+  catch { return ''; }
+}
+function saveStoredVoice(id: string, lang: string) {
+  try { localStorage.setItem(lang === 'en' ? VOICE_KEY_EN : VOICE_KEY_ES, id); } catch { /* noop */ }
+}
+
+// ─── VozSettings ─────────────────────────────────────────────────────────────
+function VozSettings({ lang }: { lang: string }) {
+  const es = lang !== 'en';
+  const [voiceLang, setVoiceLang]     = useState<'es' | 'en'>(es ? 'es' : 'en');
+  const [gender, setGender]           = useState<'f' | 'm' | null>(() => {
+    const saved = getStoredVoice(es ? 'es' : 'en');
+    const allM = [...VOICES_ES.m, ...VOICES_EN.m];
+    const allF = [...VOICES_ES.f, ...VOICES_EN.f];
+    if (allM.some(v => v.id === saved)) return 'm';
+    if (allF.some(v => v.id === saved)) return 'f';
+    return null;
+  });
+  const [selected, setSelected]       = useState(() => getStoredVoice(es ? 'es' : 'en'));
+  const [playing, setPlaying]         = useState<string | null>(null);
+
+  const voices = voiceLang === 'en' ? VOICES_EN : VOICES_ES;
+
+  const handleSelectGender = (g: 'f' | 'm') => {
+    const first = voices[g][0];
+    setGender(g);
+    setSelected(first.id);
+    saveStoredVoice(first.id, voiceLang);
+    preview(first.id, first.name);
+  };
+
+  const handleSelectVoice = (id: string, name: string) => {
+    setSelected(id);
+    saveStoredVoice(id, voiceLang);
+    preview(id, name);
+  };
+
+  const preview = (id: string, name: string) => {
+    stopSpeech();
+    setPlaying(id);
+    const text = voiceLang === 'en'
+      ? `Hi, I'm ${name}. How can I help you today?`
+      : `Hola, soy ${name}. ¿En qué te puedo ayudar hoy?`;
+    speakViaProxy(text, voiceLang, id).finally(() => setPlaying(null));
+  };
+
+  const handleLangSwitch = (l: 'es' | 'en') => {
+    stopSpeech();
+    setPlaying(null);
+    setVoiceLang(l);
+    const saved = getStoredVoice(l);
+    setSelected(saved);
+    const allM = [...VOICES_ES.m, ...VOICES_EN.m];
+    const allF = [...VOICES_ES.f, ...VOICES_EN.f];
+    if (allM.some(v => v.id === saved)) setGender('m');
+    else if (allF.some(v => v.id === saved)) setGender('f');
+    else setGender(null);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Volume2 className="w-5 h-5 text-indigo-500" />
+        <h2 className="text-base font-bold text-gray-800">{es ? 'Voz del asistente IA' : 'AI Assistant Voice'}</h2>
+      </div>
+
+      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-700 leading-relaxed">
+        {es
+          ? 'Elige la voz que utilizará el Asistente Visual al reproducir mensajes. Toca cualquier voz para escuchar una muestra.'
+          : 'Choose the voice the Visual Assistant will use when reading messages. Tap any voice to hear a sample.'}
+      </div>
+
+      {/* Idioma de la voz */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{es ? 'Idioma de la voz' : 'Voice language'}</p>
+        <div className="flex gap-2">
+          {(['es', 'en'] as const).map(l => (
+            <button key={l} onClick={() => handleLangSwitch(l)}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition ${
+                voiceLang === l ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-200 hover:border-indigo-400'
+              }`}
+            >
+              {l === 'es' ? '🇲🇽 Español' : '🇺🇸 English'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Género */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{es ? 'Género' : 'Gender'}</p>
+        <div className="flex gap-2">
+          {(['f', 'm'] as const).map(g => (
+            <button key={g} onClick={() => handleSelectGender(g)}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition ${
+                gender === g ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-200 hover:border-indigo-400'
+              }`}
+            >
+              {g === 'f' ? (es ? '♀ Mujer' : '♀ Female') : (es ? '♂ Hombre' : '♂ Male')}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Voces */}
+      {gender !== null && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            {es ? 'Voz (toca para escuchar)' : 'Voice (tap to preview)'}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {voices[gender].map(v => {
+              const isSelected = selected === v.id;
+              const isPlaying  = playing === v.id;
+              return (
+                <button key={v.id} onClick={() => handleSelectVoice(v.id, v.name)}
+                  className={`text-left px-4 py-3 rounded-xl border-2 transition flex items-start justify-between gap-2 ${
+                    isSelected ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <div>
+                    <p className={`text-sm font-bold leading-tight ${isSelected ? '' : 'text-gray-800'}`}>{v.name}</p>
+                    <p className={`text-xs mt-0.5 ${isSelected ? 'text-indigo-200' : 'text-gray-400'}`}>{v.style}</p>
+                  </div>
+                  {isPlaying
+                    ? <Square className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 fill-current animate-pulse" />
+                    : <Volume2 className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${isSelected ? 'text-indigo-200' : 'text-gray-300'}`} />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {gender === null && (
+        <p className="text-sm text-gray-400 text-center py-4">
+          {es ? '👆 Selecciona un género para ver las voces disponibles' : '👆 Select a gender to see available voices'}
+        </p>
+      )}
+
+      <p className="text-xs text-gray-400">
+        {es
+          ? '⚡ La preferencia se guarda localmente y aplica al Asistente Visual. Próximamente disponible en más módulos.'
+          : '⚡ Preference is saved locally and applies to the Visual Assistant. Coming soon to more modules.'}
+      </p>
     </div>
   );
 }

@@ -75,7 +75,19 @@ function speakWebSpeech(text: string, lang: Lang): Promise<void> {
   });
 }
 
-// ── Reproducir audio base64 MP3 ───────────────────────────────────────────────
+// ── AudioContext compartido (para boost de volumen) ──────────────────────────
+let sharedAudioCtx: AudioContext | null = null;
+function getAudioCtx(): AudioContext {
+  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+    sharedAudioCtx = new AudioContext();
+  }
+  if (sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
+// ── Reproducir audio base64 MP3 con boost de volumen ──────────────────────────
 
 function playBase64Audio(base64: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -86,6 +98,17 @@ function playBase64Audio(base64: string): Promise<void> {
       currentAudio = null;
     }
     const audio = new Audio(`data:audio/mp3;base64,${base64}`);
+
+    // Boost de volumen x1.6 usando Web Audio API (HTML Audio máximo es 1.0)
+    try {
+      const ctx  = getAudioCtx();
+      const src  = ctx.createMediaElementSource(audio);
+      const gain = ctx.createGain();
+      gain.gain.value = 1.6;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+    } catch { /* fallback: volumen nativo 1.0 */ }
+
     currentAudio = audio;
     audio.onended  = () => { currentAudio = null; resolve(); };
     audio.onerror  = (e) => { currentAudio = null; reject(e); };
