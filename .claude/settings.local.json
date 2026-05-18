@@ -64,7 +64,10 @@
       "Bash(echo \".env.netlify-import\")",
       "Bash(echo \".netlify/functions/*.zip\")",
       "Bash(echo \".netlify/functions/manifest.json\")",
-      "Bash(npm info:*)"
+      "Bash(npm info:*)",
+      "Bash(cat .nvmrc)",
+      "Bash(cat .node-version)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('error_message',''\\)\\)\")"
     ]
   }
 }

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head><title>Therapheye Audio</title></head>
+<body>
+<script>
+  // Offscreen document for audio playback (MV3 requirement)
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'PLAY_ALERT') {
+      playBeep();
+    }
+  });
+
+  let beepInterval = null;
+
+  function playBeep() {
+    // Play a gentle beep every 3 seconds
+    if (beepInterval) clearInterval(beepInterval);
+
+    const doBeep = () => {
+      try {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 660;
+        // Gentle volume — even at max system volume this won't be jarring
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.45);
+      } catch (e) {
+        console.warn('[Therapheye Offscreen] Error playing beep:', e);
+      }
+    };
+
+    doBeep();
+    beepInterval = setInterval(doBeep, 3000);
+
+    // Stop after 2 minutes (matches WARN_BEFORE_PAUSE_S)
+    setTimeout(() => {
+      if (beepInterval) {
+        clearInterval(beepInterval);
+        beepInterval = null;
+      }
+    }, 120000);
+  }
+
+  // Stop beeping when inactivity is dismissed
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'STATE_UPDATE' && !msg.inactivityWarning) {
+      if (beepInterval) {
+        clearInterval(beepInterval);
+        beepInterval = null;
+      }
+    }
+  });
+</script>
+</body>
+</html>

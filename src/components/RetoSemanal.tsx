@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Trophy, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../i18n';
 
 interface Reto {
   id: string;
@@ -110,6 +111,16 @@ const POOL: Reto[] = [
   },
 ];
 
+const POOL_EN: Record<string, { titulo: string; desc: string }> = {
+  ejercicios:  { titulo: 'Active week',         desc: 'Complete 5 therapeutic exercises this week' },
+  cuestionario:{ titulo: 'Daily check',          desc: 'Fill in the questionnaire 4 days this week' },
+  vision:      { titulo: 'Vision test',          desc: 'Take the vision test this week' },
+  diagnostico: { titulo: 'Full diagnosis',       desc: 'Complete the clinical diagnosis this week' },
+  respiracion: { titulo: 'Breathe well',         desc: 'Practice 4-7-8 breathing three times' },
+  racha:       { titulo: 'Weekly streak',        desc: 'Open the app 6 consecutive days this week' },
+  chat:        { titulo: 'Ask the AI',           desc: 'Use the Visual Chat to consult your symptoms' },
+};
+
 function getWeekKey(): string {
   const d = new Date();
   const jan1 = new Date(d.getFullYear(), 0, 1);
@@ -151,6 +162,8 @@ const readIsDark = () => {
 
 export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { user } = useUser();
+  const { lang } = useLanguage();
+  const es = lang === 'es';
   const [retos, setRetos] = useState<RetoState[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(readIsDark);
@@ -192,7 +205,7 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
       <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Trophy className="w-4 h-4 text-white" />
-          <span className="text-white font-bold text-sm">Reto semanal</span>
+          <span className="text-white font-bold text-sm">{es ? 'Reto semanal' : 'Weekly challenge'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {[0,1,2].map(i => (
@@ -205,7 +218,9 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
       {allDone && (
         <div className={`border-b px-4 py-2 flex items-center gap-2 ${isDark ? 'bg-amber-950/40 border-amber-800' : 'bg-amber-50 border-amber-100'}`}>
           <span className="text-lg">🎉</span>
-          <p className={`text-xs font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>¡Semana perfecta! Completaste todos los retos</p>
+          <p className={`text-xs font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+            {es ? '¡Semana perfecta! Completaste todos los retos' : 'Perfect week! You completed all challenges'}
+          </p>
         </div>
       )}
 
@@ -215,10 +230,14 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
             <span className="text-xl flex-shrink-0">{reto.emoji}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <p className={`text-sm font-semibold truncate ${done ? (isDark ? 'text-green-400' : 'text-green-700') : (isDark ? 'text-gray-200' : 'text-gray-800')}`}>{reto.titulo}</p>
+                <p className={`text-sm font-semibold truncate ${done ? (isDark ? 'text-green-400' : 'text-green-700') : (isDark ? 'text-gray-200' : 'text-gray-800')}`}>
+                  {es ? reto.titulo : (POOL_EN[reto.id]?.titulo ?? reto.titulo)}
+                </p>
                 {done && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
               </div>
-              <p className={`text-xs truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{reto.desc}</p>
+              <p className={`text-xs truncate ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                {es ? reto.desc : (POOL_EN[reto.id]?.desc ?? reto.desc)}
+              </p>
               {/* Progress bar */}
               <div className="flex items-center gap-2 mt-1.5">
                 <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-zinc-700' : 'bg-gray-100'}`}>
@@ -255,7 +274,9 @@ export default function RetoSemanal({ onNavigate }: { onNavigate?: (page: string
       </div>
 
       <div className={`px-4 py-2 border-t ${isDark ? 'border-zinc-700' : 'border-gray-50'}`}>
-        <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>Semana {weekKey} · Nuevos retos cada lunes</p>
+        <p className={`text-[10px] text-center ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+          {es ? `Semana ${weekKey} · Nuevos retos cada lunes` : `Week ${weekKey} · New challenges every Monday`}
+        </p>
       </div>
     </div>
   );

@@ -535,6 +535,7 @@ const VisualHealth = ({ onBack }: Props) => {
   type ConfirmAction = 'reset' | 'terminate' | null;
   const [confirmAction, setConfirmAction]           = useState<ConfirmAction>(null);
   const [deleteSessionId, setDeleteSessionId]       = useState<string | null>(null);
+  const [extSaveFeedback, setExtSaveFeedback]       = useState<string>('');
   const [workMinutes, setWorkMinutes]               = useState<number>(() => {
     try { const v = Number(localStorage.getItem(WORK_MINUTES_STORAGE_KEY)); return v >= 5 && v <= 60 ? v : DEFAULT_WORK_MINUTES; }
     catch { return DEFAULT_WORK_MINUTES; }
@@ -843,6 +844,24 @@ const VisualHealth = ({ onBack }: Props) => {
 
   const handleTerminate = () => setConfirmAction('terminate');
 
+  // ── Guardar resultado desde el web cuando la extensión controla el timer ──────
+  const handleExtSaveSession = useCallback((final = true) => {
+    document.dispatchEvent(new CustomEvent('therapheye-save-session', { detail: { final } }));
+    const onResult = (e: Event) => {
+      const resp = (e as CustomEvent).detail;
+      if (resp?.ok) {
+        setExtSaveFeedback(lang === 'es'
+          ? (final ? '✓ Sesión guardada y finalizada.' : '✓ Guardado. El timer sigue corriendo.')
+          : (final ? '✓ Session saved and finalized.' : '✓ Saved. Timer keeps running.'));
+      } else {
+        setExtSaveFeedback(lang === 'es' ? 'Error al guardar. Intenta de nuevo.' : 'Save error. Try again.');
+      }
+      setTimeout(() => setExtSaveFeedback(''), 3500);
+      window.removeEventListener('therapheye-ext-save-result', onResult);
+    };
+    window.addEventListener('therapheye-ext-save-result', onResult, { once: true });
+  }, [lang]);
+
   const doTerminate = async () => {
     setConfirmAction(null);
     await executeTerminate();
@@ -1078,8 +1097,31 @@ const VisualHealth = ({ onBack }: Props) => {
 
               <div className="flex items-center gap-3 mb-3 flex-wrap justify-center">
                 {timerSource === 'ext' ? (
-                  <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold">
-                    🧩 {lang === 'es' ? 'Controlado desde la extensión' : 'Controlled by extension'}
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold">
+                      🧩 {lang === 'es' ? 'Controlado desde la extensión' : 'Controlled by extension'}
+                    </div>
+                    {elapsedSeconds >= 60 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleExtSaveSession(false)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-100 transition"
+                          title={lang === 'es' ? 'Guardar y seguir midiendo' : 'Save and keep measuring'}
+                        >
+                          💾 {lang === 'es' ? 'Guardar temporal' : 'Save (keep running)'}
+                        </button>
+                        <button
+                          onClick={() => handleExtSaveSession(true)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition shadow"
+                          title={lang === 'es' ? 'Guardar y finalizar sesión' : 'Save and end session'}
+                        >
+                          ✅ {lang === 'es' ? 'Guardar y finalizar' : 'Save & finalize'}
+                        </button>
+                      </div>
+                    )}
+                    {extSaveFeedback && (
+                      <p className="text-xs text-green-700 font-medium">{extSaveFeedback}</p>
+                    )}
                   </div>
                 ) : isRunning ? (
                   <button onClick={handlePause}

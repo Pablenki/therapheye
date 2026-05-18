@@ -78,6 +78,37 @@ const TIPS_DEL_DIA = [
   { emoji: '👁', tip: 'Los ojos también necesitan "calentamiento". Los ejercicios oculares mejoran la acomodación.' },
 ];
 
+const TIPS_DEL_DIA_EN = [
+  { emoji: '💧', tip: 'Blink consciously every 20 seconds. Screens reduce your blink rate by half.' },
+  { emoji: '📏', tip: 'Keep the screen 50–70 cm from your eyes. Closer means your eye muscles work twice as hard.' },
+  { emoji: '☀️', tip: 'Adjust screen brightness to match your surroundings. Too much contrast causes fatigue.' },
+  { emoji: '🌿', tip: 'The 20-20-20 rule: every 20 min, look at something 6 meters away for 20 seconds.' },
+  { emoji: '💤', tip: 'Sleeping 7–8 hours lets your eyes recover and stay naturally hydrated.' },
+  { emoji: '🥤', tip: 'Dehydration causes dry eye. Drink water regularly throughout the day.' },
+  { emoji: '🌙', tip: 'Enable dark/night mode on your screen after 6pm to reduce blue light exposure.' },
+  { emoji: '🏃', tip: 'Cardiovascular exercise improves ocular circulation. 30 minutes a day makes a difference.' },
+  { emoji: '🥦', tip: 'Lutein and zeaxanthin (in green vegetables) protect the macula from blue light.' },
+  { emoji: '👁', tip: 'Eyes need a "warm-up" too. Eye exercises improve accommodation and reduce strain.' },
+];
+
+const OJOS_DEL_DIA_EN = [
+  { emoji: '👁️', dato: 'The human eye can distinguish up to 10 million different colors.' },
+  { emoji: '⚡', dato: 'A blink lasts between 100 and 400 milliseconds. We blink 15–20 times per minute.' },
+  { emoji: '🌙', dato: 'Eyes are the most active organs in the body — they move even while you sleep.' },
+  { emoji: '🔬', dato: 'The retina has over 120 million photoreceptors to detect light and color.' },
+  { emoji: '🦅', dato: "An eagle's eyes are 4–8× more powerful than ours. They can see up to 3 km away." },
+  { emoji: '💤', dato: 'During REM sleep, your eyes move because the brain is processing dreams visually.' },
+  { emoji: '🌊', dato: 'Tears have 3 layers: lipid, aqueous, and mucin. Each one has a different function.' },
+  { emoji: '🧬', dato: 'The iris has over 200 unique features — more than twice as many as a fingerprint.' },
+  { emoji: '📐', dato: 'The blind spot is where the optic nerve exits the eye. Your brain automatically "fills it in".' },
+  { emoji: '🎨', dato: 'Color blindness affects 8% of men and 0.5% of women worldwide.' },
+  { emoji: '🔭', dato: 'The eye can detect a candle flame from 48 km away in complete darkness.' },
+  { emoji: '💊', dato: 'Carrots really do help: they contain beta-carotene that the body converts to vitamin A.' },
+  { emoji: '🖥️', dato: 'Digital eye strain (CVS) affects 90% of people who work in front of screens for more than 3 hours.' },
+  { emoji: '🏃', dato: 'Eye muscles are the most active in the body, making 100,000 movements per day.' },
+  { emoji: '🌿', dato: 'Lutein, found in spinach and eggs, acts as a natural sunscreen for your retina.' },
+];
+
 type Page =
   | 'login' | 'register' | 'dashboard' | 'questionnaire' | 'exercises'
   | 'exercise-session' | 'history' | 'image-capture' | 'vision-test'
@@ -459,12 +490,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
     const fetch = async () => {
       setLoadingStats(true);
       try {
-        const [evalRows, exRows, actRows, weekRows, diagRows] = await Promise.all([
+        const [evalRows, exRows, actRows, weekRows, diagRows, exWeekRows] = await Promise.all([
           sql`SELECT puntaje_fatiga, created_at FROM respuestas_cuestionario WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 2`,
           sql`SELECT COUNT(*) AS total FROM historial_ejercicios WHERE user_id=${user.id} AND status='completed'`,
           sql`SELECT created_at FROM historial_ejercicios WHERE user_id=${user.id} UNION ALL SELECT created_at FROM respuestas_cuestionario WHERE user_id=${user.id}`,
           sql`SELECT DATE(created_at AT TIME ZONE 'America/Mexico_City') as dia, AVG(puntaje_fatiga) as avg_score FROM respuestas_cuestionario WHERE user_id=${user.id} AND created_at >= NOW()-INTERVAL '7 days' GROUP BY dia ORDER BY dia`,
           sql`SELECT score_final, nivel, created_at FROM diagnostico_completo WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 3`.catch(()=>[]),
+          sql`SELECT DATE(created_at AT TIME ZONE 'America/Mexico_City') as dia FROM historial_ejercicios WHERE user_id=${user.id} AND status='completed' AND created_at >= NOW()-INTERVAL '7 days' GROUP BY dia`,
         ]);
 
         const evaluaciones = evalRows.length;
@@ -489,12 +521,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
         const diasLabels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
         const scoreMap: Record<string,number> = {};
         weekRows.forEach((r:any) => { scoreMap[String(r.dia).slice(0,10)] = Math.round(Number(r.avg_score)); });
+        const exWeekSet = new Set((exWeekRows as any[]).map((r:any) => String(r.dia).slice(0,10)));
         const today = new Date();
         const week: WeekDay[] = diasLabels.map((label, i) => {
           const d = new Date(today); d.setDate(d.getDate() - (today.getDay()===0?6:today.getDay()-1) + i);
           const dk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
           const score = scoreMap[dk] ?? null;
-          return { label, score, active: score !== null, dateKey: dk };
+          return { label, score, active: score !== null || exWeekSet.has(dk), dateKey: dk };
         });
         setWeekData(week);
 
@@ -747,6 +780,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 <p className={`text-xs font-semibold mt-0.5 ${isFlat ? 'text-green-600' : 'text-white/80'}`}>
                   {stats.racha === 0 ? (es ? '¡Empieza hoy!' : 'Start today!') : stats.racha < 3 ? (es ? '¡Sigue así!' : 'Keep it up!') : stats.racha < 7 ? (es ? '¡Vas muy bien!' : 'Going great!') : (es ? '¡Increíble consistencia!' : 'Incredible consistency!')}
                 </p>
+                {stats.racha === 0 && (
+                  <p className={`text-[10px] mt-1 leading-snug ${isFlat ? 'text-gray-500' : 'text-white/60'}`}>
+                    {es
+                      ? 'Haz un ejercicio o responde el cuestionario para comenzar'
+                      : 'Do an exercise or fill in the questionnaire to start'}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-1.5 mt-1">
                 {rachaWeek.map((d, i) => (
@@ -1005,21 +1045,27 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {/* ── Tip del Día + Ojo del Día ── */}
           <SectionHeader id="tips" label={es ? 'Tips y datos' : 'Tips & facts'} collapsed={collapsed} onToggle={handleToggle} />
           {!collapsed['tips'] && (() => {
-            const tip = TIPS_DEL_DIA[tipIndex];
-            const ojo = OJOS_DEL_DIA[new Date().getDate() % OJOS_DEL_DIA.length];
+            const tipsList = es ? TIPS_DEL_DIA : TIPS_DEL_DIA_EN;
+            const ojosList = es ? OJOS_DEL_DIA : OJOS_DEL_DIA_EN;
+            const tip = tipsList[tipIndex % tipsList.length];
+            const ojo = ojosList[new Date().getDate() % ojosList.length];
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 flex items-center gap-3">
                   <span className="text-2xl flex-shrink-0">{tip.emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-0.5">Tip del día</p>
+                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-0.5">
+                      {es ? 'Tip del día' : 'Tip of the day'}
+                    </p>
                     <p className="text-xs text-gray-700 leading-relaxed">{tip.tip}</p>
                   </div>
                 </div>
                 <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-100 rounded-2xl px-4 py-3 flex items-center gap-3">
                   <span className="text-2xl flex-shrink-0">{ojo.emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">¿Sabías que…?</p>
+                    <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-0.5">
+                      {es ? '¿Sabías que…?' : 'Did you know…?'}
+                    </p>
                     <p className="text-xs text-gray-700 leading-relaxed">{ojo.dato}</p>
                   </div>
                 </div>
@@ -1030,23 +1076,43 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {/* ── Panel acceso rápido features avanzadas — Carousel ── */}
           <SectionHeader id="herramientas" label={es ? 'Herramientas avanzadas' : 'Advanced tools'} collapsed={collapsed} onToggle={handleToggle} />
           {!collapsed['herramientas'] && (() => {
-            const allTools: { page: Page; label: string; emoji: string; color: string; desc: string }[] = [
-              { page: 'reaccion-visual',     label: 'Reacción Visual',  emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Mide la velocidad de respuesta de tus ojos ante estímulos visuales' },
-              { page: 'vergencia',           label: 'Vergencia',        emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Entrena la convergencia y divergencia binocular para reducir fatiga' },
-              { page: 'campo-visual',        label: 'Campo Visual',     emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Mapea tu campo de visión periférica y detecta puntos ciegos' },
-              { page: 'contrast-test',       label: 'Contraste',        emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Evalúa tu capacidad para distinguir contrastes en condiciones variadas' },
-              { page: 'test-cromatico',      label: 'Percepción Color', emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detecta alteraciones en la percepción del color y posible daltonismo' },
-              { page: 'test-acomodacion',    label: 'Acomodación',      emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evalúa la flexibilidad del cristalino para cambiar el enfoque' },
-              { page: 'modo-zen',            label: 'Modo Zen',         emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Sesión de relajación ocular con sonidos binaurales y ejercicios guiados' },
-              { page: 'entrenamiento-mental',label: 'Cognitivo',        emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Fortalece la memoria visual, atención y coordinación ojo-mente' },
-              { page: 'analizador-sintomas', label: 'Síntomas IA',      emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Describe tus molestias y la IA evalúa posibles causas y recomendaciones' },
-              { page: 'simulador',           label: 'Simulador Visual', emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experimenta cómo ven personas con miopía, astigmatismo u otras condiciones' },
-              { page: 'carga-visual',        label: 'Carga Visual',     emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: 'Calcula la carga visual acumulada del día y recibe alertas de fatiga' },
-              { page: 'notas-medicas',       label: 'Notas Médicas',    emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Guarda apuntes de consultas, recetas y evolución para tu oftalmólogo' },
-              { page: 'dominancia-ocular',   label: 'Dominancia Ocular',emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Descubre cuál es tu ojo dominante con una prueba rápida y confiable' },
-              { page: 'respiracion-478',     label: 'Respiración 4-7-8',emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica de respiración que reduce la tensión ocular y el estrés digital' },
-              { page: 'evolucion-tests',     label: 'Evolución Tests',  emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Gráficas y tendencias de todos tus tests a lo largo del tiempo' },
-            ];
+            const allToolsEs = [
+              { page: 'reaccion-visual',     label: 'Reacción Visual',   emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Mide la velocidad de respuesta de tus ojos ante estímulos visuales' },
+              { page: 'vergencia',           label: 'Vergencia',          emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Entrena la convergencia y divergencia binocular para reducir fatiga' },
+              { page: 'campo-visual',        label: 'Campo Visual',       emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Mapea tu campo de visión periférica y detecta puntos ciegos' },
+              { page: 'contrast-test',       label: 'Contraste',          emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Evalúa tu capacidad para distinguir contrastes en condiciones variadas' },
+              { page: 'test-cromatico',      label: 'Percepción Color',   emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detecta alteraciones en la percepción del color y posible daltonismo' },
+              { page: 'test-acomodacion',    label: 'Acomodación',        emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evalúa la flexibilidad del cristalino para cambiar el enfoque' },
+              { page: 'modo-zen',            label: 'Modo Zen',           emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Sesión de relajación ocular con sonidos binaurales y ejercicios guiados' },
+              { page: 'entrenamiento-mental',label: 'Cognitivo',          emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Fortalece la memoria visual, atención y coordinación ojo-mente' },
+              { page: 'analizador-sintomas', label: 'Síntomas IA',        emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Describe tus molestias y la IA evalúa posibles causas y recomendaciones' },
+              { page: 'simulador',           label: 'Simulador Visual',   emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experimenta cómo ven personas con miopía, astigmatismo u otras condiciones' },
+              { page: 'carga-visual',        label: 'Carga Visual',       emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: 'Calcula la carga visual acumulada del día y recibe alertas de fatiga' },
+              { page: 'notas-medicas',       label: 'Notas Médicas',      emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Guarda apuntes de consultas, recetas y evolución para tu oftalmólogo' },
+              { page: 'dominancia-ocular',   label: 'Dominancia Ocular',  emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Descubre cuál es tu ojo dominante con una prueba rápida y confiable' },
+              { page: 'respiracion-478',     label: 'Respiración 4-7-8',  emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica de respiración que reduce la tensión ocular y el estrés digital' },
+              { page: 'evolucion-tests',     label: 'Evolución Tests',    emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Gráficas y tendencias de todos tus tests a lo largo del tiempo' },
+            ] as { page: Page; label: string; emoji: string; color: string; desc: string }[];
+
+            const allToolsEn = [
+              { page: 'reaccion-visual',     label: 'Visual Reaction',    emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Measure how fast your eyes respond to visual stimuli' },
+              { page: 'vergencia',           label: 'Vergence',            emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Train binocular convergence and divergence to reduce eye strain' },
+              { page: 'campo-visual',        label: 'Visual Field',        emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Map your peripheral vision field and detect blind spots' },
+              { page: 'contrast-test',       label: 'Contrast',            emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Assess your ability to distinguish contrasts under varied conditions' },
+              { page: 'test-cromatico',      label: 'Color Perception',    emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detect color perception issues and possible color blindness' },
+              { page: 'test-acomodacion',    label: 'Accommodation',       emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evaluate your lens flexibility when switching focus distances' },
+              { page: 'modo-zen',            label: 'Zen Mode',            emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Eye relaxation session with binaural sounds and guided exercises' },
+              { page: 'entrenamiento-mental',label: 'Cognitive',           emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Strengthen visual memory, attention and eye-mind coordination' },
+              { page: 'analizador-sintomas', label: 'AI Symptoms',         emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Describe your symptoms and AI evaluates possible causes and advice' },
+              { page: 'simulador',           label: 'Vision Simulator',    emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experience how people with myopia, astigmatism, and other conditions see' },
+              { page: 'carga-visual',        label: 'Visual Load',         emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: "Calculate the day's accumulated visual load and receive fatigue alerts" },
+              { page: 'notas-medicas',       label: 'Medical Notes',       emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Save appointment notes, prescriptions and evolution for your ophthalmologist' },
+              { page: 'dominancia-ocular',   label: 'Eye Dominance',       emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Discover your dominant eye with a quick and reliable test' },
+              { page: 'respiracion-478',     label: '4-7-8 Breathing',     emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Breathing technique that reduces eye tension and digital stress' },
+              { page: 'evolucion-tests',     label: 'Test Evolution',      emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Charts and trends for all your tests over time' },
+            ] as { page: Page; label: string; emoji: string; color: string; desc: string }[];
+
+            const allTools = es ? allToolsEs : allToolsEn;
             const focusPriority: Record<string, string[]> = {
               'fatiga':     ['modo-zen', 'respiracion-478', 'carga-visual', 'entrenamiento-mental'],
               'ojo-seco':   ['modo-zen', 'respiracion-478', 'analizador-sintomas', 'notas-medicas'],
@@ -1099,7 +1165,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                             <span className="text-3xl leading-none">{item.emoji}</span>
                             <span className="text-base font-bold leading-tight mt-1">{item.label}</span>
                             <span className="text-xs text-white/70 leading-snug">{item.desc}</span>
-                            <span className="mt-2 text-[11px] text-white/50 font-semibold tracking-wide uppercase">Abrir herramienta →</span>
+                            <span className="mt-2 text-[11px] text-white/50 font-semibold tracking-wide uppercase">{es ? 'Abrir herramienta →' : 'Open tool →'}</span>
                           </button>
                         </div>
                       ))}

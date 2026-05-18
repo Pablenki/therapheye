@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Therapheye Screen Guard</title>
+  <link rel="stylesheet" href="popup.css"/>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-logo">
+      <div class="logo-icon">👁</div>
+      <div class="logo-text">
+        <span class="logo-name">Therapheye</span>
+        <span class="logo-sub">Screen Guard</span>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="status-dot paused" id="status-dot"></span>
+      <span class="status-text" id="status-label">Cargando...</span>
+    </div>
+  </header>
+
+  <!-- Startup prompt banner (respaldo visual cuando las notificaciones están silenciadas) -->
+  <div class="startup-banner" id="startup-banner" style="display:none">
+    <span class="startup-icon">⏱</span>
+    <div class="startup-text">
+      <strong>¿Iniciar medición?</strong>
+      <span>Detectamos que abriste el navegador</span>
+    </div>
+    <div class="startup-actions">
+      <button class="startup-yes" id="startup-yes">Sí</button>
+      <button class="startup-no" id="startup-no">No</button>
+    </div>
+  </div>
+
+  <!-- Timer principal -->
+  <div class="card card-timer">
+    <div class="timer-display" id="timer-display">00:00:00</div>
+
+    <!-- Barra de progreso del ciclo 20-20-20 -->
+    <div class="break-bar" title="Progreso hacia el próximo descanso 20-20-20">
+      <div class="break-bar-fill" id="break-progress"></div>
+    </div>
+    <p class="next-break" id="next-break" style="display:none">Próximo descanso: --</p>
+
+    <!-- Controles -->
+    <div class="timer-controls">
+      <button class="btn-main btn-start" id="btn-start">▶ Iniciar</button>
+      <button class="btn-main btn-pause" id="btn-pause" style="display:none">⏸ Pausar</button>
+      <button class="btn-icon btn-reset" id="btn-reset" title="Resetear">↺</button>
+    </div>
+
+    <!-- Guardar sesión (visible solo cuando hay tiempo acumulado) -->
+    <div class="save-row" id="save-row" style="display:none">
+      <button class="btn-save-temp" id="btn-save-temp">💾 Guardar temporal</button>
+      <button class="btn-save-final" id="btn-save-final">✅ Guardar y finalizar</button>
+    </div>
+    <p class="save-feedback" id="save-feedback" style="display:none"></p>
+
+    <!-- Inactivity warning -->
+    <div class="warn-banner" id="inactivity-warn" style="display:none">
+      <span>⚠ Sin actividad detectada</span>
+      <button id="btn-confirm-active">Estoy aquí</button>
+    </div>
+  </div>
+
+  <!-- Foreign session banner -->
+  <div class="card card-foreign" id="foreign-session" style="display:none">
+    <p class="foreign-text">
+      ⟳ Sesión activa en otro dispositivo:
+      <strong id="foreign-time">--</strong>
+    </p>
+    <button class="btn-takeover" id="btn-takeover">Usar aquí</button>
+  </div>
+
+  <!-- Tiempo de pantalla hoy -->
+  <div class="card card-screentime">
+    <p class="card-label">Tiempo de pantalla hoy</p>
+    <div class="time-display-row">
+      <span class="time-big" id="today-time">--:--</span>
+      <span class="time-unit">hr</span>
+    </div>
+    <div class="time-bar-wrap">
+      <div class="time-bar">
+        <div class="time-bar-fill ok" id="time-bar-fill"></div>
+      </div>
+      <span class="time-bar-label" id="time-bar-label">Cargando...</span>
+    </div>
+  </div>
+
+  <!-- Weekly chart -->
+  <div class="card">
+    <p class="card-label">Últimos 7 días</p>
+    <div class="chart" id="weekly-chart"></div>
+    <div class="chart-days" id="chart-days"></div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="quick-row">
+    <a class="quick-btn" id="btn-exercises" href="#">
+      <span>🏋</span><span>Ejercicios</span>
+    </a>
+    <a class="quick-btn" id="btn-stats" href="#">
+      <span>📊</span><span>Stats</span>
+    </a>
+    <a class="quick-btn" id="btn-app" href="#">
+      <span>👁</span><span>App</span>
+    </a>
+  </div>
+
+  <!-- Test 20-20-20 -->
+  <button class="test-btn" id="test-reminder-btn">
+    Probar recordatorio 20-20-20
+  </button>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -648,6 +648,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const [resumePrompt, setResumePrompt] = useState<
     { originalDuration: number; timeLeft: number } | null
   >(null);
+  const [wasResumed, setWasResumed] = useState(false); // track if session was resumed from incomplete
 
   useEffect(() => {
     setSelectedDuration(currentExercise.defaultDuration);
@@ -987,9 +988,15 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
           />
         )}
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8 text-center">
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-4xl text-white">✓</span>
           </div>
+          {wasResumed && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold mb-3">
+              <span>🔄</span>
+              {lang === 'es' ? 'Retomado y completado' : 'Resumed & completed'}
+            </div>
+          )}
           <h2 className="text-3xl font-bold text-gray-800 mb-4">{t('exerciseSession', 'exerciseComplete')}</h2>
           <p className="text-gray-600 mb-2">
             {t('exerciseSession', 'completedSuccess')} "{t(currentExercise.titleKey.split('.')[0], currentExercise.titleKey.split('.')[1])}" {t('exerciseSession', 'completedSuccessSuffix')}
@@ -1216,6 +1223,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
                     // Retomar: aplicar duración y tiempo restante guardados
                     setSelectedDuration(resumePrompt.originalDuration);
                     setTimeLeft(resumePrompt.timeLeft);
+                    setWasResumed(true);
                     setResumePrompt(null);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"

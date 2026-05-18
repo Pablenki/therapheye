@@ -12,6 +12,7 @@ command = "npm run build"
 functions = "C:\\Users\\OWNER\\Desktop\\therapheye\\netlify\\functions"
 
 [build.environment]
+NODE_VERSION = "22"
 
 [build.processing]
 
@@ -30,6 +31,9 @@ command = "npm run dev"
 port = 8888.0
 
 [functions]
+
+[functions.claude-proxy]
+timeout = 26.0
 
 [functions.push-cron]
 schedule = "0 20 * * *"

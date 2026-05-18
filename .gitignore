@@ -24,8 +24,6 @@ dist-ssr
 *.sw?
 .env
 
-# Chrome extension (separate project)
-extension/
 .env.netlify-import
 .netlify/functions/*.zip
 .netlify/functions/manifest.json

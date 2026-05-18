@@ -48,8 +48,12 @@ export const useAccessibility = () => {
       body.style.fontFamily = settings.fontFamily;
     }
 
-    // Zoom
+    // Zoom — también compensa la altura del contenedor raíz con --a11y-vh
+    // para que el layout no deje espacio vacío al alejar el zoom
     body.style.zoom = `${settings.zoom}%`;
+    const zoomFactor = settings.zoom / 100;
+    const compensatedVh = zoomFactor !== 1 ? `${(100 / zoomFactor).toFixed(4)}vh` : '100vh';
+    document.documentElement.style.setProperty('--a11y-vh', compensatedVh);
 
     // Indicadores visuales
     body.classList.toggle('visual-indicators', settings.visualIndicators);

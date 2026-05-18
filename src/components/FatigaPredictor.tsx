@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, RefreshCw, AlertTriangle } from 'lucide-react';
 import { sql } from '../neonCliente';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../i18n';
 import { callClaude } from '../utils/claudeApi';
 
 interface PredictorResult {
@@ -16,17 +17,19 @@ interface PredictorResult {
   hora_pico: string;
   consejo: string;
   generadoEn: number;     // timestamp ms
+  lang?: string;          // idioma en que se generó
 }
 
 const CACHE_KEY = 'therapheye_fatiga_predictor_v1';
 const CACHE_TTL = 8 * 60 * 60 * 1000; // 8 horas
 
-function loadCache(userId: string): PredictorResult | null {
+function loadCache(userId: string, lang: string): PredictorResult | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY + '_' + userId);
     if (!raw) return null;
     const d = JSON.parse(raw) as PredictorResult;
     if (Date.now() - d.generadoEn > CACHE_TTL) return null;
+    if (d.lang && d.lang !== lang) return null; // idioma cambió → regenerar
     return d;
   } catch { return null; }
 }
@@ -35,14 +38,20 @@ function saveCache(userId: string, d: PredictorResult) {
   try { localStorage.setItem(CACHE_KEY + '_' + userId, JSON.stringify(d)); } catch { /* ignore */ }
 }
 
-function probColor(p: number) {
-  if (p < 35) return { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'Bajo' };
-  if (p < 65) return { bar: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', label: 'Moderado' };
-  return { bar: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', label: 'Alto' };
+function probColor(p: number, lang: string) {
+  const es = lang === 'es';
+  if (p < 35) return { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', label: es ? 'Bajo' : 'Low' };
+  if (p < 65) return { bar: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200',   label: es ? 'Moderado' : 'Moderate' };
+  return         { bar: 'bg-red-500',    text: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200',    label: es ? 'Alto' : 'High' };
 }
 
-const HORA_LABEL: Record<string, string> = {
-  mañana: 'Mañana (6–12h)', tarde: 'Tarde (12–18h)', noche: 'Noche (18–24h)', variable: 'Variable'
+const HORA_LABEL_ES: Record<string, string> = {
+  mañana: 'Mañana (6–12h)', tarde: 'Tarde (12–18h)', noche: 'Noche (18–24h)', variable: 'Variable',
+  morning: 'Mañana (6–12h)', afternoon: 'Tarde (12–18h)', evening: 'Noche (18–24h)',
+};
+const HORA_LABEL_EN: Record<string, string> = {
+  morning: 'Morning (6am–12pm)', afternoon: 'Afternoon (12–6pm)', evening: 'Evening (6–12pm)', variable: 'Variable',
+  mañana: 'Morning (6am–12pm)', tarde: 'Afternoon (12–6pm)', noche: 'Evening (6–12pm)',
 };
 
 const readIsDark = () => {
@@ -52,6 +61,9 @@ const readIsDark = () => {
 
 export default function FatigaPredictor() {
   const { user } = useUser();
+  const { lang } = useLanguage();
+  const es = lang === 'es';
+  const HORA_LABEL = es ? HORA_LABEL_ES : HORA_LABEL_EN;
   const [result, setResult] = useState<PredictorResult | null>(null);
   const [isDark, setIsDark] = useState(readIsDark);
   useEffect(() => {
@@ -65,7 +77,7 @@ export default function FatigaPredictor() {
   const runPredictor = useCallback(async (force = false) => {
     if (!user?.id) return;
     if (!force) {
-      const cached = loadCache(user.id);
+      const cached = loadCache(user.id, lang);
       if (cached) { setResult(cached); return; }
     }
 
@@ -82,13 +94,17 @@ export default function FatigaPredictor() {
       `.catch(() => []) as any[];
 
       if (rows.length === 0) {
-        // Sin datos suficientes, dar respuesta genérica
         const fallback: PredictorResult = {
           probabilidad: 30,
-          mensaje: 'Aún no hay suficientes datos para predecir. Completa más cuestionarios.',
-          hora_pico: 'variable',
-          consejo: 'Registra tu fatiga diariamente para obtener predicciones personalizadas.',
+          mensaje: es
+            ? 'Aún no hay suficientes datos para predecir. Completa más cuestionarios.'
+            : 'Not enough data to predict yet. Complete more questionnaires.',
+          hora_pico: es ? 'variable' : 'variable',
+          consejo: es
+            ? 'Registra tu fatiga diariamente para obtener predicciones personalizadas.'
+            : 'Log your fatigue daily to get personalized predictions.',
           generadoEn: Date.now(),
+          lang,
         };
         setResult(fallback);
         saveCache(user.id, fallback);
@@ -110,43 +126,50 @@ export default function FatigaPredictor() {
       });
 
       const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+      const nd = es ? 'sin datos' : 'no data';
 
       const now = new Date();
       const horaActual = now.getHours();
-      const franjaActual = horaActual < 12 ? 'mañana' : horaActual < 18 ? 'tarde' : 'noche';
-      const diaActual = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][now.getDay()];
+      const franjaActual = es
+        ? (horaActual < 12 ? 'mañana' : horaActual < 18 ? 'tarde' : 'noche')
+        : (horaActual < 12 ? 'morning' : horaActual < 18 ? 'afternoon' : 'evening');
+      const diaActual = es
+        ? ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'][now.getDay()]
+        : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
 
-      const resumen = `
+      const horaLabel = es
+        ? { mañana: '6–12h', tarde: '12–18h', noche: '18–24h' }
+        : { mañana: '6am–12pm', tarde: '12–6pm', noche: '6–12pm' };
+
+      const resumen = es ? `
 Historial de fatiga ocular (últimos 30 días, ${rows.length} registros):
-
 Promedio por franja horaria:
-- Mañana (6-12h): ${avg(grupos.mañana) ?? 'sin datos'}%
-- Tarde (12-18h): ${avg(grupos.tarde) ?? 'sin datos'}%
-- Noche (18-24h): ${avg(grupos.noche) ?? 'sin datos'}%
-
+- Mañana (${horaLabel.mañana}): ${avg(grupos.mañana) ?? nd}%
+- Tarde (${horaLabel.tarde}): ${avg(grupos.tarde) ?? nd}%
+- Noche (${horaLabel.noche}): ${avg(grupos.noche) ?? nd}%
 Promedio por día de semana:
-- Lunes: ${avg(diasSemana[1]) ?? 'sin datos'}%
-- Martes: ${avg(diasSemana[2]) ?? 'sin datos'}%
-- Miércoles: ${avg(diasSemana[3]) ?? 'sin datos'}%
-- Jueves: ${avg(diasSemana[4]) ?? 'sin datos'}%
-- Viernes: ${avg(diasSemana[5]) ?? 'sin datos'}%
-- Sábado: ${avg(diasSemana[6]) ?? 'sin datos'}%
-- Domingo: ${avg(diasSemana[0]) ?? 'sin datos'}%
+- Lunes: ${avg(diasSemana[1]) ?? nd}%, Martes: ${avg(diasSemana[2]) ?? nd}%, Miércoles: ${avg(diasSemana[3]) ?? nd}%
+- Jueves: ${avg(diasSemana[4]) ?? nd}%, Viernes: ${avg(diasSemana[5]) ?? nd}%, Sábado: ${avg(diasSemana[6]) ?? nd}%, Domingo: ${avg(diasSemana[0]) ?? nd}%
+Momento actual: ${diaActual}, franja ${franjaActual} (${horaActual}h)`.trim()
+        : `
+Eye fatigue history (last 30 days, ${rows.length} records):
+Average by time slot:
+- Morning (${horaLabel.mañana}): ${avg(grupos.mañana) ?? nd}%
+- Afternoon (${horaLabel.tarde}): ${avg(grupos.tarde) ?? nd}%
+- Evening (${horaLabel.noche}): ${avg(grupos.noche) ?? nd}%
+Average by day of week:
+- Monday: ${avg(diasSemana[1]) ?? nd}%, Tuesday: ${avg(diasSemana[2]) ?? nd}%, Wednesday: ${avg(diasSemana[3]) ?? nd}%
+- Thursday: ${avg(diasSemana[4]) ?? nd}%, Friday: ${avg(diasSemana[5]) ?? nd}%, Saturday: ${avg(diasSemana[6]) ?? nd}%, Sunday: ${avg(diasSemana[0]) ?? nd}%
+Current moment: ${diaActual}, ${franjaActual} slot (${horaActual}h)`.trim();
 
-Momento actual: ${diaActual}, franja ${franjaActual} (${horaActual}h)
-`.trim();
-
-      const prompt = `Eres un predictor de fatiga ocular. Analiza el historial y la hora actual, y responde SOLO con un JSON con este formato exacto:
-
-{
-  "probabilidad": <número 0-100>,
-  "mensaje": "<frase corta sobre el nivel de riesgo de fatiga hoy>",
-  "hora_pico": "<mañana|tarde|noche|variable>",
-  "consejo": "<consejo concreto de 1 oración para reducir la fatiga hoy>"
-}
-
-Sin markdown, sin texto extra. Solo el JSON.
-
+      const prompt = es
+        ? `Eres un predictor de fatiga ocular. Analiza el historial y la hora actual, y responde SOLO con un JSON exacto:
+{"probabilidad":<0-100>,"mensaje":"<frase corta sobre el riesgo de fatiga hoy>","hora_pico":"<mañana|tarde|noche|variable>","consejo":"<consejo de 1 oración para reducir fatiga hoy>"}
+Sin markdown, solo el JSON.
+${resumen}`
+        : `You are an eye fatigue predictor. Analyze the history and current time, respond ONLY with exact JSON:
+{"probabilidad":<0-100>,"mensaje":"<short phrase about today's fatigue risk>","hora_pico":"<morning|afternoon|evening|variable>","consejo":"<1-sentence tip to reduce fatigue today>"}
+No markdown, just the JSON.
 ${resumen}`;
 
       const data = await callClaude({
@@ -156,42 +179,44 @@ ${resumen}`;
       });
       const text = data.content?.[0]?.text ?? '{}';
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('JSON inválido');
+      if (!jsonMatch) throw new Error('invalid JSON');
       const parsed = JSON.parse(jsonMatch[0]);
-      const r: PredictorResult = { ...parsed, generadoEn: Date.now() };
+      const r: PredictorResult = { ...parsed, generadoEn: Date.now(), lang };
       setResult(r);
       saveCache(user.id, r);
     } catch (e) {
       console.error('[FatigaPredictor]', e);
-      setError('Error al predecir. Intenta de nuevo.');
+      setError(es ? 'Error al predecir. Intenta de nuevo.' : 'Prediction error. Try again.');
     }
     setLoading(false);
-  }, [user?.id]);
+  }, [user?.id, lang, es]);
 
-  // Carga caché al montar; si no hay caché, genera automáticamente
+  // Carga caché al montar o al cambiar idioma; si no hay caché, genera automáticamente
   useEffect(() => {
     if (!user?.id) return;
-    const cached = loadCache(user.id);
+    const cached = loadCache(user.id, lang);
     if (cached) { setResult(cached); }
     else { runPredictor(false); }
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user?.id) return null;
 
-  const colors = result ? probColor(result.probabilidad) : null;
+  const colors = result ? probColor(result.probabilidad, lang) : null;
 
   return (
     <div className={`rounded-2xl border p-4 ${colors ? `${colors.bg} ${colors.border}` : (isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-gray-50 border-gray-200')}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <TrendingUp className={`w-4 h-4 ${colors ? colors.text : 'text-gray-400'}`} />
-          <p className={`text-sm font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Predicción de hoy</p>
+          <p className={`text-sm font-bold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+            {es ? 'Predicción de hoy' : "Today's prediction"}
+          </p>
         </div>
         <button
           onClick={() => runPredictor(true)}
           disabled={loading}
           className="text-gray-400 hover:text-gray-600 transition disabled:opacity-40"
-          title="Actualizar predicción"
+          title={es ? 'Actualizar predicción' : 'Refresh prediction'}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
         </button>
@@ -200,13 +225,15 @@ ${resumen}`;
       {loading && !result && (
         <div className="flex items-center gap-2 py-2">
           <div className="w-4 h-4 rounded-full border-2 border-indigo-300 border-t-indigo-600 animate-spin" />
-          <p className="text-xs text-gray-500">Calculando predicción...</p>
+          <p className="text-xs text-gray-500">{es ? 'Calculando predicción...' : 'Calculating prediction...'}</p>
         </div>
       )}
 
       {!loading && !error && !result && (
         <p className="text-xs text-gray-400 py-2">
-          Haz clic en <span className="text-indigo-500 font-medium">↻</span> para predecir tu fatiga de hoy con IA
+          {es
+            ? <>Haz clic en <span className="text-indigo-500 font-medium">↻</span> para predecir tu fatiga de hoy con IA</>
+            : <>Click <span className="text-indigo-500 font-medium">↻</span> to predict today's fatigue with AI</>}
         </p>
       )}
 
@@ -223,7 +250,7 @@ ${resumen}`;
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className={`text-xs font-bold ${colors.text}`}>
-                Fatiga {colors.label} · {result.probabilidad}%
+                {es ? 'Fatiga' : 'Fatigue'} {colors.label} · {result.probabilidad}%
               </span>
               <span className="text-xs text-gray-500">{HORA_LABEL[result.hora_pico] ?? result.hora_pico}</span>
             </div>

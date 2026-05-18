@@ -349,14 +349,19 @@ const TrendChart = ({ evaluations }: { evaluations: Evaluation[] }) => {
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
     const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
     const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
-    // Find closest data point
+    // Find closest data point using Euclidean distance (X + Y)
     let closest = 0;
     let minDist = Infinity;
     for (let i = 0; i < data.length; i++) {
       const pointX = toX(i);
-      const dist = Math.abs(pointX - x);
+      const pointY = toY(data[i].puntaje_fatiga);
+      const dx = pointX - x;
+      const dy = pointY - y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < minDist) {
         minDist = dist;
         closest = i;
@@ -621,7 +626,7 @@ const ExerciseHeatmap = ({ exercises }: { exercises: Exercise[] }) => {
   const countByDay: Record<string, number> = {};
   exercises.forEach(ex => {
     if (ex.status === 'incomplete') return;
-    const d = new Date(ex.created_at.includes('T') ? ex.created_at : ex.created_at.replace(' ', 'T'));
+    const d = parseDbDate(ex.created_at);
     if (isNaN(d.getTime())) return;
     const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     countByDay[key] = (countByDay[key] ?? 0) + 1;

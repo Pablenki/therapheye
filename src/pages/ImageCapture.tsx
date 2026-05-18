@@ -42,12 +42,35 @@ function analyzeFrameQuality(video: HTMLVideoElement): QualityInfo {
   const brightOk   = avgBrightness >= 55 && avgBrightness <= 210;
   const sharpOk    = avgSharpness >= 12;
 
+  // Detect "too close": sample the four edge strips. If ALL edges are bright (skin-toned),
+  // the face/eye fills the entire frame and no surrounding context is captured.
+  const edgeSize = Math.floor(h * 0.12); // top+bottom edge height = 12% of frame
+  let edgeBrightSum = 0, edgePixels = 0;
+  for (let row = 0; row < edgeSize; row++) {
+    for (let col = 0; col < w; col++) {
+      const i = (row * w + col) * 4;
+      edgeBrightSum += (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+      edgePixels++;
+    }
+  }
+  for (let row = h - edgeSize; row < h; row++) {
+    for (let col = 0; col < w; col++) {
+      const i = (row * w + col) * 4;
+      edgeBrightSum += (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114);
+      edgePixels++;
+    }
+  }
+  const avgEdgeBrightness = edgePixels > 0 ? edgeBrightSum / edgePixels : 0;
+  // Too close: edges are bright (>90) meaning face skin fills the full frame
+  const tooClose = avgEdgeBrightness > 90 && avgBrightness > 80 && avgBrightness <= 210;
+
   let reason = '';
-  if (!brightOk) reason = avgBrightness < 55 ? 'Poca iluminación — enciende más luz' : 'Demasiada luz — evita la luz directa';
+  if (tooClose) reason = 'Aleja el ojo — necesitamos ver el ojo completo';
+  else if (!brightOk) reason = avgBrightness < 55 ? 'Poca iluminación — enciende más luz' : 'Demasiada luz — evita la luz directa';
   else if (!sharpOk) reason = 'Imagen borrosa — acerca el ojo a la cámara';
   else reason = '¡Perfecto! Mantén la posición';
 
-  const quality: FrameQuality = (brightOk && sharpOk) ? 'good' : (brightOk || sharpOk) ? 'fair' : 'poor';
+  const quality: FrameQuality = (brightOk && sharpOk && !tooClose) ? 'good' : (brightOk || sharpOk) ? 'fair' : 'poor';
   return { quality, brightness: Math.round(avgBrightness), sharpness: Math.round(avgSharpness), reason };
 }
 
@@ -176,7 +199,7 @@ const ImageCapture = ({ onBack }: Props) => {
       if (info.quality !== lastVoiceQualityRef.current) {
         lastVoiceQualityRef.current = info.quality;
         if (info.quality === 'good') speak('Perfecto. Capturando automáticamente en 3 segundos.');
-        else if (info.quality === 'poor') speak(info.reason);
+        else if (info.quality === 'poor') speak(info.reason.includes('Aleja') ? 'Aleja el ojo de la cámara.' : info.reason);
       }
 
       // Auto-captura: si la calidad es buena por 1.5s → countdown 3-2-1
@@ -343,7 +366,11 @@ const ImageCapture = ({ onBack }: Props) => {
       setDiagnosticoCompletado(true)
       // Guardar síntoma más grave en historial
       if (user?.id) {
-        const sintomaGuardar = getMostSevere(data.sintomas)
+        // Filter 'ojo sano' before determining most severe symptom
+        const sintomasParaDB = data.sintomas.filter(
+          s => !['ojo sano', 'ojo_sano', 'healthy eye', 'sano'].includes(s.toLowerCase().trim())
+        );
+        const sintomaGuardar = getMostSevere(sintomasParaDB);
         await sql`
           INSERT INTO image_capture_history (user_id, sintoma)
           VALUES (${user.id}, ${sintomaGuardar})
@@ -357,7 +384,12 @@ const ImageCapture = ({ onBack }: Props) => {
   }
 
   if (diagnosticoCompletado && resultado) {
-    const tieneSintomas = resultado.sintomas.length > 0
+    // Filter out 'ojo sano' / 'ojo_sano' — it's a "no symptom" indicator, not a real symptom.
+    // If backend returns it alongside other symptoms, the real symptoms should take priority.
+    const sintomasFiltrados = resultado.sintomas.filter(
+      s => !['ojo sano', 'ojo_sano', 'healthy eye', 'sano'].includes(s.toLowerCase().trim())
+    );
+    const tieneSintomas = sintomasFiltrados.length > 0;
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8">
@@ -369,7 +401,7 @@ const ImageCapture = ({ onBack }: Props) => {
               <p className="text-sm text-gray-600 mb-2">Signos detectados en la imagen:</p>
               {tieneSintomas ? (
                 <ul className="text-left space-y-2">
-                  {resultado.sintomas.map((s, i) => (
+                  {sintomasFiltrados.map((s, i) => (
                     <li key={i} className="font-medium text-amber-700">• {s}</li>
                   ))}
                 </ul>
