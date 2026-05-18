@@ -567,6 +567,7 @@ const VisualHealth = ({ onBack }: Props) => {
         SELECT id, started_at, ended_at, duration_ms
         FROM   sesiones_salud_visual
         WHERE  user_id = ${user.id}
+          AND  duration_ms >= 60000
         ORDER  BY started_at DESC
         LIMIT  200
       `;

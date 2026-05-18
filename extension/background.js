@@ -219,7 +219,7 @@ async function saveState() {
 
 async function autoSavePreviousDay(prevDate, elapsedMs) {
   try {
-    if (elapsedMs <= 0) return;
+    if (elapsedMs < 60_000) return; // menos de 1 minuto → no crear entrada basura
 
     // 1. daily_history en chrome.storage.local
     const stored = await chrome.storage.local.get('daily_history');
@@ -251,29 +251,32 @@ async function autoSavePreviousDay(prevDate, elapsedMs) {
         [user.id, prevDate, Math.round(elapsedMs), browserId]
       );
 
-      // 3. sesiones_salud_visual: guardar/actualizar sesión del día anterior
-      const now = Date.now();
-      const sessionStart = state.sessionStartTimestamp ?? (now - elapsedMs);
-      const prevExisting = await neonQuery(
-        `SELECT id, duration_ms FROM sesiones_salud_visual
-         WHERE user_id = $1 AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = $2
-         ORDER BY created_at DESC LIMIT 1`,
-        [user.id, prevDate]
-      );
-      const prevRow = prevExisting.rows?.[0];
-      const prevExistingMs = Number(prevRow?.duration_ms) || 0;
-      const prevTotalMs = Math.max(prevExistingMs, Math.round(elapsedMs));
-      if (prevRow?.id) {
-        await neonQuery(
-          `UPDATE sesiones_salud_visual SET duration_ms = $1, ended_at = $2 WHERE id = $3`,
-          [prevTotalMs, new Date(now).toISOString(), prevRow.id]
+      // 3. sesiones_salud_visual: guardar/actualizar sesión del día anterior (mínimo 1 min)
+      const prevTotalRequired = Math.round(elapsedMs);
+      if (prevTotalRequired >= 60_000) {
+        const now = Date.now();
+        const sessionStart = state.sessionStartTimestamp ?? (now - elapsedMs);
+        const prevExisting = await neonQuery(
+          `SELECT id, duration_ms FROM sesiones_salud_visual
+           WHERE user_id = $1 AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = $2
+           ORDER BY created_at DESC LIMIT 1`,
+          [user.id, prevDate]
         );
-      } else {
-        await neonQuery(
-          `INSERT INTO sesiones_salud_visual (user_id, started_at, ended_at, duration_ms, created_at)
-           VALUES ($1, $2, $3, $4, NOW() - INTERVAL '1 day')`,
-          [user.id, new Date(sessionStart).toISOString(), new Date(now).toISOString(), prevTotalMs]
-        );
+        const prevRow = prevExisting.rows?.[0];
+        const prevExistingMs = Number(prevRow?.duration_ms) || 0;
+        const prevTotalMs = Math.max(prevExistingMs, prevTotalRequired);
+        if (prevRow?.id) {
+          await neonQuery(
+            `UPDATE sesiones_salud_visual SET duration_ms = $1, ended_at = $2 WHERE id = $3`,
+            [prevTotalMs, new Date(now).toISOString(), prevRow.id]
+          );
+        } else {
+          await neonQuery(
+            `INSERT INTO sesiones_salud_visual (user_id, started_at, ended_at, duration_ms, created_at)
+             VALUES ($1, $2, $3, $4, NOW() - INTERVAL '1 day')`,
+            [user.id, new Date(sessionStart).toISOString(), new Date(now).toISOString(), prevTotalMs]
+          );
+        }
       }
     }
 
@@ -868,6 +871,12 @@ async function autoSaveSessionProgress(finalMs = null) {
     const existingRow = existing.rows?.[0];
     const existingMs = Number(existingRow?.duration_ms) || 0;
     const newTotalMs = existingMs + delta;
+
+    // No crear entradas fantasma — mínimo 1 minuto de sesión total
+    if (newTotalMs < 60_000) {
+      console.log('[Therapheye BG] autoSaveSessionProgress: newTotalMs < 1 min, omitiendo');
+      return;
+    }
 
     if (existingRow?.id) {
       await neonQuery(
