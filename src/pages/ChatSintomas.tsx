@@ -30,26 +30,25 @@ const VOICES_ES = {
   ],
 } as const;
 
+// EN → Unreal Speech v7 (primer proveedor real para inglés en el proxy)
 const VOICES_EN = {
   f: [
-    { id: 'aura-asteria-en', name: 'Asteria', style: 'Confident · Clear' },
-    { id: 'aura-hera-en',    name: 'Hera',    style: 'Deep · Warm' },
-    { id: 'aura-luna-en',    name: 'Luna',    style: 'Friendly · Natural' },
-    { id: 'aura-stella-en',  name: 'Stella',  style: 'Raspy · Cheerful' },
+    { id: 'Scarlett', name: 'Scarlett', style: 'Warm · Clear' },
+    { id: 'Lily',     name: 'Lily',     style: 'Bright · Energetic' },
+    { id: 'Liv',      name: 'Liv',      style: 'Soft · Friendly' },
+    { id: 'Amy',      name: 'Amy',      style: 'Calm · Natural' },
   ],
   m: [
-    { id: 'aura-orpheus-en', name: 'Orpheus', style: 'Professional · Clear' },
-    { id: 'aura-arcas-en',   name: 'Arcas',   style: 'Natural · Smooth' },
-    { id: 'aura-orion-en',   name: 'Orion',   style: 'Calm · Approachable' },
-    { id: 'aura-perseus-en', name: 'Perseus', style: 'Expressive · Melodic' },
-    { id: 'aura-zeus-en',    name: 'Zeus',    style: 'Deep · Trustworthy' },
+    { id: 'Dan',  name: 'Dan',  style: 'Deep · Trustworthy' },
+    { id: 'Will', name: 'Will', style: 'Warm · Professional' },
+    { id: 'Eric', name: 'Eric', style: 'Clear · Engaging' },
   ],
 } as const;
 
 const VOICE_STORAGE_KEY_ES = 'therapheye_chat_voice_es';
 const VOICE_STORAGE_KEY_EN = 'therapheye_chat_voice_en';
 const DEFAULT_VOICE_ES = 'aura-2-estrella-es';
-const DEFAULT_VOICE_EN = 'aura-asteria-en';
+const DEFAULT_VOICE_EN = 'Scarlett';
 
 function loadVoice(lang: string): string {
   try {
@@ -452,6 +451,8 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   // speakingMsgIdx cubre tanto "cargando del proxy" como "reproduciendo"
   const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
   const [selectedVoice, setSelectedVoice] = useState(() => loadVoice(lang));
+  const selectedVoiceRef = useRef(selectedVoice);
+  useEffect(() => { selectedVoiceRef.current = selectedVoice; }, [selectedVoice]);
   const [voiceGender, setVoiceGender] = useState<VoiceGender | null>(() => {
     const v = loadVoice(lang);
     // Detect gender from saved voice; null = not explicitly chosen this session
@@ -688,7 +689,13 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
       const provider = data.provider || '';
       if (provider) setCurrentProvider(provider);
 
+      // Index del nuevo mensaje asistente = messages (stale) + userMsg + assistantMsg
+      const newIdx = messages.length + 1;
       setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date(), provider }]);
+
+      // Auto-speak: reproducir respuesta automáticamente con la voz configurada
+      setSpeakingMsgIdx(newIdx);
+      speak(reply, lang, () => setSpeakingMsgIdx(null), selectedVoiceRef.current || undefined);
     } catch (e: any) {
       const msg = e?.message || 'Error desconocido';
       setError(msg);

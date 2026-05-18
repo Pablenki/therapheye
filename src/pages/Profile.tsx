@@ -560,19 +560,18 @@ const VOICES_ES = {
   ],
 } as const;
 
+// EN → Unreal Speech v7 (primer proveedor real para inglés en el proxy)
 const VOICES_EN = {
   f: [
-    { id: 'aura-asteria-en', name: 'Asteria', style: 'Confident · Clear' },
-    { id: 'aura-hera-en',    name: 'Hera',    style: 'Deep · Warm' },
-    { id: 'aura-luna-en',    name: 'Luna',    style: 'Friendly · Natural' },
-    { id: 'aura-stella-en',  name: 'Stella',  style: 'Raspy · Cheerful' },
+    { id: 'Scarlett', name: 'Scarlett', style: 'Warm · Clear' },
+    { id: 'Lily',     name: 'Lily',     style: 'Bright · Energetic' },
+    { id: 'Liv',      name: 'Liv',      style: 'Soft · Friendly' },
+    { id: 'Amy',      name: 'Amy',      style: 'Calm · Natural' },
   ],
   m: [
-    { id: 'aura-orpheus-en', name: 'Orpheus', style: 'Professional · Clear' },
-    { id: 'aura-arcas-en',   name: 'Arcas',   style: 'Natural · Smooth' },
-    { id: 'aura-orion-en',   name: 'Orion',   style: 'Calm · Approachable' },
-    { id: 'aura-perseus-en', name: 'Perseus', style: 'Expressive · Melodic' },
-    { id: 'aura-zeus-en',    name: 'Zeus',    style: 'Deep · Trustworthy' },
+    { id: 'Dan',  name: 'Dan',  style: 'Deep · Trustworthy' },
+    { id: 'Will', name: 'Will', style: 'Warm · Professional' },
+    { id: 'Eric', name: 'Eric', style: 'Clear · Engaging' },
   ],
 } as const;
 

@@ -14,12 +14,18 @@ const MAX_TEXT_LENGTH = 4500;
 
 // ── Unreal Speech ──────────────────────────────────────────────────────────────
 
+// Voces disponibles en UnrealSpeech v7 (solo inglés; español usa Scarlett como genérico)
+const UNREAL_EN_VOICES = new Set(['Dan','Will','Eric','Scarlett','Lily','Liv','Amy','Sky','Eleanor']);
+
 async function callUnrealSpeech(
   apiKey: string,
   text: string,
   lang: string,
+  voiceParam?: string,
 ): Promise<{ ok: boolean; audioBase64?: string; error?: string; quota?: boolean }> {
-  const voiceId = lang === 'en' ? 'Dan' : 'Scarlett';
+  const voiceId = lang === 'en'
+    ? (voiceParam && UNREAL_EN_VOICES.has(voiceParam) ? voiceParam : 'Dan')
+    : 'Scarlett';
 
   let res: Response;
   try {
@@ -240,14 +246,17 @@ const handler: Handler = async (event) => {
   } else {
     // ── Inglés: Unreal Speech → Deepgram Aura → ElevenLabs → Web Speech
     let unrealQuotaHit = false;
+    // Extraer voz UnrealSpeech si el frontend envió una (y es válida)
+    const unrealVoice = voice && UNREAL_EN_VOICES.has(voice) ? voice : undefined;
+
     if (unrealKey1) {
-      const r = await callUnrealSpeech(unrealKey1, text, lang);
+      const r = await callUnrealSpeech(unrealKey1, text, lang, unrealVoice);
       if (r.ok) return ok(r.audioBase64!, 'UnrealSpeech·1');
       errors.push(r.error!);
       unrealQuotaHit = !!r.quota;
     }
     if (unrealKey2 && unrealQuotaHit) {
-      const r = await callUnrealSpeech(unrealKey2, text, lang);
+      const r = await callUnrealSpeech(unrealKey2, text, lang, unrealVoice);
       if (r.ok) return ok(r.audioBase64!, 'UnrealSpeech·2');
       errors.push(r.error!);
     }

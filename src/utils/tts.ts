@@ -134,11 +134,20 @@ export async function speakViaProxy(text: string, lang: Lang = 'es', voice?: str
   const myGen = speakGen;             // captura generación actual
 
   try {
-    const res = await fetch('/.netlify/functions/tts-proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang, ...(voice ? { voice } : {}) }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    let res: Response;
+    try {
+      res = await fetch('/.netlify/functions/tts-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang, ...(voice ? { voice } : {}) }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (myGen !== speakGen) return;    // cancelado por click posterior
 
