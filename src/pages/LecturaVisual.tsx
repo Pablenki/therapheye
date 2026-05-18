@@ -6,7 +6,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  ArrowLeft, Mic, MicOff, ChevronRight,
+  ArrowLeft, Mic, MicOff, ChevronRight, ChevronLeft, RotateCcw,
   Eye, CheckCircle2, XCircle,
   Info, Save, Loader2, Award,
 } from 'lucide-react';

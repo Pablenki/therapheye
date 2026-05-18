@@ -7,7 +7,7 @@ import {
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
   KeyRound, Menu, X, ChevronLeft, ChevronDown, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, MoreHorizontal, EarOff, Contrast,
-  Timer, BarChart2, ClipboardCheck, FlaskConical,
+  Timer, ClipboardCheck, FlaskConical,
   ScrollText, AreaChart,
   Crown, HelpCircle, Wind, Settings, Moon, LineChart,
 } from 'lucide-react';
@@ -91,6 +91,7 @@ type Page =
   | 'rutinas-ia' | 'diario-visual'
   | 'campo-visual' | 'modo-zen' | 'contrast-test'
   | 'reaccion-visual'
+  | 'vergencia' | 'carga-visual' | 'test-acomodacion' | 'analizador-sintomas' | 'dominancia-ocular'
   | 'notas-medicas' | 'simulador' | 'test-cromatico'
   | 'ejercicios-avanzados' | 'historial-ocular'
   | 'entrenamiento-mental' | 'estadisticas-avanzadas'
