@@ -657,8 +657,8 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
         </div>
       )}
 
-      {/* ── Distance Monitor widget ────────────────────────────────────── */}
-      <DistanceMonitor active={distanceMonitorActive} onClose={handleCloseDistanceMonitor} />
+      {/* ── Distance Monitor widget — solo escritorio (requiere MediaPipe) ── */}
+      {!isMobile && <DistanceMonitor active={distanceMonitorActive} onClose={handleCloseDistanceMonitor} />}
 
       {/* ══════════════════ MOBILE BOTTOM NAV ══════════════════ */}
       {isMobile && (

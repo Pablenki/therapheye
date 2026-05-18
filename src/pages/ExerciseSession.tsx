@@ -523,7 +523,8 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   const musicStyleRef = useRef<MusicStyle>('zen');
   musicStyleRef.current = musicStyle;
 
-  // ── Validación con cámara (opt-in) ────────────────────────────────────────
+  // ── Validación con cámara (opt-in, solo escritorio) ─────────────────────
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [validatorOn, setValidatorOn] = useState(false);
   const validator = useExerciseValidator();
 
@@ -1062,13 +1063,26 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
           <div className="flex items-center gap-2">
             {/* Botón validación con cámara — solo en ejercicios validables */}
             {(exerciseId === 'palming' || exerciseId === 'circles') && (
-              <button
-                onClick={handleToggleValidator}
-                title={validatorOn ? 'Apagar validación' : 'Activar validación con cámara'}
-                className={`p-2 rounded-lg transition ${validatorOn ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-              >
-                {validatorOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
-              </button>
+              isMobile ? (
+                <div
+                  title={lang === 'es' ? 'Validación con cámara disponible en escritorio' : 'Camera validation available on desktop'}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-400 cursor-default select-none"
+                >
+                  <CameraOff className="w-4 h-4" />
+                  <span className="text-[10px] font-semibold leading-none hidden sm:inline">
+                    {lang === 'es' ? 'Solo escritorio' : 'Desktop only'}
+                  </span>
+                  <span className="text-[10px]">💻</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleToggleValidator}
+                  title={validatorOn ? (lang === 'es' ? 'Apagar validación' : 'Turn off validation') : (lang === 'es' ? 'Activar validación con cámara' : 'Enable camera validation')}
+                  className={`p-2 rounded-lg transition ${validatorOn ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                >
+                  {validatorOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
+                </button>
+              )
             )}
             {/* Botón selector de música */}
             {!muted && (
