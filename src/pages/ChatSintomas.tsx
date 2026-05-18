@@ -6,7 +6,7 @@
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX, Square, History, Trash2, X, Plus, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, Square, History, Trash2, X, Plus, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
