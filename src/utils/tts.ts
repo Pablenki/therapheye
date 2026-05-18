@@ -1,6 +1,6 @@
 // =========================================
 // Utilidad TTS compartida
-// Cascada: proxy (Unreal Speech → PlayHT → ElevenLabs) → Web Speech API
+// Cascada: proxy (Deepgram → ElevenLabs → PlayHT) → Web Speech API
 // Uso: await speak("Inhala profundo", "es")
 //      speak(...).then(() => nextStep())   ← se resuelve al terminar el audio
 // =========================================
@@ -9,9 +9,14 @@ type Lang = 'es' | 'en';
 
 let currentAudio: HTMLAudioElement | null = null;
 
+// Contador de generación: se incrementa en cada stopSpeech() para
+// cancelar respuestas del proxy que lleguen tarde (evita eco por doble-click).
+let speakGen = 0;
+
 // ── Detener todo audio activo ─────────────────────────────────────────────────
 
 export function stopSpeech(): void {
+  speakGen++;                          // invalida cualquier speakViaProxy en vuelo
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.src = '';
@@ -23,7 +28,6 @@ export function stopSpeech(): void {
 }
 
 // ── Web Speech API (fallback final, navegador nativo) ─────────────────────────
-// Retorna Promise que se resuelve cuando el audio termina.
 
 function speakWebSpeech(text: string, lang: Lang): Promise<void> {
   return new Promise((resolve) => {
@@ -40,7 +44,6 @@ function speakWebSpeech(text: string, lang: Lang): Promise<void> {
     const done = () => { if (!resolved) { resolved = true; resolve(); } };
     utt.onend  = done;
     utt.onerror = done;
-    // Safety timeout — estimado 150 palabras/min a rate 0.9
     const words = text.trim().split(/\s+/).length;
     setTimeout(done, Math.max(4000, words * 500));
 
@@ -76,7 +79,12 @@ function speakWebSpeech(text: string, lang: Lang): Promise<void> {
 
 function playBase64Audio(base64: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    stopSpeech();
+    // Detener audio anterior sin incrementar speakGen
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.src = '';
+      currentAudio = null;
+    }
     const audio = new Audio(`data:audio/mp3;base64,${base64}`);
     currentAudio = audio;
     audio.onended  = () => { currentAudio = null; resolve(); };
@@ -86,7 +94,6 @@ function playBase64Audio(base64: string): Promise<void> {
 }
 
 // ── speak() — Web Speech API directa (uso general) ───────────────────────────
-// Siempre retorna Promise que se resuelve cuando el audio termina.
 
 export async function speak(text: string, lang: Lang = 'es'): Promise<void> {
   if (!text.trim()) return;
@@ -94,12 +101,14 @@ export async function speak(text: string, lang: Lang = 'es'): Promise<void> {
   await speakWebSpeech(text, lang);
 }
 
-// ── speakViaProxy() — Cascada proxy (solo ChatSintomas) ───────────────────────
-// Unreal Speech → PlayHT → ElevenLabs → Web Speech API como fallback final.
+// ── speakViaProxy() — Cascada proxy (ChatSintomas) ───────────────────────────
+// Usa contador de generación para descartar respuestas obsoletas del proxy
+// y evitar el eco que ocurre cuando el usuario hace doble-click.
 
 export async function speakViaProxy(text: string, lang: Lang = 'es', voice?: string): Promise<void> {
   if (!text.trim()) return;
-  stopSpeech();
+  stopSpeech();                        // incrementa speakGen
+  const myGen = speakGen;             // captura generación actual
 
   try {
     const res = await fetch('/.netlify/functions/tts-proxy', {
@@ -108,17 +117,21 @@ export async function speakViaProxy(text: string, lang: Lang = 'es', voice?: str
       body: JSON.stringify({ text, lang, ...(voice ? { voice } : {}) }),
     });
 
+    if (myGen !== speakGen) return;    // cancelado por click posterior
+
     if (res.ok) {
       const data = await res.json() as { audioContent?: string };
+      if (myGen !== speakGen) return;  // cancelado mientras parseábamos JSON
       if (data.audioContent) {
         await playBase64Audio(data.audioContent);
         return;
       }
     }
-    // Proxy señalizó TTS_FALLBACK_WEB o cualquier error → Web Speech
+    // Proxy señalizó TTS_FALLBACK_WEB o error → Web Speech
   } catch {
     // Sin conexión o proxy caído → Web Speech
   }
 
+  if (myGen !== speakGen) return;      // cancelado antes del fallback
   await speakWebSpeech(text, lang);
 }

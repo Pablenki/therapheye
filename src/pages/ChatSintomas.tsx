@@ -395,7 +395,7 @@ function ChatBubble({
               title={isSpeakingThis ? (lang === 'es' ? 'Detener' : 'Stop') : (lang === 'es' ? 'Escuchar' : 'Listen')}
             >
               {isSpeakingThis
-                ? <Square className="w-3 h-3 fill-current" />
+                ? <Square className="w-3 h-3 fill-current animate-pulse" />
                 : <Volume2 className="w-3 h-3" />}
             </button>
           )}
@@ -449,6 +449,7 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   useEffect(() => { activeConvIdRef.current = activeConvId; }, [activeConvId]);
 
   // ── Voz ────────────────────────────────────────────────────────────────────
+  // speakingMsgIdx cubre tanto "cargando del proxy" como "reproduciendo"
   const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
   const [selectedVoice, setSelectedVoice] = useState(() => loadVoice(lang));
   const [voiceGender, setVoiceGender] = useState<VoiceGender | null>(() => {
@@ -797,14 +798,13 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   // ── Hablar / detener un mensaje específico ────────────────────────────────
   const handleSpeakMessage = useCallback((content: string, idx: number) => {
     if (speakingMsgIdx === idx) {
-      // Already playing this one → stop
+      // Ya está en curso (cargando o sonando) → detener
       stopSpeech();
       setSpeakingMsgIdx(null);
       return;
     }
-    // Stop whatever is currently playing, then start this one
     stopSpeech();
-    setSpeakingMsgIdx(idx);
+    setSpeakingMsgIdx(idx);   // marca inmediatamente → botón muestra Stop + pulso
     speak(content, lang, () => setSpeakingMsgIdx(null), selectedVoice || undefined);
   }, [speakingMsgIdx, lang, selectedVoice]);
 
