@@ -6,12 +6,12 @@
 // =========================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Send, Bot, User, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX, History, Trash2, X, Plus, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, Bot, User, RefreshCw, Headphones, CheckCircle, Play, Clock, Volume2, VolumeX, Square, History, Trash2, X, Plus, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
 import { enviarSoporteTecnico } from '../utils/emailService';
-import { speakViaProxy } from '../utils/tts';
+import { speakViaProxy, stopSpeech } from '../utils/tts';
 
 // ── Voces Deepgram ────────────────────────────────────────────────────────────
 // ES → Aura 2  |  EN → Aura v1
@@ -339,15 +339,15 @@ function ChatBubble({
   lang,
   exercises,
   onStartExercise,
-  voiceEnabled,
+  isSpeakingThis,
   onSpeak,
 }: {
   msg: Message;
   lang: string;
   exercises?: ExerciseMatch[];
   onStartExercise?: (id: string) => void;
-  voiceEnabled?: boolean;
-  onSpeak?: (text: string) => void;
+  isSpeakingThis?: boolean;
+  onSpeak?: () => void;
 }) {
   const isBot = msg.role === 'assistant';
   const formattedTime = msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -360,14 +360,18 @@ function ChatBubble({
         </div>
       )}
       <div className={`max-w-[80%] ${isBot ? '' : 'order-first'}`}>
-        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-          isBot
-            ? 'bg-white border border-gray-100 text-gray-800 shadow-sm rounded-tl-sm'
-            : 'bg-indigo-600 text-white rounded-tr-sm'
-        }`}>
+        <div
+          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+            isBot
+              ? 'bg-white border border-gray-100 text-gray-800 shadow-sm rounded-tl-sm cursor-pointer select-none active:bg-indigo-50 transition-colors'
+              : 'bg-indigo-600 text-white rounded-tr-sm'
+          }`}
+          onClick={isBot && onSpeak ? onSpeak : undefined}
+          title={isBot ? (isSpeakingThis ? (lang === 'es' ? 'Detener' : 'Stop') : (lang === 'es' ? 'Escuchar' : 'Listen')) : undefined}
+        >
           {msg.content}
         </div>
-        {/* Exercise action buttons — only for bot messages with detected exercises */}
+        {/* Exercise action buttons */}
         {isBot && exercises && exercises.length > 0 && onStartExercise && (
           <div className="mt-2 flex flex-wrap gap-2">
             {exercises.map(ex => (
@@ -383,20 +387,23 @@ function ChatBubble({
           </div>
         )}
         <div className={`flex items-center gap-2 mt-1 ${isBot ? 'justify-start' : 'justify-end'}`}>
+          {/* Speaker toggle — always visible on bot messages */}
+          {isBot && onSpeak && (
+            <button
+              onClick={onSpeak}
+              className={`transition p-0.5 rounded ${isSpeakingThis ? 'text-indigo-500' : 'text-gray-300 hover:text-indigo-500'}`}
+              title={isSpeakingThis ? (lang === 'es' ? 'Detener' : 'Stop') : (lang === 'es' ? 'Escuchar' : 'Listen')}
+            >
+              {isSpeakingThis
+                ? <Square className="w-3 h-3 fill-current" />
+                : <Volume2 className="w-3 h-3" />}
+            </button>
+          )}
           <p className="text-[10px] text-gray-400">{formattedTime}</p>
           {isBot && msg.provider && (
             <span className="text-[9px] bg-indigo-50 text-indigo-400 px-1.5 py-0.5 rounded-full font-medium">
               {msg.provider}
             </span>
-          )}
-          {isBot && !voiceEnabled && onSpeak && (
-            <button
-              onClick={() => onSpeak(msg.content)}
-              className="text-gray-300 hover:text-indigo-500 transition p-0.5 rounded"
-              title={lang === 'es' ? 'Escuchar' : 'Listen'}
-            >
-              <Volume2 className="w-3 h-3" />
-            </button>
           )}
         </div>
       </div>
@@ -441,15 +448,21 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
   const activeConvIdRef = useRef(activeConvId);
   useEffect(() => { activeConvIdRef.current = activeConvId; }, [activeConvId]);
 
-  // ── Cola de espera ─────────────────────────────────────────────────────────
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  // ── Voz ────────────────────────────────────────────────────────────────────
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
   const [selectedVoice, setSelectedVoice] = useState(() => loadVoice(lang));
-  const [voiceGender, setVoiceGender] = useState<VoiceGender>(() => {
+  const [voiceGender, setVoiceGender] = useState<VoiceGender | null>(() => {
     const v = loadVoice(lang);
-    return [...VOICES_ES.m, ...VOICES_EN.m].some(x => x.id === v) ? 'm' : 'f';
+    // Detect gender from saved voice; null = not explicitly chosen this session
+    if ([...VOICES_ES.m, ...VOICES_EN.m].some(x => x.id === v)) return 'm';
+    if ([...VOICES_ES.f, ...VOICES_EN.f].some(x => x.id === v)) return 'f';
+    return null;
   });
   const [showVoicePanel, setShowVoicePanel] = useState(false);
+  const voicePanelRef = useRef<HTMLDivElement>(null);
+  const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Cola de espera ─────────────────────────────────────────────────────────
 
   const [queueStatus, setQueueStatus] = useState<QueueStatus>('checking');
   const [queuePosition, setQueuePosition] = useState(0);
@@ -464,26 +477,24 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Auto-speak last AI message when voice is enabled
+  // Outside-click → close voice panel
   useEffect(() => {
-    if (!voiceEnabled || messages.length < 2) return;
-    const last = messages[messages.length - 1];
-    if (last.role !== 'assistant') return;
-    setIsSpeaking(true);
-    speak(last.content, lang, () => setIsSpeaking(false), selectedVoice);
-  }, [messages]); // intentionally only react to new messages
-
-  // Stop speech when voice is toggled off
-  useEffect(() => {
-    if (!voiceEnabled) {
-      window.speechSynthesis?.cancel();
-      setIsSpeaking(false);
-    }
-  }, [voiceEnabled]);
+    if (!showVoicePanel) return;
+    const handler = (e: MouseEvent) => {
+      if (voicePanelRef.current && !voicePanelRef.current.contains(e.target as Node)) {
+        setShowVoicePanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showVoicePanel]);
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { window.speechSynthesis?.cancel(); };
+    return () => {
+      stopSpeech();
+      if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    };
   }, []);
 
   // Detectar si hay historial guardado (para mostrar opción de retomar)
@@ -783,6 +794,50 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
     setSupportSending(false);
   };
 
+  // ── Hablar / detener un mensaje específico ────────────────────────────────
+  const handleSpeakMessage = useCallback((content: string, idx: number) => {
+    if (speakingMsgIdx === idx) {
+      // Already playing this one → stop
+      stopSpeech();
+      setSpeakingMsgIdx(null);
+      return;
+    }
+    // Stop whatever is currently playing, then start this one
+    stopSpeech();
+    setSpeakingMsgIdx(idx);
+    speak(content, lang, () => setSpeakingMsgIdx(null), selectedVoice || undefined);
+  }, [speakingMsgIdx, lang, selectedVoice]);
+
+  // ── Frase de prueba al elegir voz ─────────────────────────────────────────
+  const playTestPhrase = useCallback((voiceId: string, voiceName: string) => {
+    stopSpeech();
+    setSpeakingMsgIdx(null);
+    const text = lang === 'es'
+      ? `Hola, soy ${voiceName}. ¿En qué te puedo ayudar hoy?`
+      : `Hi, I'm ${voiceName}. How can I help you today?`;
+    speakViaProxy(cleanTextForSpeech(text), lang === 'en' ? 'en' : 'es', voiceId);
+  }, [lang]);
+
+  // ── Seleccionar género (auto-elige primera voz + reproduce prueba) ─────────
+  const handleSelectGender = useCallback((gender: VoiceGender) => {
+    const voices = lang === 'en' ? VOICES_EN : VOICES_ES;
+    const first = voices[gender][0];
+    setVoiceGender(gender);
+    setSelectedVoice(first.id);
+    saveVoice(first.id, lang);
+    playTestPhrase(first.id, first.name);
+  }, [lang, playTestPhrase]);
+
+  // ── Seleccionar una voz específica ────────────────────────────────────────
+  const handleSelectVoice = useCallback((voiceId: string, voiceName: string) => {
+    setSelectedVoice(voiceId);
+    saveVoice(voiceId, lang);
+    playTestPhrase(voiceId, voiceName);
+    // Auto-close panel after preview starts
+    if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+    autoCloseTimerRef.current = setTimeout(() => setShowVoicePanel(false), 1600);
+  }, [lang, playTestPhrase]);
+
   // ── Indicador de estado para el header ────────────────────────────────────
   const statusColor =
     queueStatus === 'waiting' ? 'text-amber-500' :
@@ -829,21 +884,18 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
             <span className="truncate">{statusText}</span>
           </p>
         </div>
-        {/* Acciones — 3 iconos fijos */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Acciones — 3 iconos fijos + panel de voz flotante */}
+        <div className="flex items-center gap-1 flex-shrink-0 relative" ref={voicePanelRef}>
           <button
-            onClick={() => {
-              if (!voiceEnabled) { setVoiceEnabled(true); setShowVoicePanel(true); }
-              else { setVoiceEnabled(false); setShowVoicePanel(false); }
-            }}
+            onClick={() => setShowVoicePanel(v => !v)}
             className={`p-1.5 rounded-lg transition ${
-              voiceEnabled ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+              showVoicePanel || selectedVoice
+                ? 'text-indigo-600 bg-indigo-50'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
             }`}
-            title={voiceEnabled ? (lang === 'es' ? 'Desactivar voz' : 'Disable voice') : (lang === 'es' ? 'Activar voz' : 'Enable voice')}
+            title={lang === 'es' ? 'Voz del asistente' : 'Assistant voice'}
           >
-            {voiceEnabled
-              ? <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-pulse' : ''}`} />
-              : <VolumeX className="w-4 h-4" />}
+            <Volume2 className={`w-4 h-4 ${speakingMsgIdx !== null ? 'animate-pulse' : ''}`} />
           </button>
           <button
             onClick={() => setSidebarOpen(v => !v)}
@@ -862,49 +914,84 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+
+          {/* ── Panel flotante de voz ── */}
+          {showVoicePanel && (() => {
+            const voices = lang === 'en' ? VOICES_EN : VOICES_ES;
+            return (
+              <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-indigo-100 z-50 overflow-hidden">
+                {/* Cabecera */}
+                <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100">
+                  <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
+                    {lang === 'es' ? 'Voz del asistente' : 'Assistant voice'}
+                  </span>
+                  <button onClick={() => setShowVoicePanel(false)} className="text-gray-400 hover:text-gray-600 transition text-sm leading-none p-0.5">✕</button>
+                </div>
+
+                {/* Género */}
+                <div className="px-4 pt-3 pb-2">
+                  <p className="text-[10px] text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
+                    {lang === 'es' ? 'Género' : 'Gender'}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSelectGender('f')}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition border ${
+                        voiceGender === 'f'
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-indigo-600 border-indigo-200 hover:border-indigo-400'
+                      }`}
+                    >♀ {lang === 'es' ? 'Mujer' : 'Female'}</button>
+                    <button
+                      onClick={() => handleSelectGender('m')}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition border ${
+                        voiceGender === 'm'
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-white text-indigo-600 border-indigo-200 hover:border-indigo-400'
+                      }`}
+                    >♂ {lang === 'es' ? 'Hombre' : 'Male'}</button>
+                  </div>
+                </div>
+
+                {/* Voces del género seleccionado */}
+                {voiceGender !== null && (
+                  <div className="px-4 pb-4">
+                    <p className="text-[10px] text-gray-400 mb-1.5 font-medium uppercase tracking-wide">
+                      {lang === 'es' ? 'Elige una voz (toca para probar)' : 'Pick a voice (tap to preview)'}
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {voices[voiceGender].map(v => (
+                        <button
+                          key={v.id}
+                          onClick={() => handleSelectVoice(v.id, v.name)}
+                          className={`text-left px-3 py-2 rounded-xl border transition ${
+                            selectedVoice === v.id
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
+                          }`}
+                        >
+                          <p className={`text-xs font-semibold leading-tight ${selectedVoice === v.id ? '' : 'text-gray-800'}`}>{v.name}</p>
+                          <p className={`text-[10px] leading-tight mt-0.5 ${selectedVoice === v.id ? 'text-indigo-200' : 'text-gray-400'}`}>{v.style}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hint cuando no hay género seleccionado */}
+                {voiceGender === null && (
+                  <div className="px-4 pb-4 pt-1">
+                    <p className="text-xs text-gray-400 text-center">
+                      {lang === 'es' ? 'Selecciona un género para elegir voz' : 'Select a gender to choose a voice'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
-      {/* ── Panel selector de voz ── */}
-      {showVoicePanel && (() => {
-        const voices = lang === 'en' ? VOICES_EN : VOICES_ES;
-        return (
-          <div className="bg-indigo-50 border-b border-indigo-100 px-3 py-2.5 flex-shrink-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[11px] text-indigo-500 font-semibold uppercase tracking-wide">
-                {lang === 'es' ? 'Voz del asistente' : 'Assistant voice'}
-              </span>
-              <div className="flex rounded-lg overflow-hidden border border-indigo-200 ml-auto">
-                <button
-                  onClick={() => { setVoiceGender('f'); const v = voices.f[0].id; setSelectedVoice(v); saveVoice(v, lang); }}
-                  className={`px-2.5 py-1 text-xs font-semibold transition ${voiceGender === 'f' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
-                >{lang === 'es' ? '♀ Mujer' : '♀ Female'}</button>
-                <button
-                  onClick={() => { setVoiceGender('m'); const v = voices.m[0].id; setSelectedVoice(v); saveVoice(v, lang); }}
-                  className={`px-2.5 py-1 text-xs font-semibold transition ${voiceGender === 'm' ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600 hover:bg-indigo-50'}`}
-                >{lang === 'es' ? '♂ Hombre' : '♂ Male'}</button>
-              </div>
-              <button onClick={() => setShowVoicePanel(false)} className="text-indigo-400 hover:text-indigo-600 transition text-xs ml-1">✕</button>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {voices[voiceGender].map(v => (
-                <button
-                  key={v.id}
-                  onClick={() => { setSelectedVoice(v.id); saveVoice(v.id, lang); }}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition flex flex-col items-start leading-tight ${
-                    selectedVoice === v.id
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400'
-                  }`}
-                >
-                  <span className="font-semibold">{v.name}</span>
-                  <span className={`text-[10px] ${selectedVoice === v.id ? 'text-indigo-200' : 'text-gray-400'}`}>{v.style}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── Pantallas de cola (checking / waiting / inactive_kicked) ── */}
       {queueStatus !== 'active' && (
@@ -987,8 +1074,8 @@ export default function ChatSintomas({ onBack, onStartExercise }: Props) {
                 lang={lang}
                 exercises={msg.role === 'assistant' && i > 0 ? detectExercises(msg.content, lang) : undefined}
                 onStartExercise={onStartExercise}
-                voiceEnabled={voiceEnabled}
-                onSpeak={(text) => speak(text, lang, undefined, selectedVoice)}
+                isSpeakingThis={speakingMsgIdx === i}
+                onSpeak={msg.role === 'assistant' ? () => handleSpeakMessage(msg.content, i) : undefined}
               />
             ))}
 
