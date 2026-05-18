@@ -9,11 +9,11 @@ import { useSwipe } from '../hooks/useSwipe';
 import {
   Activity, Camera, Glasses, History, HeartPulse, ScanEye,
   ClipboardList, ScanFace, BookOpenCheck, MessageCircleHeart,
-  MapPin, Gamepad2, Sparkles, BookMarked, Crosshair, Contrast,
+  MapPin, Gamepad2, Sparkles, BookMarked, Contrast,
   Timer, Orbit, BarChart2, ClipboardCheck, FlaskConical, Focus,
   Microscope, ScrollText, TriangleAlert, ImageIcon, BrainCircuit,
   AreaChart, Scan, QrCode, MessageCircle, Crown, BookOpen, HeartHandshake,
-  Palette, X, ChevronLeft, ChevronRight, Pause, Play,
+  X, ChevronLeft, ChevronRight, Pause, Play,
 } from 'lucide-react';
 
 const SHOWCASE_KEY = 'therapheye_showcase_done';
@@ -59,7 +59,6 @@ const SLIDES: Slide[] = [
     to: 'to-indigo-600',
     features: [
       { icon: Glasses,      name: 'Prueba de Visión',   desc: 'Test de agudeza visual estándar',               color: 'text-blue-700',   bg: 'bg-blue-100'   },
-      { icon: Crosshair,    name: 'Campo Visual',        desc: 'Mapeo completo del campo de visión',            color: 'text-indigo-700', bg: 'bg-indigo-100' },
       { icon: Contrast,     name: 'Test Contraste',      desc: 'Sensibilidad al contraste luminoso',           color: 'text-sky-700',    bg: 'bg-sky-100'    },
       { icon: FlaskConical, name: 'Test Cromático',      desc: 'Detección de daltonismo y alteraciones',        color: 'text-violet-700', bg: 'bg-violet-100' },
       { icon: Focus,        name: 'Test Acomodación',    desc: 'Flexibilidad y rango del cristalino',           color: 'text-blue-700',   bg: 'bg-blue-50'    },
@@ -134,7 +133,6 @@ const SLIDES: Slide[] = [
     from: 'from-indigo-500',
     to: 'to-violet-600',
     features: [
-      { icon: Palette,   name: 'Simulador Visual',  desc: 'Simula condiciones oculares reales',                  color: 'text-indigo-700', bg: 'bg-indigo-100' },
       { icon: ImageIcon, name: 'Galería Capturas',  desc: 'Historial de fotos oculares analizadas por IA',       color: 'text-violet-700', bg: 'bg-violet-100' },
       { icon: Crown,     name: 'Plan Premium',       desc: 'Desbloquea todas las funciones avanzadas',            color: 'text-amber-700',  bg: 'bg-amber-100'  },
       { icon: HeartHandshake, name: 'Accesibilidad', desc: 'Daltonismo, zoom, voz, idiomas y más',               color: 'text-purple-700', bg: 'bg-purple-100' },
