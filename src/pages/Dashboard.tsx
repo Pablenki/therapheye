@@ -1115,7 +1115,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
             const curr = toolIdx % n;
 
             return (
-              <div className="mt-2 max-w-sm mx-auto">
+              <div className="mt-2 max-w-2xl mx-auto">
                 {/* Carousel con flechas externas */}
                 <div className="flex items-center gap-2">
                   {/* Prev */}
@@ -1148,13 +1148,13 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                         <div key={item.page} className="w-full flex-none">
                           <button
                             onClick={() => onNavigate(item.page)}
-                            className={`w-full bg-gradient-to-br ${item.color} text-white px-7 py-10 flex flex-col items-center text-center gap-3 hover:brightness-110 transition-all active:scale-[0.98]`}
+                            className={`w-full bg-gradient-to-br ${item.color} text-white px-10 py-8 flex flex-col items-center text-center gap-3 hover:brightness-110 transition-all active:scale-[0.98]`}
                           >
-                            <span className="text-6xl leading-none drop-shadow">{item.emoji}</span>
+                            <span className="text-7xl leading-none drop-shadow">{item.emoji}</span>
                             <span className="text-xl font-black leading-tight mt-1 whitespace-pre-line">{item.label}</span>
-                            <span className="text-sm text-white/90 leading-relaxed max-w-xs">{item.desc}</span>
+                            <span className="text-sm text-white/90 leading-relaxed max-w-lg">{item.desc}</span>
                             {'detail' in item && (
-                              <span className="text-xs text-white/65 leading-relaxed max-w-xs">{(item as { detail: string }).detail}</span>
+                              <span className="text-xs text-white/65 leading-relaxed max-w-lg">{(item as { detail: string }).detail}</span>
                             )}
                             <span className="mt-2 px-5 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-bold tracking-wide uppercase transition-colors">
                               {es ? 'Abrir herramienta →' : 'Open tool →'}
