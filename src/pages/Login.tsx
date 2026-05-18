@@ -196,18 +196,9 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    {t('login', 'passwordLabel')}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => { setView('forgot'); setError(''); setForgotEmail(email); }}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                </div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('login', 'passwordLabel')}
+                </label>
                 <div className="relative">
                   <input
                     id="password"
@@ -226,6 +217,15 @@ const Login = ({ onLogin, onNavigateToRegister }: { onLogin: () => void; onNavig
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+              <div className="text-right mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setView('forgot'); setError(''); setForgotEmail(email); }}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
               </div>
 
               <button
