@@ -433,7 +433,7 @@ function updateBadge(elapsedMs) {
   const text = h > 0 ? `${h}:${String(m).padStart(2, '0')}` : `${m}m`;
   chrome.action.setBadgeText({ text });
   chrome.action.setBadgeBackgroundColor({
-    color: state.inactivityWarning ? '#EF4444' : (state.isRunning ? '#4F46E5' : '#6B7280'),
+    color: state.inactivityWarning ? '#EF4444' : (state.isRunning ? '#10B981' : '#6B7280'),
   });
 }
 
@@ -725,8 +725,26 @@ chrome.notifications.onClicked.addListener((notifId) => {
     broadcastState();
   }
   if (notifId === 'therapeye-startup-prompt') {
-    // Clic en el cuerpo de la notificación → abrir popup para que el usuario decida
+    // Clic en la notificación → iniciar el timer directamente
     chrome.notifications.clear('therapeye-startup-prompt');
+    startupPromptPending = false;
+    if (!state.isRunning && !state.finalized) {
+      const now = Date.now();
+      state.isRunning             = true;
+      state.startTimestamp        = now;
+      state.sessionStartTimestamp = state.sessionStartTimestamp ?? now;
+      state.nextBreakAtMs         = state.accumulatedMs + WORK_MINUTES * 60000;
+      state.finalized             = false;
+      state.lastActivityTs        = now;
+      state.stateDate             = todayDate();
+      foreignSession              = null;
+      saveState();
+      saveTimerToDB();
+      startTick();
+      broadcastState();
+      updateBadge(calcElapsedMs());
+    }
+    // También intentar abrir el popup para feedback visual
     chrome.action.openPopup?.().catch(() => {});
   }
 });
@@ -749,45 +767,18 @@ async function showBrowserOpenPrompt() {
       type: 'basic',
       iconUrl: 'icons/icon128.png',
       title: '¿Iniciar temporizador visual?',
-      message: 'Detectamos que abriste el navegador. ¿Quieres iniciar el seguimiento de pantalla?',
+      message: 'Detectamos que abriste el navegador. Haz clic en esta notificación para iniciar el temporizador.',
       priority: 2,
       requireInteraction: true,
-      buttons: [
-        { title: 'Sí, iniciar' },
-        { title: 'Ahora no' },
-      ],
     });
   } catch (e) {
     console.warn('[Therapheye BG] Error mostrando prompt de inicio:', e);
   }
 }
 
-chrome.notifications.onButtonClicked.addListener((notifId, buttonIndex) => {
-  if (notifId !== 'therapeye-startup-prompt') return;
-  chrome.notifications.clear('therapeye-startup-prompt');
-  startupPromptPending = false; // El usuario respondió desde la notificación
-
-  if (buttonIndex === 0) {
-    // "Sí, iniciar" — arrancar el timer
-    const now = Date.now();
-    state.isRunning             = true;
-    state.startTimestamp        = now;
-    state.sessionStartTimestamp = state.sessionStartTimestamp ?? now;
-    state.nextBreakAtMs         = state.accumulatedMs + WORK_MINUTES * 60000;
-    state.finalized             = false;
-    state.lastActivityTs        = now;
-    state.stateDate             = todayDate();
-    foreignSession              = null;
-    saveState();
-    saveTimerToDB();
-    startTick();
-    broadcastState();
-    updateBadge(calcElapsedMs());
-  } else {
-    // "Ahora no" → solo limpiar el banner
-    broadcastState();
-  }
-});
+// Nota: no usamos onButtonClicked porque los botones en notificaciones
+// no son soportados de forma fiable en Opera y otros Chromium-based.
+// El usuario interactúa desde el banner del popup (que siempre funciona).
 
 // ─── Auto-pause cuando se cierran todas las ventanas del navegador ────────────
 // Garantiza que el timer se pausa exactamente al cerrar el navegador,
