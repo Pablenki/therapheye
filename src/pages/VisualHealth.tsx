@@ -9,6 +9,7 @@ import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { loadTimerPrefs, saveTimerPrefs } from '../components/GlobalTimerWidget';
+import { speak as speakProxy } from '../utils/tts';
 
 // ─── Período de gráfica ───────────────────────────────────────────────────────
 type ChartPeriod = '7d' | '1m' | '3m' | '1a' | 'all';
@@ -85,11 +86,7 @@ const SESSIONS_STORAGE_KEY = 'therapeye_visual_health_sessions';
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 
 const speakText = (text: string, lang: 'es' | 'en' = 'es') => {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang === 'en' ? 'en-US' : 'es-MX';
-  u.rate = 1.2;
-  window.speechSynthesis.speak(u);
+  speakProxy(text, lang);
 };
 
 const playBeep = () => {

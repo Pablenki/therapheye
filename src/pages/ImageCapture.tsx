@@ -3,6 +3,7 @@ import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLanguage } from '../i18n'
+import { speak as speakProxy, stopSpeech } from '../utils/tts'
 import { sql } from '../neonCliente'
 import { callClaude } from '../utils/claudeApi'
 
@@ -76,11 +77,7 @@ function analyzeFrameQuality(video: HTMLVideoElement): QualityInfo {
 
 // ── Voz guía ─────────────────────────────────────────────────────────────────
 function speak(text: string) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'es-MX'; u.rate = 1.1;
-  window.speechSynthesis.speak(u);
+  speakProxy(text, 'es');
 }
 
 interface ClaudeVisionResult {

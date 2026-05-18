@@ -3,6 +3,7 @@ import { ArrowLeft, Eye, CheckCircle, RefreshCw, Mic, MicOff, Keyboard, Home, X 
 import { sql, localISOString } from '../neonCliente';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
+import { speak as speakProxy, stopSpeech } from '../utils/tts';
 
 // ─── Letras Snellen válidas ──────────────────────────────────────────────────
 // Solo letras con nombre de ≥2 sílabas en español para mejor reconocimiento de voz:
@@ -601,49 +602,10 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
   }, [setVS, clearAutoConfirm]);
 
   // ── TTS con idioma correcto ───────────────────────────────────────────────────
-  // Chrome bug workaround: speechSynthesis puede quedar "paused" internamente.
-  // Solución: cancel() + resume() + pequeño delay antes de speak().
   const speakPrompt = useCallback((text: string, lang: Lang, onEnd?: () => void) => {
-    if (!('speechSynthesis' in window)) { onEnd?.(); return; }
-
-    // Reset completo del engine para evitar estados fantasma
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.resume();
-
-    const utt   = new SpeechSynthesisUtterance(text);
-    utt.lang    = lang === 'es' ? 'es-MX' : 'en-US';
-    utt.rate    = 1.1;
-    utt.pitch   = 1.0;
-    utt.volume  = 1.0;
-
-    const loadVoice = () => {
-      const voces = window.speechSynthesis.getVoices();
-      const voz   = lang === 'es'
-        ? (voces.find(v => v.lang === 'es-MX') || voces.find(v => v.lang.startsWith('es')))
-        : (voces.find(v => v.lang === 'en-US') || voces.find(v => v.lang.startsWith('en')));
-      if (voz) utt.voice = voz;
-    };
-    if (window.speechSynthesis.getVoices().length > 0) {
-      loadVoice();
-    } else {
-      window.speechSynthesis.addEventListener('voiceschanged', loadVoice, { once: true });
-    }
-
-    let fired = false;
-    const done = () => { if (!fired) { fired = true; setTimeout(() => onEnd?.(), 150); } };
-    const fallback = setTimeout(done, 3000);
-    utt.onend  = () => { clearTimeout(fallback); done(); };
-    utt.onerror = () => { clearTimeout(fallback); done(); };
-
-    // Pequeño delay para que Chrome procese el cancel()/resume() antes del speak()
-    setTimeout(() => {
-      try {
-        window.speechSynthesis.speak(utt);
-      } catch {
-        done();
-      }
-    }, 50);
+    speakProxy(text, lang).finally(() => onEnd?.());
   }, []);
+
 
   // ── submitLetter — validar UNA letra ─────────────────────────────────────────
   const submitLetter = useCallback(async (detectedLetter: string) => {
@@ -865,7 +827,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
 
   const startListening = useCallback(() => {
     if (!voiceAvailable) return;
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    stopSpeech();
     if (recognRef.current) { try { recognRef.current.abort(); } catch { } recognRef.current = null; }
     clearAutoConfirm();
     setHeardText(''); setHeardLetter(''); setInterimText('');
@@ -911,7 +873,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
     isActiveRef.current = false;
     if (recognRef.current) { try { recognRef.current.abort(); } catch { } }
     clearAutoConfirm();
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    stopSpeech();
   }, [clearAutoConfirm]);
 
   // ── Modal de oftalmólogos ────────────────────────────────────────────────────
@@ -1118,7 +1080,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                   {language === 'es' ? 'Continuar prueba' : 'Continue test'}
                 </button>
                 <button
-                  onClick={() => { stopMic(); if ('speechSynthesis' in window) window.speechSynthesis.cancel(); onBack(); }}
+                  onClick={() => { stopMic(); stopSpeech(); onBack(); }}
                   className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold hover:bg-red-600 transition"
                 >
                   {language === 'es' ? 'Sí, salir' : 'Yes, exit'}
@@ -1157,7 +1119,7 @@ const VisionTest = ({ onBack }: { onBack: () => void }) => {
                 <div className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
               </div>
             </div>
-            <button onClick={() => { stopMic(); if ('speechSynthesis' in window) window.speechSynthesis.cancel(); setVoiceMode(v => !v); }}
+            <button onClick={() => { stopMic(); stopSpeech(); setVoiceMode(v => !v); }}
               className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition px-3 py-1.5 rounded-lg border border-gray-700 hover:border-gray-400">
               {voiceMode ? <><MicOff className="w-3.5 h-3.5" /> {ui.useKeyboard}</> : <><Mic className="w-3.5 h-3.5" /> {ui.useVoice}</>}
             </button>

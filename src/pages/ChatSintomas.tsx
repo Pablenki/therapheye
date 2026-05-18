@@ -11,6 +11,7 @@ import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
 import { enviarSoporteTecnico } from '../utils/emailService';
+import { speak as speakProxy, stopSpeech } from '../utils/tts';
 
 interface Props {
   onBack: () => void;
@@ -262,16 +263,9 @@ function cleanTextForSpeech(text: string): string {
 }
 
 function speak(text: string, lang: string, onEnd?: () => void) {
-  if (!window.speechSynthesis) { onEnd?.(); return; }
-  window.speechSynthesis.cancel();
   const cleaned = cleanTextForSpeech(text);
   if (!cleaned) { onEnd?.(); return; }
-  const utter = new SpeechSynthesisUtterance(cleaned);
-  utter.lang = lang === 'en' ? 'en-US' : 'es-MX';
-  utter.rate = 0.95;
-  utter.pitch = 1;
-  if (onEnd) utter.onend = onEnd;
-  window.speechSynthesis.speak(utter);
+  speakProxy(cleaned, lang === 'en' ? 'en' : 'es').finally(() => onEnd?.());
 }
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────

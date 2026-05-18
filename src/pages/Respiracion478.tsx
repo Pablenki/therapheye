@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Wind, RotateCcw, Play, Volume2, VolumeX, Info, X } from 'lucide-react';
+import { speak, stopSpeech } from '../utils/tts';
 
 interface Props { onBack: () => void }
 
@@ -17,22 +18,6 @@ const PHASES: { phase: Phase; label: string; voiceEs: string; duration: number; 
 ];
 
 const TOTAL_ROUNDS = 4;
-
-function speakText(text: string) {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'es-MX';
-  utt.rate = 0.9;
-  utt.pitch = 1.0;
-  utt.volume = 1.0;
-  const voices = window.speechSynthesis.getVoices();
-  const voz = voices.find(v => v.lang === 'es-MX') ||
-              voices.find(v => v.lang === 'es-US') ||
-              voices.find(v => v.lang.startsWith('es'));
-  if (voz) utt.voice = voz;
-  window.speechSynthesis.speak(utt);
-}
 
 export default function Respiracion478({ onBack }: Props) {
   const [round, setRound] = useState(1);
@@ -60,7 +45,7 @@ export default function Respiracion478({ onBack }: Props) {
     } else {
       setRunning(false);
       setDone(true);
-      if (!mutedRef.current) speakText('¡Excelente! Completaste todos los ciclos. Tus ojos y mente están más relajados.');
+      if (!mutedRef.current) speak('¡Excelente! Completaste todos los ciclos. Tus ojos y mente están más relajados.');
     }
   }, [phaseIdx, round]);
 
@@ -70,7 +55,7 @@ export default function Respiracion478({ onBack }: Props) {
     if (prevPhaseRef.current !== phaseIdx) {
       prevPhaseRef.current = phaseIdx;
       if (!mutedRef.current) {
-        speakText(PHASES[phaseIdx].voiceEs);
+        speak(PHASES[phaseIdx].voiceEs);
       }
     }
   }, [phaseIdx, running]);
@@ -92,7 +77,7 @@ export default function Respiracion478({ onBack }: Props) {
   };
 
   const reset = () => {
-    window.speechSynthesis?.cancel();
+    stopSpeech();
     setRunning(false); setDone(false); setRound(1); setPhaseIdx(0); setElapsed(0);
     prevPhaseRef.current = -1;
   };
@@ -126,7 +111,7 @@ export default function Respiracion478({ onBack }: Props) {
             <Info className="w-5 h-5"/>
           </button>
           <button
-            onClick={() => { setMuted(v => !v); if (!muted) window.speechSynthesis?.cancel(); }}
+            onClick={() => { setMuted(v => !v); if (!muted) stopSpeech(); }}
             className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
             title={muted ? 'Activar voz' : 'Silenciar voz'}
           >

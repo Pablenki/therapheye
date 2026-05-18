@@ -9,6 +9,7 @@ import { ArrowLeft, Play, Square, Volume2, VolumeX, EarOff, Check } from 'lucide
 import { useUser } from '../context/UserContext';
 import { sql } from '../neonCliente';
 import { markExerciseDone } from '../components/PresenceDetector';
+import { speak, stopSpeech } from '../utils/tts';
 
 interface Props { onBack: () => void; }
 
@@ -80,16 +81,6 @@ const RUTINAS: Rutina[] = [
   },
 ];
 
-function speak(texto: string, rate = 0.9, pitch = 1): void {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(texto);
-  u.lang = 'es-ES';
-  u.rate = rate;
-  u.pitch = pitch;
-  u.volume = 1;
-  window.speechSynthesis.speak(u);
-}
 
 function playBeep(ctx: AudioContext, freq = 440, dur = 0.15, vol = 0.3): void {
   const osc = ctx.createOscillator();
@@ -198,7 +189,7 @@ export default function ModoZen({ onBack }: Props) {
 
   const stopRutina = () => {
     clearTimers();
-    window.speechSynthesis.cancel();
+    stopSpeech();
     setRunning(false);
     setScreenOff(false);
     setDone(false);
@@ -209,7 +200,7 @@ export default function ModoZen({ onBack }: Props) {
   useEffect(() => {
     return () => {
       clearTimers();
-      window.speechSynthesis.cancel();
+      stopSpeech();
     };
   }, []);
 

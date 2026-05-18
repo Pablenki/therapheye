@@ -6,6 +6,7 @@ import { useUser } from '../context/UserContext';
 import { useLanguage } from '../i18n';
 import { useExerciseValidator } from '../hooks/useExerciseValidator';
 import ExerciseValidatorPanel from '../components/ExerciseValidatorPanel';
+import { speak as speakProxy, stopSpeech } from '../utils/tts';
 
 // ─── Utilidad de audio via Web Audio API ─────────────────────────────────────
 const playTone = (
@@ -36,33 +37,9 @@ const playComplete = () => {
 };
 
 // ─── Utilidad de voz (Text-to-Speech) ────────────────────────────────────────
+// Wrapper que mantiene la firma con callback (onEnd) para la lógica de ducking de música
 const speakText = (text: string, lang: 'es' | 'en' = 'es', onEnd?: () => void) => {
-  if (!('speechSynthesis' in window)) { onEnd?.(); return; }
-  const utt = new SpeechSynthesisUtterance(text);
-  const langCode = lang === 'es' ? 'es-MX' : 'en-US';
-  utt.lang = langCode;
-  utt.rate = 1.2;
-  utt.pitch = 1.0;
-  utt.volume = 1.0;
-  const voces = window.speechSynthesis.getVoices();
-  let voz: SpeechSynthesisVoice | undefined;
-  if (lang === 'es') {
-    voz = voces.find(v => v.lang === 'es-MX') ||
-          voces.find(v => v.lang === 'es-US') ||
-          voces.find(v => v.lang.startsWith('es'));
-  } else {
-    voz = voces.find(v => v.lang === 'en-US') ||
-          voces.find(v => v.lang.startsWith('en'));
-  }
-  if (voz) utt.voice = voz;
-  if (onEnd) {
-    let fired = false;
-    const done = () => { if (!fired) { fired = true; onEnd(); } };
-    utt.onend = done;
-    utt.onerror = done;
-    setTimeout(done, 3000); // safety fallback
-  }
-  window.speechSynthesis.speak(utt);
+  speakProxy(text, lang).finally(() => onEnd?.());
 };
 
 // ─── Estilos de música ────────────────────────────────────────────────────────
@@ -660,7 +637,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     completionSpokenRef.current = false;
     isCountingDownRef.current = false;
     // Cancel any ongoing speech & music
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    stopSpeech();
     ambientMusic.stop();
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     // Apagar validación al cambiar ejercicio
@@ -791,8 +768,8 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
   useEffect(() => {
     if (muted) {
       ambientMusic.stop();
-      if ('speechSynthesis' in window) {
-        try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+      {
+        try { stopSpeech(); } catch { /* noop */ }
       }
     } else if (isRunning && timeLeftRef.current > 0) {
       // Reanuda la música ambiental al desmutar si el ejercicio está en curso
@@ -887,7 +864,7 @@ const ExerciseSession = ({ exerciseId, onBack, onComplete, queueRemaining = 0 }:
     }
     isCountingDownRef.current = false;
     setCountdownNum(null);
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    stopSpeech();
   };
 
   const handleToggleRun = () => {
