@@ -11,7 +11,7 @@ import { useLanguage } from '../i18n';
 import { useUser } from '../context/UserContext';
 import { callClaude } from '../utils/claudeApi';
 import { enviarSoporteTecnico } from '../utils/emailService';
-import { speak as speakProxy, stopSpeech } from '../utils/tts';
+import { speak as speakProxy } from '../utils/tts';
 
 interface Props {
   onBack: () => void;

@@ -3,7 +3,7 @@ import { Eye } from 'lucide-react'
 import { useUser } from '../context/UserContext'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useLanguage } from '../i18n'
-import { speak as speakProxy, stopSpeech } from '../utils/tts'
+import { speak as speakProxy } from '../utils/tts'
 import { sql } from '../neonCliente'
 import { callClaude } from '../utils/claudeApi'
 

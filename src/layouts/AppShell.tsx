@@ -5,7 +5,7 @@ import ReminderConfig, { scheduleReminders } from '../components/ReminderConfig'
 import {
   Home, Activity, Camera, Glasses, History, HeartPulse,
   ScanEye, ClipboardList, LogOut, Eye, BookOpen,
-  KeyRound, Menu, X, ChevronLeft, ChevronDown, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
+  KeyRound, X, ChevronLeft, ChevronDown, ScanFace, BookOpenCheck, MessageCircleHeart, Bell, MapPin, Gamepad2,
   Sparkles, BookMarked, MoreHorizontal, EarOff, Contrast,
   Timer, ClipboardCheck, FlaskConical,
   ScrollText, AreaChart,
