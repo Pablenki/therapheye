@@ -359,7 +359,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   // ── Herramientas avanzadas carousel ───────────────────────────────────────
   const [toolIdx, setToolIdx] = useState(0);
   const toolTouchX = useRef(0);
-  const TOOLS_COUNT = 10; // fixed — matches allTools array below
+  const TOOLS_COUNT = 9; // fixed — matches allTools array below
   // autoplayKey: bump para reiniciar el interval; autoplayDelay: delay del siguiente cambio
   const [toolAutoKey, setToolAutoKey] = useState(0);
   const [toolAutoDelay, setToolAutoDelay] = useState(4000);
@@ -1077,34 +1077,32 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <SectionHeader id="herramientas" label={es ? 'Herramientas avanzadas' : 'Advanced tools'} collapsed={collapsed} onToggle={handleToggle} />
           {!collapsed['herramientas'] && (() => {
             const allToolsEs = [
-              { page: 'reaccion-visual',     label: 'Reacción Visual',   emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Mide la velocidad de respuesta de tus ojos ante estímulos visuales' },
-              { page: 'campo-visual',        label: 'Campo Visual',       emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Mapea tu campo de visión periférica y detecta puntos ciegos' },
-              { page: 'contrast-test',       label: 'Contraste',          emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Evalúa tu capacidad para distinguir contrastes en condiciones variadas' },
-              { page: 'test-cromatico',      label: 'Percepción Color',   emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detecta alteraciones en la percepción del color y posible daltonismo' },
-              { page: 'modo-zen',            label: 'Modo Zen',           emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Sesión de relajación ocular con sonidos binaurales y ejercicios guiados' },
-              { page: 'entrenamiento-mental',label: 'Cognitivo',          emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Fortalece la memoria visual, atención y coordinación ojo-mente' },
-              { page: 'simulador',           label: 'Simulador Visual',   emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experimenta cómo ven personas con miopía, astigmatismo u otras condiciones' },
-              { page: 'notas-medicas',       label: 'Notas Médicas',      emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Guarda apuntes de consultas, recetas y evolución para tu oftalmólogo' },
-              { page: 'respiracion-478',     label: 'Respiración 4-7-8',  emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica de respiración que reduce la tensión ocular y el estrés digital' },
-              { page: 'evolucion-tests',     label: 'Evolución Tests',    emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Gráficas y tendencias de todos tus tests a lo largo del tiempo' },
-            ] as { page: Page; label: string; emoji: string; color: string; desc: string }[];
+              { page: 'reaccion-visual',  label: 'Reacción Visual',                    emoji: '⚡', color: 'from-violet-500 to-purple-600', desc: 'Pon a prueba qué tan rápido reaccionan tus ojos ante estímulos luminosos.', detail: 'Registra tu tiempo de respuesta, detecta asimetrías entre ojos y monitorea tu progreso sesión a sesión.' },
+              { page: 'campo-visual',     label: 'Campo Visual\n(Visión Periférica)',   emoji: '🔭', color: 'from-indigo-500 to-blue-600',   desc: 'Mapea los límites de tu campo de visión periférica y detecta posibles puntos ciegos.', detail: 'Ejercicio rápido que imita pruebas clínicas básicas de perimetría. Ideal para detectar cambios tempranos.' },
+              { page: 'contrast-test',    label: 'Test de Contraste',                  emoji: '⬛', color: 'from-gray-600 to-slate-700',    desc: 'Evalúa qué tan bien distingues diferencias sutiles de brillo y contraste.', detail: 'Útil para detectar fatiga visual, problemas de córnea o inicio de cataratas. Recomendado en entornos de pantalla prolongada.' },
+              { page: 'test-cromatico',   label: 'Percepción del Color\n(Test Cromático)', emoji: '🎨', color: 'from-rose-500 to-pink-600', desc: 'Detecta alteraciones en tu percepción del color y posible daltonismo o deficiencias cromáticas.', detail: 'Basado en principios de la prueba Ishihara. Identifica dificultades para distinguir rojo-verde o azul-amarillo.' },
+              { page: 'modo-zen',         label: 'Modo Zen',                           emoji: '🧘', color: 'from-emerald-500 to-green-600', desc: 'Sesión guiada de relajación ocular con ejercicios suaves, respiración y sonidos binaurales.', detail: 'Reduce la fatiga acumulada, hidrata el ojo con técnica de palming y reinicia tu enfoque mental.' },
+              { page: 'simulador',        label: 'Simulador Visual',                   emoji: '👓', color: 'from-slate-500 to-gray-600',    desc: 'Experimenta en tiempo real cómo perciben el mundo personas con distintas condiciones visuales.', detail: 'Simula miopía, hipermetropía, astigmatismo, glaucoma y más. Genera empatía y conciencia visual.' },
+              { page: 'notas-medicas',    label: 'Notas Médicas',                      emoji: '📋', color: 'from-orange-500 to-amber-600',  desc: 'Lleva un registro organizado de consultas, recetas, graduación y evolución con tu oftalmólogo.', detail: 'Centraliza toda tu información clínica en un solo lugar, segura y accesible cuando la necesitas.' },
+              { page: 'respiracion-478',  label: 'Respiración 4-7-8',                 emoji: '💨', color: 'from-sky-500 to-cyan-600',      desc: 'Técnica de respiración guiada que reduce la tensión ocular, el estrés digital y la fatiga general.', detail: 'Inhala 4 seg, retén 7 seg, exhala 8 seg. Activa el sistema nervioso parasimpático y relaja los músculos oculares.' },
+              { page: 'evolucion-tests',  label: 'Evolución de Tests',                emoji: '📈', color: 'from-violet-600 to-purple-700', desc: 'Visualiza tus resultados históricos y tendencias en todos los tests que has realizado.', detail: 'Gráficas interactivas por fecha y categoría. Detecta mejoras o retrocesos y compártelos con tu especialista.' },
+            ] as { page: Page; label: string; emoji: string; color: string; desc: string; detail: string }[];
 
             const allToolsEn = [
-              { page: 'reaccion-visual',     label: 'Visual Reaction',    emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Measure how fast your eyes respond to visual stimuli' },
-              { page: 'campo-visual',        label: 'Visual Field',        emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Map your peripheral vision field and detect blind spots' },
-              { page: 'contrast-test',       label: 'Contrast',            emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Assess your ability to distinguish contrasts under varied conditions' },
-              { page: 'test-cromatico',      label: 'Color Perception',    emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detect color perception issues and possible color blindness' },
-              { page: 'modo-zen',            label: 'Zen Mode',            emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Eye relaxation session with binaural sounds and guided exercises' },
-              { page: 'entrenamiento-mental',label: 'Cognitive',           emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Strengthen visual memory, attention and eye-mind coordination' },
-              { page: 'simulador',           label: 'Vision Simulator',    emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experience how people with myopia, astigmatism, and other conditions see' },
-              { page: 'notas-medicas',       label: 'Medical Notes',       emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Save appointment notes, prescriptions and evolution for your ophthalmologist' },
-              { page: 'respiracion-478',     label: '4-7-8 Breathing',     emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Breathing technique that reduces eye tension and digital stress' },
-              { page: 'evolucion-tests',     label: 'Test Evolution',      emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Charts and trends for all your tests over time' },
-            ] as { page: Page; label: string; emoji: string; color: string; desc: string }[];
+              { page: 'reaccion-visual',  label: 'Visual Reaction',                       emoji: '⚡', color: 'from-violet-500 to-purple-600', desc: 'Test how fast your eyes react to light stimuli in real time.', detail: 'Tracks response time, detects asymmetries between eyes, and monitors your progress over sessions.' },
+              { page: 'campo-visual',     label: 'Visual Field\n(Peripheral Vision)',      emoji: '🔭', color: 'from-indigo-500 to-blue-600',   desc: 'Map the boundaries of your peripheral vision and detect potential blind spots.', detail: 'Quick exercise inspired by basic clinical perimetry tests. Great for spotting early visual changes.' },
+              { page: 'contrast-test',    label: 'Contrast Test',                         emoji: '⬛', color: 'from-gray-600 to-slate-700',    desc: 'Evaluate how well you distinguish subtle differences in brightness and contrast.', detail: 'Useful for detecting eye fatigue, corneal issues, or early cataracts. Recommended for heavy screen users.' },
+              { page: 'test-cromatico',   label: 'Color Perception\n(Chromatic Test)',    emoji: '🎨', color: 'from-rose-500 to-pink-600',     desc: 'Detect color perception issues and possible color blindness or chromatic deficiencies.', detail: 'Based on Ishihara test principles. Identifies difficulty distinguishing red-green or blue-yellow.' },
+              { page: 'modo-zen',         label: 'Zen Mode',                              emoji: '🧘', color: 'from-emerald-500 to-green-600', desc: 'Guided eye relaxation session with gentle exercises, breathing, and binaural sounds.', detail: 'Reduces accumulated fatigue, hydrates the eye with palming technique, and resets your mental focus.' },
+              { page: 'simulador',        label: 'Vision Simulator',                      emoji: '👓', color: 'from-slate-500 to-gray-600',    desc: 'Experience in real time how people with different visual conditions perceive the world.', detail: 'Simulates myopia, hyperopia, astigmatism, glaucoma and more. Build visual empathy and awareness.' },
+              { page: 'notas-medicas',    label: 'Medical Notes',                         emoji: '📋', color: 'from-orange-500 to-amber-600',  desc: 'Keep an organized log of appointments, prescriptions, prescriptions and eye evolution.', detail: 'Centralize all your clinical information in one place, safe and accessible whenever you need it.' },
+              { page: 'respiracion-478',  label: '4-7-8 Breathing',                       emoji: '💨', color: 'from-sky-500 to-cyan-600',      desc: 'Guided breathing technique that reduces eye tension, digital stress, and general fatigue.', detail: 'Inhale 4s, hold 7s, exhale 8s. Activates the parasympathetic nervous system and relaxes eye muscles.' },
+              { page: 'evolucion-tests',  label: 'Test Evolution',                        emoji: '📈', color: 'from-violet-600 to-purple-700', desc: 'Visualize your historical results and trends across all completed tests.', detail: 'Interactive charts by date and category. Spot improvements or regressions and share them with your specialist.' },
+            ] as { page: Page; label: string; emoji: string; color: string; desc: string; detail: string }[];
 
             const allTools = es ? allToolsEs : allToolsEn;
             const focusPriority: Record<string, string[]> = {
-              'fatiga':     ['modo-zen', 'respiracion-478', 'entrenamiento-mental'],
+              'fatiga':     ['modo-zen', 'respiracion-478', 'evolucion-tests'],
               'ojo-seco':   ['modo-zen', 'respiracion-478', 'notas-medicas'],
               'clinica':    ['campo-visual', 'contrast-test', 'test-cromatico', 'evolucion-tests', 'notas-medicas'],
               'curiosidad': [],
@@ -1150,12 +1148,17 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                         <div key={item.page} className="w-full flex-none">
                           <button
                             onClick={() => onNavigate(item.page)}
-                            className={`w-full bg-gradient-to-br ${item.color} text-white px-5 py-5 flex flex-col items-start gap-1.5 hover:brightness-110 transition-all active:scale-[0.98]`}
+                            className={`w-full bg-gradient-to-br ${item.color} text-white px-7 py-8 flex flex-col items-center text-center gap-2 hover:brightness-110 transition-all active:scale-[0.98]`}
                           >
-                            <span className="text-3xl leading-none">{item.emoji}</span>
-                            <span className="text-base font-bold leading-tight mt-1">{item.label}</span>
-                            <span className="text-xs text-white/70 leading-snug">{item.desc}</span>
-                            <span className="mt-2 text-[11px] text-white/50 font-semibold tracking-wide uppercase">{es ? 'Abrir herramienta →' : 'Open tool →'}</span>
+                            <span className="text-5xl leading-none drop-shadow">{item.emoji}</span>
+                            <span className="text-lg font-black leading-tight mt-1 whitespace-pre-line">{item.label}</span>
+                            <span className="text-sm text-white/85 leading-snug">{item.desc}</span>
+                            {'detail' in item && (
+                              <span className="text-xs text-white/60 leading-relaxed mt-0.5">{(item as { detail: string }).detail}</span>
+                            )}
+                            <span className="mt-3 px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-full text-xs font-bold tracking-wide uppercase transition-colors">
+                              {es ? 'Abrir herramienta →' : 'Open tool →'}
+                            </span>
                           </button>
                         </div>
                       ))}
