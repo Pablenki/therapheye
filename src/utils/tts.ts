@@ -85,10 +85,19 @@ function playBase64Audio(base64: string): Promise<void> {
   });
 }
 
-// ── speak() — API pública ─────────────────────────────────────────────────────
+// ── speak() — Web Speech API directa (uso general) ───────────────────────────
 // Siempre retorna Promise que se resuelve cuando el audio termina.
 
 export async function speak(text: string, lang: Lang = 'es'): Promise<void> {
+  if (!text.trim()) return;
+  stopSpeech();
+  await speakWebSpeech(text, lang);
+}
+
+// ── speakViaProxy() — Cascada proxy (solo ChatSintomas) ───────────────────────
+// Unreal Speech → PlayHT → ElevenLabs → Web Speech API como fallback final.
+
+export async function speakViaProxy(text: string, lang: Lang = 'es'): Promise<void> {
   if (!text.trim()) return;
   stopSpeech();
 

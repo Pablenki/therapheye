@@ -376,31 +376,31 @@ const Questionnaire = ({ onBack, onStartRoutine }: QuestionnaireProps) => {
               {symptomInfo.exercises.map((ex, i) => (
                 <div key={ex.id} className="bg-white rounded-xl border border-indigo-100 shadow-sm overflow-hidden">
                   {/* Cabecera del ejercicio */}
-                  <div className="flex items-center gap-3 p-3">
-                    <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  <div className="flex items-start gap-3 p-3">
+                    <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-sm leading-tight">{ex.title[lang]}</p>
-                      <p className="text-xs text-gray-400">{ex.duration} · {ex.reason[lang]}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* Botón info clínica */}
-                      <button
-                        onClick={() => setExpandedExercise(expandedExercise === ex.id ? null : ex.id)}
-                        className="text-xs text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
-                      >
-                        {expandedExercise === ex.id ? t('questionnaire', 'lessBtn') : t('questionnaire', 'whyBtn')}
-                      </button>
-                      {/* Botón ejercicio individual */}
-                      {onStartRoutine && (
+                      <p className="text-xs text-gray-400 mt-0.5">{ex.duration} · {ex.reason[lang]}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        {/* Botón info clínica */}
                         <button
-                          onClick={() => onStartRoutine([ex.id])}
-                          className="flex items-center gap-1 text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg transition font-semibold"
+                          onClick={() => setExpandedExercise(expandedExercise === ex.id ? null : ex.id)}
+                          className="text-xs text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
                         >
-                          <Play className="w-3 h-3" /> {t('questionnaire', 'doBtn')}
+                          {expandedExercise === ex.id ? t('questionnaire', 'lessBtn') : t('questionnaire', 'whyBtn')}
                         </button>
-                      )}
+                        {/* Botón ejercicio individual */}
+                        {onStartRoutine && (
+                          <button
+                            onClick={() => onStartRoutine([ex.id])}
+                            className="flex items-center gap-1 text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded-lg transition font-semibold"
+                          >
+                            <Play className="w-3 h-3" /> {t('questionnaire', 'doBtn')}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {/* Base clínica expandible */}

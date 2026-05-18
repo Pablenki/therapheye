@@ -675,8 +675,8 @@ const ExerciseHeatmap = ({ exercises }: { exercises: Exercise[] }) => {
           <span>Más</span>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
+      <div>
+        <div className="flex gap-1 flex-nowrap">
           {/* Etiquetas de días */}
           <div className="flex flex-col gap-1 mr-1">
             {DIAS_ES.map((d, i) => (

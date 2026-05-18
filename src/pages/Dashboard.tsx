@@ -1150,7 +1150,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                         <div key={item.page} className="w-full flex-none">
                           <button
                             onClick={() => onNavigate(item.page)}
-                            className={`w-full min-h-[340px] bg-gradient-to-br ${item.color} text-white px-8 py-8 flex flex-col items-center text-center hover:brightness-110 transition-all active:scale-[0.98]`}
+                            className={`w-full h-[360px] bg-gradient-to-br ${item.color} text-white px-8 py-8 flex flex-col items-center text-center hover:brightness-110 transition-all active:scale-[0.98]`}
                           >
                             <span className="text-7xl leading-none drop-shadow">{item.emoji}</span>
                             <span className="text-xl font-black leading-tight mt-3 whitespace-pre-line">{item.label}</span>
