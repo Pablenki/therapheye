@@ -357,37 +357,48 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
         `}
       >
         {/* Logo row */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/10 flex-shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+        {collapsed && !isMobile ? (
+          /* ── Collapsed header: icon + arrow stacked, centered ── */
+          <div className="flex flex-col items-center gap-2 py-3 border-b border-white/10 flex-shrink-0">
+            <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center">
               <Eye className="w-5 h-5 text-white"/>
             </div>
-            {showLabels && (
+            <button
+              onClick={() => setCollapsed(false)}
+              title="Expandir"
+              className="w-10 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5 rotate-180" strokeWidth={2.5}/>
+            </button>
+          </div>
+        ) : (
+          /* ── Expanded / mobile header ── */
+          <div className="flex items-center justify-between px-4 py-4 border-b border-white/10 flex-shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Eye className="w-5 h-5 text-white"/>
+              </div>
               <span className="text-white font-bold text-sm leading-tight truncate">Salud Visual</span>
+            </div>
+
+            {isMobile ? (
+              <button
+                onClick={() => setOpen(false)}
+                className="text-gray-400 hover:text-white transition ml-1 flex-shrink-0"
+              >
+                <X className="w-5 h-5"/>
+              </button>
+            ) : (
+              <button
+                onClick={() => setCollapsed(true)}
+                title="Colapsar"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors ml-1 flex-shrink-0"
+              >
+                <ChevronLeft className="w-5 h-5" strokeWidth={2.5}/>
+              </button>
             )}
           </div>
-
-          {/* Close button: mobile → X, desktop → collapse arrow */}
-          {isMobile ? (
-            <button
-              onClick={() => setOpen(false)}
-              className="text-gray-400 hover:text-white transition ml-1 flex-shrink-0"
-            >
-              <X className="w-5 h-5"/>
-            </button>
-          ) : (
-            <button
-              onClick={() => setCollapsed(v => !v)}
-              className="text-gray-400 hover:text-white transition ml-1 flex-shrink-0"
-              title={collapsed ? 'Expandir' : 'Colapsar'}
-            >
-              <ChevronLeft
-                className="w-4 h-4 transition-transform duration-300"
-                style={{ transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
-              />
-            </button>
-          )}
-        </div>
+        )}
 
         {/* Daily progress bar */}
         {showLabels && (
