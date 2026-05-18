@@ -27,9 +27,13 @@ interface CoachAnalysis {
 const CACHE_KEY = 'therapheye_coach_semanal_v2';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
 
-function loadCache(userId: string): CoachAnalysis | null {
+function cacheKey(userId: string, lang: string) {
+  return `${CACHE_KEY}_${userId}_${lang}`;
+}
+
+function loadCache(userId: string, lang: string): CoachAnalysis | null {
   try {
-    const raw = localStorage.getItem(CACHE_KEY + '_' + userId);
+    const raw = localStorage.getItem(cacheKey(userId, lang));
     if (!raw) return null;
     const data = JSON.parse(raw) as CoachAnalysis;
     if (Date.now() - data.generadoEn > CACHE_TTL) return null;
@@ -37,14 +41,14 @@ function loadCache(userId: string): CoachAnalysis | null {
   } catch { return null; }
 }
 
-function saveCache(userId: string, data: CoachAnalysis) {
+function saveCache(userId: string, lang: string, data: CoachAnalysis) {
   try {
-    localStorage.setItem(CACHE_KEY + '_' + userId, JSON.stringify(data));
+    localStorage.setItem(cacheKey(userId, lang), JSON.stringify(data));
   } catch { /* ignore */ }
 }
 
-function clearCache(userId: string) {
-  try { localStorage.removeItem(CACHE_KEY + '_' + userId); } catch { /* ignore */ }
+function clearCache(userId: string, lang: string) {
+  try { localStorage.removeItem(cacheKey(userId, lang)); } catch { /* ignore */ }
 }
 
 const readIsDark = () => {
@@ -70,10 +74,10 @@ export default function CoachVisualSemanal({ onNavigate: _onNavigate }: Props) {
   const fetchAnalysis = useCallback(async (forceRefresh = false) => {
     if (!user?.id) return;
     if (!forceRefresh) {
-      const cached = loadCache(user.id);
+      const cached = loadCache(user.id, lang);
       if (cached) { setAnalysis(cached); setIsFromCache(true); return; }
     } else {
-      clearCache(user.id);
+      clearCache(user.id, lang);
     }
 
     setLoading(true);
@@ -204,7 +208,7 @@ ${resumen}`;
 
       const result: CoachAnalysis = { ...parsed, generadoEn: Date.now() };
       setAnalysis(result);
-      saveCache(user.id, result);
+      saveCache(user.id, lang, result);
     } catch (e) {
       console.error('[CoachVisual]', e);
       setError(lang === 'en' ? 'Could not generate analysis. Please try again.' : 'No se pudo generar el análisis. Intenta de nuevo.');
@@ -212,13 +216,14 @@ ${resumen}`;
     setLoading(false);
   }, [user?.id, user?.nombre, lang]);
 
-  // Carga caché al montar; si no hay caché, genera automáticamente
+  // Carga caché al montar o al cambiar idioma; si no hay caché, genera automáticamente
   useEffect(() => {
     if (!user?.id) return;
-    const cached = loadCache(user.id);
+    setAnalysis(null); // limpiar análisis previo del otro idioma
+    const cached = loadCache(user.id, lang);
     if (cached) { setAnalysis(cached); setIsFromCache(true); }
     else { fetchAnalysis(false); }
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.id, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user?.id) return null;
 

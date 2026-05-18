@@ -675,7 +675,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
             return (
               <button
                 key={label}
-                onClick={() => isMore ? setOpen(true) : (page && handleNav(page))}
+                onClick={() => isMore ? setOpen(v => !v) : (page && handleNav(page))}
                 className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all min-w-[52px] ${
                   isActive
                     ? 'text-indigo-600 bg-indigo-50'
