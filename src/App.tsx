@@ -270,6 +270,8 @@ function AppContent() {
             codigo={pendingUser.codigo}
             onBack={() => handleNavigate('register')}
             onVerified={() => {
+              // Cuenta nueva: limpiar flag de onboarding para que se muestre la presentación
+              try { localStorage.removeItem('therapheye_onboarding_done') } catch {}
               setPendingUser(null)
               handleNavigate('dashboard')
             }}

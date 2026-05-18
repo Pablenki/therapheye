@@ -610,15 +610,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
         style={{ marginLeft: isMobile ? 0 : sideW }}
         className="flex-1 flex flex-col min-w-0 overflow-y-auto transition-all duration-300 bg-transparent"
       >
-        {/* Mobile hamburger — fixed so it's always accessible */}
-        {isMobile && !open && (
-          <button
-            onClick={() => setOpen(true)}
-            className="fixed top-3 left-3 z-50 w-9 h-9 bg-[#0e1f47] rounded-xl flex items-center justify-center text-white shadow-lg"
-          >
-            <Menu className="w-5 h-5"/>
-          </button>
-        )}
+        {/* Mobile: sidebar accessible via "Más" in bottom nav — no floating button needed */}
 
         <div className={isMobile ? 'pb-16' : ''}>
           {children}

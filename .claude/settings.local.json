@@ -67,7 +67,9 @@
       "Bash(npm info:*)",
       "Bash(cat .nvmrc)",
       "Bash(cat .node-version)",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('error_message',''\\)\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('error_message',''\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('error','no error field'\\)\\); print\\('---LOG---'\\); print\\(\\(d.get\\('deploy_log',''\\) or ''\\)[-3000:]\\)\")",
+      "Bash(node:*)"
     ]
   }
 }

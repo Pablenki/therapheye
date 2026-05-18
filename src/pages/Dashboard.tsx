@@ -912,15 +912,16 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           <SectionHeader id="timer" label={es ? 'Tiempo en pantalla' : 'Screen time'} collapsed={collapsed} onToggle={handleToggle} />
           {!collapsed['timer'] && <div
             onClick={()=>onNavigate('visual-health')}
-            className={`${cardCls(tc.timer, `p-4 ${tc.flatBorders.timer}`)} p-4 flex items-center justify-between cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all`}
+            className={`${cardCls(tc.timer, `p-4 ${tc.flatBorders.timer}`)} p-4 flex flex-col gap-3 cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all`}
           >
             <Deco/>
+            {/* Fila superior: ícono + texto */}
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isFlat ? (screenTimeRunning ? 'bg-teal-100' : 'bg-gray-100') : (screenTimeRunning ? 'bg-white/30' : 'bg-white/20')}`}>
+              <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center ${isFlat ? (screenTimeRunning ? 'bg-teal-100' : 'bg-gray-100') : (screenTimeRunning ? 'bg-white/30' : 'bg-white/20')}`}>
                 <span className={`w-3 h-3 rounded-full ${isFlat ? (screenTimeRunning ? 'bg-teal-500 animate-pulse' : 'bg-gray-400') : (screenTimeRunning ? 'bg-white animate-pulse' : 'bg-white/60')}`}/>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className={`text-sm font-bold ${tc.cardText}`}>{es ? 'Tiempo en pantalla hoy' : 'Screen time today'}</p>
                   {timerSource === 'ext'
                     ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">🧩 Ext</span>
@@ -933,16 +934,17 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <p className={`text-2xl font-black font-mono tabular-nums ${tc.cardText}`}>{screenHH}:{screenMM}:{screenSS}</p>
+            {/* Fila inferior: timer + botón */}
+            <div className="flex items-center justify-between gap-2">
+              <p className={`text-3xl font-black font-mono tabular-nums ${tc.cardText}`}>{screenHH}:{screenMM}:{screenSS}</p>
               {timerSource === 'ext' ? (
-                <span className="text-xs text-indigo-500 font-semibold">Usa la extensión</span>
+                <span className="text-xs text-indigo-500 font-semibold">{es ? 'Usa la extensión' : 'Use extension'}</span>
               ) : (
                 <button
                   onClick={handleTimerToggle}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg transition ${screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-white text-sm font-semibold rounded-xl transition ${screenTimeRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
                 >
-                  {screenTimeRunning ? <><Pause className="w-3.5 h-3.5"/> {es ? 'Pausar' : 'Pause'}</> : <><Play className="w-3.5 h-3.5"/> {es ? 'Iniciar' : 'Start'}</>}
+                  {screenTimeRunning ? <><Pause className="w-4 h-4"/> {es ? 'Pausar' : 'Pause'}</> : <><Play className="w-4 h-4"/> {es ? 'Iniciar' : 'Start'}</>}
                 </button>
               )}
             </div>
@@ -1148,15 +1150,15 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
                         <div key={item.page} className="w-full flex-none">
                           <button
                             onClick={() => onNavigate(item.page)}
-                            className={`w-full bg-gradient-to-br ${item.color} text-white px-10 py-8 flex flex-col items-center text-center gap-3 hover:brightness-110 transition-all active:scale-[0.98]`}
+                            className={`w-full min-h-[340px] bg-gradient-to-br ${item.color} text-white px-8 py-8 flex flex-col items-center text-center hover:brightness-110 transition-all active:scale-[0.98]`}
                           >
                             <span className="text-7xl leading-none drop-shadow">{item.emoji}</span>
-                            <span className="text-xl font-black leading-tight mt-1 whitespace-pre-line">{item.label}</span>
-                            <span className="text-sm text-white/90 leading-relaxed max-w-lg">{item.desc}</span>
+                            <span className="text-xl font-black leading-tight mt-3 whitespace-pre-line">{item.label}</span>
+                            <span className="text-sm text-white/90 leading-relaxed max-w-lg mt-2">{item.desc}</span>
                             {'detail' in item && (
-                              <span className="text-xs text-white/65 leading-relaxed max-w-lg">{(item as { detail: string }).detail}</span>
+                              <span className="text-xs text-white/65 leading-relaxed max-w-lg mt-1">{(item as { detail: string }).detail}</span>
                             )}
-                            <span className="mt-2 px-5 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-bold tracking-wide uppercase transition-colors">
+                            <span className="mt-auto pt-4 px-5 py-2 bg-white/20 hover:bg-white/30 rounded-full text-sm font-bold tracking-wide uppercase transition-colors">
                               {es ? 'Abrir herramienta →' : 'Open tool →'}
                             </span>
                           </button>

@@ -287,7 +287,9 @@ ${resumen}`;
             <div className="flex flex-col items-center gap-3 py-8 px-5 text-center">
               <Sparkles className={`w-8 h-8 ${isDark ? 'text-purple-400' : 'text-purple-400'}`} />
               <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                Haz clic en <strong className="text-purple-500">Regenerar</strong> para generar tu análisis semanal con IA
+                {lang === 'en'
+                  ? <>Click <strong className="text-purple-500">Regenerate</strong> to generate your weekly AI analysis</>
+                  : <>Haz clic en <strong className="text-purple-500">Regenerar</strong> para generar tu análisis semanal con IA</>}
               </p>
             </div>
           )}

@@ -59,8 +59,8 @@ const AccessibilityMenu = () => {
 
       {/* Panel desplegable — se activa desde el header o botón flotante */}
       <div
-        className={`absolute bottom-0 right-0 w-[350px] bg-white rounded-2xl shadow-2xl
-                   transition-all duration-300 max-h-[600px] overflow-y-auto
+        className={`absolute bottom-0 right-0 w-[300px] bg-white rounded-2xl shadow-2xl
+                   transition-all duration-300 max-h-[500px] overflow-y-auto
                    ${isOpen
                      ? 'opacity-100 visible translate-y-0 scale-100'
                      : 'opacity-0 invisible translate-y-5 scale-90'}`}

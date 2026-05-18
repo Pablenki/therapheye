@@ -22,6 +22,21 @@
       box-shadow: 0 4px 24px rgba(79,70,229,0.08);
       padding: 2.5rem 2rem;
     }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #4f46e5;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 1.5rem;
+      text-decoration: none;
+    }
+    .back-btn:hover { color: #3730a3; }
     .logo {
       display: flex;
       align-items: center;
@@ -72,6 +87,7 @@
 </head>
 <body>
   <div class="container">
+    <button class="back-btn" onclick="window.history.back()">← Volver</button>
     <div class="logo">
       <span>👁 Therapheye</span>
     </div>
