@@ -91,6 +91,17 @@ function renderTimer(state) {
   const unsavedMs = elapsed - (state.lastSavePointMs || 0);
   saveRow.style.display = (unsavedMs >= 60_000 && !state.finalized) ? '' : 'none';
 
+  // Auto-save indicator
+  const autoSaveEl = document.getElementById('auto-save-info');
+  if (autoSaveEl) {
+    if (state.lastSavePointMs > 0) {
+      autoSaveEl.textContent = `✓ Historial actualizado · ${formatShort(state.lastSavePointMs)} guardados`;
+      autoSaveEl.style.display = '';
+    } else {
+      autoSaveEl.style.display = 'none';
+    }
+  }
+
   // Inactivity warning
   const warnEl = document.getElementById('inactivity-warn');
   if (state.inactivityWarning) {

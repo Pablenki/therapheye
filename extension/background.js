@@ -234,7 +234,7 @@ async function autoSavePreviousDay(prevDate, elapsedMs) {
       await chrome.storage.local.set({ daily_history: trimmed });
     }
 
-    // 2. DB: guardar bajo la fecha anterior, sin sobreescribir si ya hay más tiempo
+    // 2. DB timer_state: guardar bajo la fecha anterior, sin sobreescribir si ya hay más tiempo
     const storedUser = await chrome.storage.local.get('therapeye_user');
     const user = storedUser?.therapeye_user;
     if (user?.id) {
@@ -250,6 +250,31 @@ async function autoSavePreviousDay(prevDate, elapsedMs) {
            updated_at     = NOW()`,
         [user.id, prevDate, Math.round(elapsedMs), browserId]
       );
+
+      // 3. sesiones_salud_visual: guardar/actualizar sesión del día anterior
+      const now = Date.now();
+      const sessionStart = state.sessionStartTimestamp ?? (now - elapsedMs);
+      const prevExisting = await neonQuery(
+        `SELECT id, duration_ms FROM sesiones_salud_visual
+         WHERE user_id = $1 AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = $2
+         ORDER BY created_at DESC LIMIT 1`,
+        [user.id, prevDate]
+      );
+      const prevRow = prevExisting.rows?.[0];
+      const prevExistingMs = Number(prevRow?.duration_ms) || 0;
+      const prevTotalMs = Math.max(prevExistingMs, Math.round(elapsedMs));
+      if (prevRow?.id) {
+        await neonQuery(
+          `UPDATE sesiones_salud_visual SET duration_ms = $1, ended_at = $2 WHERE id = $3`,
+          [prevTotalMs, new Date(now).toISOString(), prevRow.id]
+        );
+      } else {
+        await neonQuery(
+          `INSERT INTO sesiones_salud_visual (user_id, started_at, ended_at, duration_ms, created_at)
+           VALUES ($1, $2, $3, $4, NOW() - INTERVAL '1 day')`,
+          [user.id, new Date(sessionStart).toISOString(), new Date(now).toISOString(), prevTotalMs]
+        );
+      }
     }
 
     console.log('[Therapheye BG] Auto-guardado día anterior', prevDate, Math.round(elapsedMs / 1000) + 's');
@@ -422,6 +447,11 @@ function tick() {
   if (dbPollCounter % 60 === 0) {
     pollDBForForeignSession();
   }
+
+  // Auto-save sesión cada 10 minutos de tiempo activo
+  if (dbPollCounter % 600 === 0) {
+    autoSaveSessionProgress();
+  }
 }
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
@@ -540,6 +570,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     state.inactivityWarning = false;
     state.inactivityWarnStartTs = null;
     chrome.notifications.clear('therapeye-inactivity');
+    autoSaveSessionProgress(state.accumulatedMs); // guardar delta al historial real
     saveState();
     saveTimerToDB();
     saveDailyHistory(state.accumulatedMs);
@@ -796,6 +827,7 @@ chrome.windows.onRemoved.addListener(async () => {
       state.inactivityWarnStartTs = null;
       chrome.notifications.clear('therapeye-inactivity');
       stopTick();
+      await autoSaveSessionProgress(state.accumulatedMs); // guardar al historial real
       await saveState();
       await saveTimerToDB();
     }
@@ -805,6 +837,58 @@ chrome.windows.onRemoved.addListener(async () => {
 });
 
 // ─── Initialization ───────────────────────────────────────────────────────────
+
+// ─── Auto-save a sesiones_salud_visual ───────────────────────────────────────
+// Guarda el delta de tiempo transcurrido desde el último save al historial real.
+// Se llama desde tick() cada 10 min, en PAUSE y al cerrar el navegador.
+// `finalMs` permite pasar un tiempo específico (ej: cambio de día).
+
+async function autoSaveSessionProgress(finalMs = null) {
+  try {
+    const stored = await chrome.storage.local.get('therapeye_user');
+    const user = stored?.therapeye_user;
+    if (!user?.id) return;
+
+    const currentMs = finalMs !== null ? finalMs : calcElapsedMs();
+    const delta = Math.max(0, currentMs - (state.lastSavePointMs || 0));
+
+    if (delta < 60_000) return; // menos de 1 minuto → no vale la pena
+
+    const today = state.stateDate || todayDate();
+    const now = Date.now();
+    const sessionStart = state.sessionStartTimestamp ?? (now - currentMs);
+
+    const existing = await neonQuery(
+      `SELECT id, duration_ms FROM sesiones_salud_visual
+       WHERE user_id = $1 AND DATE(created_at AT TIME ZONE 'America/Mexico_City') = $2
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id, today]
+    );
+
+    const existingRow = existing.rows?.[0];
+    const existingMs = Number(existingRow?.duration_ms) || 0;
+    const newTotalMs = existingMs + delta;
+
+    if (existingRow?.id) {
+      await neonQuery(
+        `UPDATE sesiones_salud_visual SET duration_ms = $1, ended_at = $2 WHERE id = $3`,
+        [newTotalMs, new Date(now).toISOString(), existingRow.id]
+      );
+    } else {
+      await neonQuery(
+        `INSERT INTO sesiones_salud_visual (user_id, started_at, ended_at, duration_ms, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+        [user.id, new Date(sessionStart).toISOString(), new Date(now).toISOString(), newTotalMs]
+      );
+    }
+
+    state.lastSavePointMs = currentMs;
+    await saveState();
+    console.log('[Therapheye BG] Auto-save sesión:', Math.round(newTotalMs / 1000) + 's total');
+  } catch (e) {
+    console.warn('[Therapheye BG] autoSaveSessionProgress error:', e);
+  }
+}
 
 // ─── Daily History (para EstadisticasAvanzadas) ───────────────────────────────
 // Guarda un snapshot del tiempo acumulado del día en chrome.storage.local
