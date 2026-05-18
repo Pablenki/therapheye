@@ -48,12 +48,29 @@ export const useAccessibility = () => {
       body.style.fontFamily = settings.fontFamily;
     }
 
-    // Zoom — también compensa la altura del contenedor raíz con --a11y-vh
-    // para que el layout no deje espacio vacío al alejar el zoom
-    body.style.zoom = `${settings.zoom}%`;
+    // Zoom — aplicado en #root con transform:scale para que el body siempre
+    // ocupe 100% del viewport y no queden espacios muertos.
+    // El root se agranda inversamente al factor de zoom para que al escalar
+    // visualmente llene justo el 100vw × 100vh.
+    body.style.zoom = ''; // asegurarse que body no tenga zoom propio
+    body.style.overflow = 'hidden'; // evitar scrollbars por el root agrandado
     const zoomFactor = settings.zoom / 100;
-    const compensatedVh = zoomFactor !== 1 ? `${(100 / zoomFactor).toFixed(4)}vh` : '100vh';
+    const inv = (100 / zoomFactor).toFixed(4);
+    const compensatedVh = zoomFactor !== 1 ? `${inv}vh` : '100vh';
     document.documentElement.style.setProperty('--a11y-vh', compensatedVh);
+    if (root) {
+      if (zoomFactor === 1) {
+        root.style.transform = '';
+        root.style.transformOrigin = '';
+        root.style.width = '';
+        root.style.height = '';
+      } else {
+        root.style.transformOrigin = 'top left';
+        root.style.transform = `scale(${zoomFactor})`;
+        root.style.width = `${inv}%`;      // pre-escala: 125% → post: 100%
+        root.style.height = `${inv}vh`;   // pre-escala: 125vh → post: 100vh
+      }
+    }
 
     // Indicadores visuales
     body.classList.toggle('visual-indicators', settings.visualIndicators);

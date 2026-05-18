@@ -336,7 +336,7 @@ export default function AppShell({ currentPage, onNavigate, onLogout, onStartTou
   };
 
   return (
-    <div className="flex overflow-hidden bg-gray-50" style={{ height: 'var(--a11y-vh, 100vh)' }}>
+    <div className="flex bg-gray-50" style={{ minHeight: 'var(--a11y-vh, 100vh)', height: 'var(--a11y-vh, 100vh)', overflow: 'hidden' }}>
 
       {/* ── Mobile overlay backdrop ─────────────────────────────────────── */}
       {isMobile && open && (
