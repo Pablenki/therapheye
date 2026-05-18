@@ -359,7 +359,7 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
   // ── Herramientas avanzadas carousel ───────────────────────────────────────
   const [toolIdx, setToolIdx] = useState(0);
   const toolTouchX = useRef(0);
-  const TOOLS_COUNT = 16; // fixed — matches allTools array below
+  const TOOLS_COUNT = 10; // fixed — matches allTools array below
   // autoplayKey: bump para reiniciar el interval; autoplayDelay: delay del siguiente cambio
   const [toolAutoKey, setToolAutoKey] = useState(0);
   const [toolAutoDelay, setToolAutoDelay] = useState(4000);
@@ -1078,44 +1078,34 @@ const Dashboard = ({ onNavigate }: { onNavigate: (page: Page) => void }) => {
           {!collapsed['herramientas'] && (() => {
             const allToolsEs = [
               { page: 'reaccion-visual',     label: 'Reacción Visual',   emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Mide la velocidad de respuesta de tus ojos ante estímulos visuales' },
-              { page: 'vergencia',           label: 'Vergencia',          emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Entrena la convergencia y divergencia binocular para reducir fatiga' },
               { page: 'campo-visual',        label: 'Campo Visual',       emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Mapea tu campo de visión periférica y detecta puntos ciegos' },
               { page: 'contrast-test',       label: 'Contraste',          emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Evalúa tu capacidad para distinguir contrastes en condiciones variadas' },
               { page: 'test-cromatico',      label: 'Percepción Color',   emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detecta alteraciones en la percepción del color y posible daltonismo' },
-              { page: 'test-acomodacion',    label: 'Acomodación',        emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evalúa la flexibilidad del cristalino para cambiar el enfoque' },
               { page: 'modo-zen',            label: 'Modo Zen',           emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Sesión de relajación ocular con sonidos binaurales y ejercicios guiados' },
               { page: 'entrenamiento-mental',label: 'Cognitivo',          emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Fortalece la memoria visual, atención y coordinación ojo-mente' },
-              { page: 'analizador-sintomas', label: 'Síntomas IA',        emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Describe tus molestias y la IA evalúa posibles causas y recomendaciones' },
               { page: 'simulador',           label: 'Simulador Visual',   emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experimenta cómo ven personas con miopía, astigmatismo u otras condiciones' },
-              { page: 'carga-visual',        label: 'Carga Visual',       emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: 'Calcula la carga visual acumulada del día y recibe alertas de fatiga' },
               { page: 'notas-medicas',       label: 'Notas Médicas',      emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Guarda apuntes de consultas, recetas y evolución para tu oftalmólogo' },
-              { page: 'dominancia-ocular',   label: 'Dominancia Ocular',  emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Descubre cuál es tu ojo dominante con una prueba rápida y confiable' },
               { page: 'respiracion-478',     label: 'Respiración 4-7-8',  emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Técnica de respiración que reduce la tensión ocular y el estrés digital' },
               { page: 'evolucion-tests',     label: 'Evolución Tests',    emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Gráficas y tendencias de todos tus tests a lo largo del tiempo' },
             ] as { page: Page; label: string; emoji: string; color: string; desc: string }[];
 
             const allToolsEn = [
               { page: 'reaccion-visual',     label: 'Visual Reaction',    emoji: '⚡', color: 'from-violet-500 to-purple-600',  desc: 'Measure how fast your eyes respond to visual stimuli' },
-              { page: 'vergencia',           label: 'Vergence',            emoji: '🎯', color: 'from-teal-500 to-cyan-600',      desc: 'Train binocular convergence and divergence to reduce eye strain' },
               { page: 'campo-visual',        label: 'Visual Field',        emoji: '🔭', color: 'from-indigo-500 to-blue-600',    desc: 'Map your peripheral vision field and detect blind spots' },
               { page: 'contrast-test',       label: 'Contrast',            emoji: '⬛', color: 'from-gray-600 to-slate-700',     desc: 'Assess your ability to distinguish contrasts under varied conditions' },
               { page: 'test-cromatico',      label: 'Color Perception',    emoji: '🎨', color: 'from-rose-500 to-pink-600',      desc: 'Detect color perception issues and possible color blindness' },
-              { page: 'test-acomodacion',    label: 'Accommodation',       emoji: '🔍', color: 'from-cyan-500 to-teal-600',      desc: 'Evaluate your lens flexibility when switching focus distances' },
               { page: 'modo-zen',            label: 'Zen Mode',            emoji: '🧘', color: 'from-emerald-500 to-green-600',  desc: 'Eye relaxation session with binaural sounds and guided exercises' },
               { page: 'entrenamiento-mental',label: 'Cognitive',           emoji: '🧠', color: 'from-amber-500 to-orange-500',   desc: 'Strengthen visual memory, attention and eye-mind coordination' },
-              { page: 'analizador-sintomas', label: 'AI Symptoms',         emoji: '🚨', color: 'from-red-500 to-rose-600',       desc: 'Describe your symptoms and AI evaluates possible causes and advice' },
               { page: 'simulador',           label: 'Vision Simulator',    emoji: '👓', color: 'from-slate-500 to-gray-600',     desc: 'Experience how people with myopia, astigmatism, and other conditions see' },
-              { page: 'carga-visual',        label: 'Visual Load',         emoji: '📊', color: 'from-blue-500 to-indigo-600',    desc: "Calculate the day's accumulated visual load and receive fatigue alerts" },
               { page: 'notas-medicas',       label: 'Medical Notes',       emoji: '📋', color: 'from-orange-500 to-amber-600',   desc: 'Save appointment notes, prescriptions and evolution for your ophthalmologist' },
-              { page: 'dominancia-ocular',   label: 'Eye Dominance',       emoji: '👁️', color: 'from-indigo-500 to-violet-600',  desc: 'Discover your dominant eye with a quick and reliable test' },
               { page: 'respiracion-478',     label: '4-7-8 Breathing',     emoji: '💨', color: 'from-sky-500 to-cyan-600',       desc: 'Breathing technique that reduces eye tension and digital stress' },
               { page: 'evolucion-tests',     label: 'Test Evolution',      emoji: '📈', color: 'from-violet-600 to-purple-700',  desc: 'Charts and trends for all your tests over time' },
             ] as { page: Page; label: string; emoji: string; color: string; desc: string }[];
 
             const allTools = es ? allToolsEs : allToolsEn;
             const focusPriority: Record<string, string[]> = {
-              'fatiga':     ['modo-zen', 'respiracion-478', 'carga-visual', 'entrenamiento-mental'],
-              'ojo-seco':   ['modo-zen', 'respiracion-478', 'analizador-sintomas', 'notas-medicas'],
+              'fatiga':     ['modo-zen', 'respiracion-478', 'entrenamiento-mental'],
+              'ojo-seco':   ['modo-zen', 'respiracion-478', 'notas-medicas'],
               'clinica':    ['campo-visual', 'contrast-test', 'test-cromatico', 'evolucion-tests', 'notas-medicas'],
               'curiosidad': [],
             };
